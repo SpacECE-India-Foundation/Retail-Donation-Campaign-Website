@@ -196,7 +196,7 @@ export const adminLogin = async (req,res) =>{
 
         res.cookie(
             "refreshToken",
-            refreshToekn,
+            refreshToken,
             {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -220,12 +220,14 @@ export const adminLogin = async (req,res) =>{
 
 
     } catch (error) {
-        return res.status(500).json(
-            new ApiError(
-            500,
+        console.error(error);
+
+    return res.status(error.statusCode || 500).json(
+        new ApiError(
+            error.statusCode || 500,
             error.message
-            )
-        );
+        )
+    );
     }
 }
 
@@ -258,12 +260,14 @@ export const forgotPassword = async (req,res) =>{
         );
 
     } catch (error) {
-        return res.status(500).json(
-            new ApiError(
-            500,
+        console.error(error);
+
+    return res.status(error.statusCode || 500).json(
+        new ApiError(
+            error.statusCode || 500,
             error.message
-            )
-        );
+        )
+    );
     }
 }
 

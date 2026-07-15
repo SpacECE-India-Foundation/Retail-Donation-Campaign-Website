@@ -3,6 +3,7 @@ import emailService from "../services/email.services.js";
 import { ApiError } from "./apiError.utils.js";
 import bcrypt from "bcryptjs"
 import otpModel from "../models/otp.modals.js";
+import crypto from 'crypto'
 
 //--------------------------------------------------FUNCTION TO GENERATE OTP'S------------------------------------
 //here, we have used special crypto based approach for the unpredictive otp 
@@ -28,7 +29,7 @@ export const createUpdateOtp = async ({email,purpose}) =>{
             attempts:0
         },{
             upsert:true, //this means update+insert if the document found update it otherwise insert a new document
-            new:true
+            returnDocument: "after"
         }
     )
 
