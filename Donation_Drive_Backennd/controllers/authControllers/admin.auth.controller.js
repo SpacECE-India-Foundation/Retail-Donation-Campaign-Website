@@ -1,23 +1,14 @@
-<<<<<<< HEAD
-import bcrypt from "bcrypt"
-=======
->>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
+
 import Admin from "../../models/admin.modals.js"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
 import { generateAccessToken } from "../../utils/tokenGenerator.utils.js"
 import { generateRefreshToken } from "../../utils/tokenGenerator.utils.js"
-<<<<<<< HEAD
 import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js"
-=======
 import { createUpdateOtp } from "../../utils/otp.utils.js"
 import { verifyOtpHandler } from "../../utils/otp.utils.js"
 import otpModel from "../../models/otp.modals.js"
-import bcrypt from "bcryptjs"
-
->>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
-
-
+import bcrypt from "bcryptjs";
 
 
 //---------------------------------------------------THE ADMIN REGISTRATION CONTROLLER---------------------------------------------------
@@ -29,22 +20,9 @@ import bcrypt from "bcryptjs"
 //STEP 6: SAVE THE ADMIN PROFILE IN THE DB COLLECTION 
 //STEP 7: WE WILL SEND COOKIES TO BROWSER
 
-<<<<<<< HEAD
-export const registerAdmin = async (req, res, next) => {
-  try {
-        //just for debugging, remove later
-        console.log("registerAdmin called", {
-          method: req.method,
-          url: req.url,
-          body: req.body,
-          hasFile: Boolean(req.file),
-          fileName: req.file?.originalname,
-        })
 
-=======
 export const registerAdmin = async (req,res) =>{
     try {
->>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
         //getting all the required info from the request body 
         const {
             fullName,
@@ -58,25 +36,16 @@ export const registerAdmin = async (req,res) =>{
         ApiError.assert(email?.trim(),"Valid Email is Required")
         ApiError.assert(password && password.length>=8,"Password is required and should be 8 digits longer")
 
-<<<<<<< HEAD
         //we will now find whether there a admin exist with the given credentials
         const isAdminExist = await Admin.findOne({ email })    
-=======
-        //we will now find weather there a admin exist with the given credentials
-        const isAdminExist = await Admin.findOne({email})
->>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
-        ApiError.assert(!isAdminExist,"Admin already Registered with the given Email, Please Sign In!")
 
-        //just for debugging, remove later
-        console.log("registerAdmin email check passed")
+        ApiError.assert(!isAdminExist,"Admin already Registered with the given Email, Please Sign In!")
 
         //hashing the password using bcrypt
         const hashedPassword = await bcrypt.hash(password, 12)
 
         let profileImageUrl = ""
         if (req.file?.buffer) {
-            //just for debugging, remove later
-          console.log("registerAdmin uploading profile image", req.file.originalname)
           const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images")
           profileImageUrl = uploadResult.secure_url
           //just for debugging, remove later
@@ -107,19 +76,8 @@ export const registerAdmin = async (req,res) =>{
         newAdmin.refreshToken = await bcrypt.hash(refreshToken, 12)
 
         await newAdmin.save()
-
-        res.status(201).json(
-          new ApiResponse(201, {
-            adminId: newAdmin._id,
-            email: newAdmin.email,
-            profileImage: profileImageUrl,
-            accessToken,
-            refreshToken,
-          }, "Admin registered successfully")
-        )
-
-
-        //now till here the account creation is completed, we will now send our tokens using the cookies to the browser
+      
+      //now till here the account creation is completed, we will now send our tokens using the cookies to the browser
         res.cookie(
             "accessToken",
             accessToken,
@@ -133,14 +91,14 @@ export const registerAdmin = async (req,res) =>{
 
         res.cookie(
             "refreshToken",
-            refreshToekn,
+            refreshToken,
             {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
             maxAge: 14 * 24 * 60 * 60 * 1000,
             }
-        );
+        );  
 
         //here we will implement the successfull mail sending funtionality
 
@@ -154,14 +112,12 @@ export const registerAdmin = async (req,res) =>{
         );
 
     } catch (error) {
-         console.error(error);
-
-    return res.status(error.statusCode || 500).json(
-        new ApiError(
-            error.statusCode || 500,
-            error.message
-        )
-    );
+         return res.status(error.statusCode || 500).json(
+    new ApiError(
+        error.statusCode || 500,
+        error.message
+    )
+)
 
     }
 }
@@ -227,6 +183,7 @@ export const adminLogin = async (req,res) =>{
         //here we will update the other details rearding the login activities for the admin
         admin.lastLogin = Date.now()
         admin.lockUntil = null
+        admin.lastLogin = new Date();
         await admin.save()
 
         //now we will send the access token and refresh token using cookies
@@ -243,7 +200,7 @@ export const adminLogin = async (req,res) =>{
 
         res.cookie(
             "refreshToken",
-            refreshToekn,
+            refreshToken,
             {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
@@ -267,16 +224,12 @@ export const adminLogin = async (req,res) =>{
 
 
     } catch (error) {
-<<<<<<< HEAD
-      //just for debugging, remove later
-      console.error("registerAdmin error", error)
-=======
-        return res.status(500).json(
-            new ApiError(
-            500,
-            error.message
-            )
-        );
+        return res.status(error.statusCode || 500).json(
+    new ApiError(
+        error.statusCode || 500,
+        error.message
+    )
+)
     }
 }
 
@@ -292,7 +245,7 @@ export const forgotPassword = async (req,res) =>{
         //checking weather there is any account with the recieved email address
         const isEmailExists = await Admin.findOne({email})
 
-        ApiError.notFound(isEmailExists,"If Account exist otp has been send")
+        ApiError.notFound(isEmailExists,"No account found with this email")
 
         //if it found then we will generate the otp and send it to the user
         await createUpdateOtp({
@@ -309,12 +262,12 @@ export const forgotPassword = async (req,res) =>{
         );
 
     } catch (error) {
-        return res.status(500).json(
-            new ApiError(
-            500,
-            error.message
-            )
-        );
+        return res.status(error.statusCode || 500).json(
+    new ApiError(
+        error.statusCode || 500,
+        error.message
+    )
+)
     }
 }
 
@@ -377,6 +330,7 @@ export const resetPassword = async (req,res) =>{
         //hashing the new password
         const hashedNewPassword = await bcrypt.hash(newPassword,12)
         admin.password = hashedNewPassword
+        admin.passwordChangedAt = new Date();
         //here we will be deleting the old refrsh token from the collection
         admin.refreshToken = null
         await admin.save()
@@ -388,8 +342,17 @@ export const resetPassword = async (req,res) =>{
         })
 
         //clearing the cookies from the browser
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
+        res.clearCookie("accessToken", {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production"
+});
+
+res.clearCookie("refreshToken", {
+    httpOnly: true,
+    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production"
+});
 
         return res.status(200).json(
             new ApiResponse(
@@ -405,6 +368,5 @@ export const resetPassword = async (req,res) =>{
             error.message
             )
         );
->>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
     }
 }

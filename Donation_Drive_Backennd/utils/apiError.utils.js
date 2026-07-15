@@ -26,9 +26,11 @@ class ApiError extends Error {
             throw new ApiError(statusCode, message);
         }
     }
-    static notFound(message = "Resource not found") {
+    static notFound(resource, message = "Resource not found") {
+    if (!resource) {
         throw new ApiError(404, message);
     }
+}
 
     static unauthorized(message = "Unauthorized") {
         throw new ApiError(401, message);

@@ -11,6 +11,7 @@ import { registerAdmin } from "./controllers/authControllers/admin.auth.controll
 import { upload } from "./utils/upload.utils.js"
 =======
 import adminAuthRoutes from "./routes/Admin.auth.routes.js"
+import getAdminRoute from "./routes/AdminOperationRoutes/getAdmin.js"
 
 >>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
 
@@ -111,6 +112,7 @@ const startServer = async () =>{
 
 //---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
 app.use('/api/admin/auth',adminAuthRoutes)
+app.use('/api/admin',getAdminRoute)
 
 //---------------------------------------------------LETS START THE SERVER NOW-----------------------------------------
 startServer()
