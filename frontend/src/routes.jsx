@@ -10,12 +10,14 @@ import FounderPage from "./pages/FounderPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ThankYouPage from "./pages/ThankYouPage";
 import VerifyCertificatePage from "./pages/VerifyCertificatePage";
+import ComponentShowcase from "./pages/ComponentShowcase";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 
 const router = createBrowserRouter([
   { path: "/", element: <HomePage /> },
+  { path: "/components", element: <ComponentShowcase /> },
   { path: "/about", element: <AboutPage /> },
   { path: "/problem", element: <ProblemPage /> },
   { path: "/solution", element: <SolutionPage /> },
@@ -27,7 +29,14 @@ const router = createBrowserRouter([
   { path: "/thank-you", element: <ThankYouPage /> },
   { path: "/verify/:verificationId", element: <VerifyCertificatePage /> },
   { path: "/admin/login", element: <AdminLoginPage /> },
-  { path: "/admin", element: <ProtectedRoute><AdminDashboardPage /></ProtectedRoute> },
+  {
+    path: "/admin",
+    element: (
+      <ProtectedRoute>
+        <AdminDashboardPage />
+      </ProtectedRoute>
+    ),
+  },
 ]);
 
 export default router;
