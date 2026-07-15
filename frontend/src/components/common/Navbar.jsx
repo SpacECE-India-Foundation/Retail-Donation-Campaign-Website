@@ -4,10 +4,9 @@ export const Navbar = () => {
     const location = useLocation();
     const navLinks = [
         { name: 'Mission', path: '/' },
-        { name: 'Solutions', path: '/solutions' },
+        { name: 'Solutions', path: '/solution' },
         { name: 'Impact', path: '/impact' },
         { name: 'Campaign', path: '/campaign' },
-        { name: 'Achievments', path: '/achievements' },
         { name: 'Founders', path: '/founders' },
         { name: 'Documents', path: '/documents' },
     ];
