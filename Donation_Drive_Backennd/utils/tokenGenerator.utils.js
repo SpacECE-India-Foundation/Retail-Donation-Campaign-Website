@@ -20,8 +20,15 @@ export const generateRefreshToken = (refreshTokenObj) =>{
     return jwt.sign(
         refreshTokenObj,
         process.env.REFRESH_TOKEN_SECRET_KEY,
+<<<<<<< HEAD
         {
             expiresIn:"14d"
         }
     )
+=======
+    {
+        expiresIn:"14d"
+    }
+)
+>>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
 }

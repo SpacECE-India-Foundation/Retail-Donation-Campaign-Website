@@ -64,6 +64,11 @@ const adminSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    lockUntil: {
+    type: Date,
+    default: null
+},
+
     resetPasswordOtp: {
       type: String,
       default: null,

@@ -11,7 +11,11 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+<<<<<<< HEAD
     "cloudinary": "^1.41.3",
+=======
+    "bcryptjs": "^3.0.3",
+>>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
     "colors": "^1.4.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

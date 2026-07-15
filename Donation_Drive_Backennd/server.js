@@ -4,10 +4,15 @@ import cors from "cors"
 import colors from "colors"
 import cookieParser from "cookie-parser"
 import dbConnect from "./config/dataBase.config.js"
+<<<<<<< HEAD
 import { ApiError } from "./utils/apiError.utils.js"
 import { ApiResponse } from "./utils/apiResponse.utils.js"
 import { registerAdmin } from "./controllers/authControllers/admin.auth.controller.js"
 import { upload } from "./utils/upload.utils.js"
+=======
+import adminAuthRoutes from "./routes/Admin.auth.routes.js"
+
+>>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
@@ -103,6 +108,9 @@ const startServer = async () =>{
         console.log(colors.blue(`Halting Operations!!!`)); 
     }
 }
+
+//---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
+app.use('/api/admin/auth',adminAuthRoutes)
 
 //---------------------------------------------------LETS START THE SERVER NOW-----------------------------------------
 startServer()
