@@ -4,6 +4,10 @@ import cors from "cors"
 import colors from "colors"
 import cookieParser from "cookie-parser"
 import dbConnect from "./config/dataBase.config.js"
+import { ApiError } from "./utils/apiError.utils.js"
+import { ApiResponse } from "./utils/apiResponse.utils.js"
+import { registerAdmin } from "./controllers/authControllers/admin.auth.controller.js"
+import { upload } from "./utils/upload.utils.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
@@ -40,6 +44,11 @@ app.use(cors(corsOptions))
 app.use(express.json())
 app.use(cookieParser())
 
+//just for debugging, remove later
+app.use((req, res, next) => {
+  console.log("Incoming request:", req.method, req.url)
+  next()
+})
 
 //---------------------------------------------------INITIAL SERVER RUNNING ENDPOINT--------------------------------------------------------------
 //lets make the running endpoint
@@ -47,6 +56,42 @@ app.get('/',(req,res)=>res.send(
     "Retail Donation Drive Server!!"
 ))
 
+//---------------------------------------------------ADMIN AUTH ROUTES--------------------------------------------------------------
+app.post("/api/admin/auth/register-admin", upload.single("profileImage"), registerAdmin)
+
+// route not found handler
+app.use((req, res) => {
+  res.status(404).json(new ApiResponse(404, null, "Route not found"))
+})
+
+// global error handler
+app.use((err, req, res, next) => {
+  console.error("Global error handler:", err)
+
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json(
+      new ApiResponse(err.statusCode, null, err.message, err.errors)
+    )
+  }
+
+  if (err.name === "ValidationError") {
+    const validationErrors = Object.values(err.errors).map((error) => error.message)
+    return res.status(400).json(
+      new ApiResponse(400, null, "Validation failed", validationErrors)
+    )
+  }
+
+  if (err.code === 11000) {
+    const duplicateField = Object.keys(err.keyValue)[0]
+    return res.status(409).json(
+      new ApiResponse(409, null, `${duplicateField} already exists`, err.keyValue)
+    )
+  }
+
+  res.status(err.statusCode || 500).json(
+    new ApiResponse(err.statusCode || 500, null, err.message || "Internal Server Error")
+  )
+})
 
 //-------------------------------------------------------DATABASE CONNECTION ESTABLISHMENT----------------------------------------------
 //lets establish the connection with the database and if the connection is established then only listen the server

@@ -1,9 +1,10 @@
-import bcrypt from "bcryptjs"
+import bcrypt from "bcrypt"
 import Admin from "../../models/admin.modals.js"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
 import { generateAccessToken } from "../../utils/tokenGenerator.utils.js"
 import { generateRefreshToken } from "../../utils/tokenGenerator.utils.js"
+import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js"
 
 
 
@@ -17,15 +18,23 @@ import { generateRefreshToken } from "../../utils/tokenGenerator.utils.js"
 //STEP 6: SAVE THE ADMIN PROFILE IN THE DB COLLECTION 
 //STEP 7: WE WILL SEND COOKIES TO BROWSER
 
-export const registerAdmin = async (req,res) =>{3
-    try {
+export const registerAdmin = async (req, res, next) => {
+  try {
+        //just for debugging, remove later
+        console.log("registerAdmin called", {
+          method: req.method,
+          url: req.url,
+          body: req.body,
+          hasFile: Boolean(req.file),
+          fileName: req.file?.originalname,
+        })
+
         //getting all the required info from the request body 
         const {
             fullName,
             email,
             password,
             phone,
-            profileImage,
         } = req.body
 
         //lets check for the validation
@@ -33,23 +42,36 @@ export const registerAdmin = async (req,res) =>{3
         ApiError.assert(email?.trim(),"Valid Email is Required")
         ApiError.assert(password && password.length>=8,"Password is required and should be 8 digits longer")
 
-        //we will now find weather there a admin exist with the given credentials
-        const isAdminExist = await Admin.findOne(emai)
+        //we will now find whether there a admin exist with the given credentials
+        const isAdminExist = await Admin.findOne({ email })    
         ApiError.assert(!isAdminExist,"Admin already Registered with the given Email, Please Sign In!")
 
+        //just for debugging, remove later
+        console.log("registerAdmin email check passed")
+
         //hashing the password using bcrypt
-        const hashedPassword = await bcrypt.hash(password,12)
+        const hashedPassword = await bcrypt.hash(password, 12)
 
-        //here we will implement the profile picture upload functionality in the system
-
-
+        let profileImageUrl = ""
+        if (req.file?.buffer) {
+            //just for debugging, remove later
+          console.log("registerAdmin uploading profile image", req.file.originalname)
+          const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images")
+          profileImageUrl = uploadResult.secure_url
+          //just for debugging, remove later
+          console.log("registerAdmin uploaded profile image", profileImageUrl)
+        } else if (req.body.profileImage) {
+          profileImageUrl = req.body.profileImage
+          //just for debugging, remove later
+          console.log("registerAdmin using profileImage from body")
+        }
 
         const newAdmin = new Admin ({
             fullName,
             password:hashedPassword,
             email,
-            phone,
-            profileImage
+            phone: phone || "",
+            profileImage: profileImageUrl,
         })
 
         //now we will generate the access and refresh token 
@@ -58,20 +80,29 @@ export const registerAdmin = async (req,res) =>{3
         })
 
         //generating the refresh token 
-        const refreshToekn = generateRefreshToken({
-            adminId:newAdmin._id
-        })
+        const refreshToken = generateRefreshToken({ adminId: newAdmin._id })
 
         //for the security purposes we will storing the refreshtoken in hashed form in our admin collection
-        newAdmin.refreshToken = await bcrypt.hash(refreshToekn,12)
+        newAdmin.refreshToken = await bcrypt.hash(refreshToken, 12)
 
         await newAdmin.save()
+
+        res.status(201).json(
+          new ApiResponse(201, {
+            adminId: newAdmin._id,
+            email: newAdmin.email,
+            profileImage: profileImageUrl,
+            accessToken,
+            refreshToken,
+          }, "Admin registered successfully")
+        )
 
 
 
 
 
     } catch (error) {
-        
+      //just for debugging, remove later
+      console.error("registerAdmin error", error)
     }
 }
