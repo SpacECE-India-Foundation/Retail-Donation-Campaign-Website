@@ -1,7 +1,4 @@
-cd D:\Retail-Donation-Campaign-Website\Donation_Drive_Backennd
-
-@'
-import express from "express"
+﻿import express from "express"
 import "dotenv/config"
 import cors from "cors"
 import colors from "colors"
@@ -115,4 +112,3 @@ const startServer = async () =>{
 
 //---------------------------------------------------LETS START THE SERVER NOW-----------------------------------------
 startServer()
-'@ | Out-File -FilePath "server.js" -Encoding utf8
