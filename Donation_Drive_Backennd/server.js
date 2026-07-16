@@ -61,6 +61,9 @@ app.get('/',(req,res)=>res.send(
 //---------------------------------------------------ADMIN AUTH ROUTES--------------------------------------------------------------
 app.post("/api/admin/auth/register-admin", upload.single("profileImage"), registerAdmin)
 
+app.use('/api/admin/auth',adminAuthRoutes)
+app.use('/api/admin',getAdminRoute)
+
 // route not found handler
 app.use((req, res) => {
   res.status(404).json(new ApiResponse(404, null, "Route not found"))
@@ -107,8 +110,6 @@ const startServer = async () =>{
 }
 
 //---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
-app.use('/api/admin/auth',adminAuthRoutes)
-app.use('/api/admin',getAdminRoute)
 
 //---------------------------------------------------LETS START THE SERVER NOW-----------------------------------------
 startServer()
