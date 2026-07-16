@@ -1,3 +1,6 @@
+cd D:\Retail-Donation-Campaign-Website\Donation_Drive_Backennd
+
+@'
 import express from "express"
 import "dotenv/config"
 import cors from "cors"
@@ -61,10 +64,7 @@ app.get('/',(req,res)=>res.send(
 //---------------------------------------------------ADMIN AUTH ROUTES--------------------------------------------------------------
 app.post("/api/admin/auth/register-admin", upload.single("profileImage"), registerAdmin)
 
-<<<<<<< HEAD
-=======
 //---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
->>>>>>> 3ed9be48ec294f17737759bd68caece3ae08de3f
 app.use('/api/admin/auth',adminAuthRoutes)
 app.use('/api/admin',getAdminRoute)
 
@@ -113,10 +113,6 @@ const startServer = async () =>{
     }
 }
 
-<<<<<<< HEAD
-//---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
-
-=======
->>>>>>> 3ed9be48ec294f17737759bd68caece3ae08de3f
 //---------------------------------------------------LETS START THE SERVER NOW-----------------------------------------
 startServer()
+'@ | Out-File -FilePath "server.js" -Encoding utf8
