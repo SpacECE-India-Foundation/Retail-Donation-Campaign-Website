@@ -11,7 +11,11 @@
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
+<<<<<<< HEAD
+    "cloudinary": "^1.41.3",
+=======
     "bcryptjs": "^3.0.3",
+>>>>>>> 855cab8ead01d3092fcdcdd904b96b759ac205d9
     "colors": "^1.4.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -19,6 +23,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.4",
+    "multer": "^1.4.5-lts.1",
     "nodemailer": "^9.0.3",
     "nodemon": "^3.1.14"
   }
