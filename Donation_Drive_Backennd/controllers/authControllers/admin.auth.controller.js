@@ -122,8 +122,6 @@ export const registerAdmin = async (req,res) =>{
     }
 }
 
-
-
 //-----------------------------------------------------------NOW THIS CONTROLLER WILL DEAL WITH THE ADMIN LOGIN-----------------------------------
 export const adminLogin = async (req,res) =>{
     try {
