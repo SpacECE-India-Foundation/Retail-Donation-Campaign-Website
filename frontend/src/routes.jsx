@@ -34,7 +34,8 @@ const router = createBrowserRouter([
       { path: "/verify/:verificationId", element: <VerifyCertificatePage /> },
     ],
   },
-  { path: "/admin/login", element: <AdminLoginPage /> },
+    { path: "/admin/login", element: <AdminLoginPage /> },
+
   {
     path: "/admin",
     element: (
@@ -44,4 +45,5 @@ const router = createBrowserRouter([
     ),
   },
 ]);
+
 export default router;
