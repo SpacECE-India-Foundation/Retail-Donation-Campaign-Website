@@ -1,7 +1,15 @@
-﻿export default function HomePage() {
+﻿import { HeroSection } from "../components/home/HeroSection";
+import { StatsStrip } from "../components/home/StatsStrip";
+import { CampaignProgress } from "../components/home/CampaignProgress";
+import { HowItWorks } from "../components/home/HowItWorks";
+
+export default function HomePage() {
   return (
-    <div className="p-8">
-      <h1>HomePage</h1>
-    </div>
+    <div>
+  <HeroSection />
+  <StatsStrip />
+  <CampaignProgress />
+  <HowItWorks />
+</div>
   );
 }
