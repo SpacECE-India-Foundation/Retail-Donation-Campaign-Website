@@ -1,9 +1,9 @@
-import { Link, useLocation } from 'react-router-dom';
+﻿import { Link, useLocation } from 'react-router-dom';
 import { Button } from './Button';
 export const Navbar = () => {
     const location = useLocation();
     const navLinks = [
-        { name: 'Mission', path: '/' },
+        { name: 'Mission', path: '/about' },
         { name: 'Solutions', path: '/solution' },
         { name: 'Impact', path: '/impact' },
         { name: 'Campaign', path: '/campaign' },
@@ -21,7 +21,7 @@ export const Navbar = () => {
         </Link>
         <div className="hidden lg:flex lg:items-center lg:gap-8 xl:gap-10">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.path || (link.name === 'Mission' && location.pathname === '/');
+            const isActive = location.pathname === link.path;
             return (<Link key={link.name} to={link.path} className={`text-[15px] font-bold pb-1 border-b-[3px] transition-colors mt-1 ${isActive
                     ? 'border-[var(--color-brand-orange)] text-[var(--color-brand-orange)]'
                     : 'border-transparent text-[var(--color-brand-orange)]/70 hover:text-[var(--color-brand-orange)]'}`}>
