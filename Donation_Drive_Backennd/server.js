@@ -1,4 +1,4 @@
-import express from "express"
+﻿import express from "express"
 import "dotenv/config"
 import cors from "cors"
 import colors from "colors"
@@ -69,7 +69,6 @@ const startServer = async () =>{
 app.use('/api/admin/auth',adminAuthRoutes)
 app.use('/api/admin',getAdminRoute)
 app.use('/api/admin/campaign',campaignAdminOperationsRoutes)
-
 
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
