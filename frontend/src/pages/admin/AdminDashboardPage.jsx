@@ -1,4 +1,5 @@
 ﻿import React, { useState, useMemo, useCallback, useEffect, useRef, useId } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
   BarChart3,
@@ -36,6 +37,7 @@ import {
 
 import { Card } from "../../components/common/Card";
 import { Button } from "../../components/common/Button";
+import { logout } from "../../services/authService";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -58,10 +60,10 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 const AMOUNT_RANGE_OPTIONS = [
   { key: "all", label: "Any amount", min: -Infinity, max: Infinity },
-  { key: "under-500", label: "Under \u20b9500", min: 0, max: 499 },
-  { key: "500-1500", label: "\u20b9500 \u2013 \u20b91,500", min: 500, max: 1500 },
-  { key: "1500-3000", label: "\u20b91,500 \u2013 \u20b93,000", min: 1500, max: 3000 },
-  { key: "above-3000", label: "Above \u20b93,000", min: 3000, max: Infinity },
+  { key: "under-500", label: "Under ₹500", min: 0, max: 499 },
+  { key: "500-1500", label: "₹500 – ₹1,500", min: 500, max: 1500 },
+  { key: "1500-3000", label: "₹1,500 – ₹3,000", min: 1500, max: 3000 },
+  { key: "above-3000", label: "Above ₹3,000", min: 3000, max: Infinity },
 ];
 
 const SORT_KEYS = { DONOR: "donor", AMOUNT: "amount", DATE: "date" };
@@ -84,10 +86,10 @@ const INITIAL_DONATIONS = [
 ];
 
 const ACTIVITY_FEED = [
-  { id: 1, icon: "donation", text: "Rahul Sharma donated \u20b9500", time: "Today \u2022 10:30 AM", status: "Completed" },
-  { id: 2, icon: "campaign", text: "New campaign created", time: "Today \u2022 09:15 AM", status: "Completed" },
-  { id: 3, icon: "report", text: "Monthly report generated", time: "Yesterday \u2022 06:40 PM", status: "Completed" },
-  { id: 4, icon: "login", text: "Admin logged in", time: "Yesterday \u2022 09:02 AM", status: "Completed" },
+  { id: 1, icon: "donation", text: "Rahul Sharma donated ₹500", time: "Today • 10:30 AM", status: "Completed" },
+  { id: 2, icon: "campaign", text: "New campaign created", time: "Today • 09:15 AM", status: "Completed" },
+  { id: 3, icon: "report", text: "Monthly report generated", time: "Yesterday • 06:40 PM", status: "Completed" },
+  { id: 4, icon: "login", text: "Admin logged in", time: "Yesterday • 09:02 AM", status: "Completed" },
 ];
 
 const ACTIVITY_ICONS = {
@@ -134,7 +136,7 @@ const ACTIVITY_ACCENTS = {
 /* ------------------------------------------------------------------ */
 
 function formatINR(amount) {
-  return `\u20b9${Number(amount).toLocaleString("en-IN")}`;
+  return `₹${Number(amount).toLocaleString("en-IN")}`;
 }
 
 function todayLabel() {
@@ -474,10 +476,21 @@ function ProfileMenu() {
   const containerRef = useRef(null);
   const buttonId = useId();
   const menuId = useId();
+  const navigate = useNavigate();
 
   const close = useCallback(() => setOpen(false), []);
   useClickOutside(containerRef, close, open);
   useEscapeKey(close, open);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      navigate("/admin/login", { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -526,6 +539,7 @@ function ProfileMenu() {
           </button>
           <button
             role="menuitem"
+            onClick={handleLogout}
             className="flex w-full items-center gap-3 border-t border-gray-50 px-4 py-3 text-left text-sm text-red-600 transition hover:bg-red-50"
           >
             <LogOut size={16} aria-hidden="true" />
@@ -778,7 +792,7 @@ function Pagination({ currentPage, totalPages, rangeStart, rangeEnd, totalRecord
   return (
     <nav aria-label="Donation table pagination" className="flex flex-col items-center gap-4 sm:flex-row">
       <p className="text-sm text-gray-500" aria-live="polite">
-        Showing {rangeStart}\u2013{rangeEnd} of {totalRecords} records
+        Showing {rangeStart}–{rangeEnd} of {totalRecords} records
       </p>
 
       <div className="flex items-center gap-2">
@@ -981,7 +995,7 @@ function DonationForm({ initial, onCancel, onSubmit, submitLabel }) {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="donor-amount" className="mb-1 block text-sm font-medium text-gray-600">
-            Amount (\u20b9)
+            Amount (₹)
           </label>
           <input
             id="donor-amount"
@@ -1436,8 +1450,8 @@ export default function AdminDashboardPage() {
         </Card>
 
         <footer className="flex flex-col gap-2 text-sm text-gray-400 sm:flex-row sm:justify-between">
-          <p>\u00a9 2026 SpaceECE India Foundation</p>
-          <p>Last Updated \u2022 Today</p>
+          <p>© 2026 SpaceECE India Foundation</p>
+          <p>Last Updated • Today</p>
         </footer>
       </div>
 
