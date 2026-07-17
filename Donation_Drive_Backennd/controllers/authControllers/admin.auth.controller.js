@@ -31,6 +31,9 @@ export const registerAdmin = async (req,res) =>{
             phone,
         } = req.body
 
+        //just for debugging, remove later
+        console.log("registerAdmin called for email:", email, "fullName:", fullName, "phone:", phone)
+
         //lets check for the validation
         ApiError.assert(fullName,"Full Name of the Admin is Required")
         ApiError.assert(email?.trim(),"Valid Email is Required")
@@ -126,6 +129,8 @@ export const registerAdmin = async (req,res) =>{
 export const adminLogin = async (req,res) =>{
     try {
         const {email,password} = req.body
+        //just for debugging, remove later
+        console.log("adminLogin called for email:", email)
         ApiError.assert(email,"Email is Required for Login!")
         ApiError.assert(password,"Both the password and email is Required!!")
 
@@ -237,6 +242,8 @@ export const adminLogin = async (req,res) =>{
 export const forgotPassword = async (req,res) =>{
     try {
         const {email} = req.body
+        //just for debugging, remove later
+        console.log("forgotPassword called for email:", email)
 
         ApiError.assert(email,"Email is required to reset the password")
 
@@ -275,6 +282,8 @@ export const forgotPassword = async (req,res) =>{
 export const verifyOtp = async (req,res) =>{
     try {
         const {otp,email} = req.body
+        //just for debugging, remove later
+        console.log("verifyOtp called for email:", email, "otp:", otp)
         ApiError.assert(otp,"OTP is required")
 
         //verification of the OTP
@@ -307,6 +316,8 @@ export const verifyOtp = async (req,res) =>{
 export const resetPassword = async (req,res) =>{
     try {
         const {email,newPassword} = req.body
+        //just for debugging, remove later
+        console.log("resetPassword called for email:", email)
         ApiError.assert(email,"email is required")
         ApiError.assert(newPassword && newPassword.length >= 8,"Valid Password is required")
 

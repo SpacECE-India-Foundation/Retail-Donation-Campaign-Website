@@ -8,6 +8,8 @@ import { ApiResponse } from "../../utils/apiResponse.utils.js";
 export const getCurrentAdmin = async (req,res) =>{
     try {
         const {adminId} = req.admin;
+        //just for debugging, remove later
+        console.log("getCurrentAdmin called for adminId:", adminId);
         const admin = await Admin.findById(adminId).select("-password")
         return res.status(200).json(
             new ApiResponse(
