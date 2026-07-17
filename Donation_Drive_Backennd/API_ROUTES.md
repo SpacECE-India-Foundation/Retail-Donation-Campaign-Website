@@ -223,6 +223,143 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 ---
 
+## 8. Admin donation routes
+
+### `GET /api/donations`
+
+- Purpose: fetch donation records for admin review.
+- Requires auth middleware `adminAuth`.
+- By default, this returns all donations.
+- Use query parameters to filter results.
+
+#### Query parameters
+- `status` (string, optional)
+  - Example: `Pending`, `Verified`, `Rejected`
+- `campaign` (string, optional)
+  - Campaign `_id` to return donations for a specific campaign.
+- `donorName` (string, optional)
+  - Partial, case-insensitive search on donor name.
+- `donorEmail` (string, optional)
+  - Partial, case-insensitive search on donor email.
+- `transactionId` (string, optional)
+  - Partial search on transaction ID.
+- `paymentMode` (string, optional)
+  - Example: `UPI`, `Bank Transfer`, `Cash`, `Cheque`
+- `verified` (boolean, optional)
+  - Use `true` to return verified donations, `false` for unverified.
+- `minAmount` (number, optional)
+  - Minimum donation amount.
+- `maxAmount` (number, optional)
+  - Maximum donation amount.
+- `paymentDateFrom` (date string, optional)
+  - Return donations on or after this date.
+- `paymentDateTo` (date string, optional)
+  - Return donations on or before this date.
+
+#### Example requests
+- All donations:
+  - `GET /api/donations`
+- Pending donations only:
+  - `GET /api/donations?status=Pending`
+- Donations for a specific campaign:
+  - `GET /api/donations?campaign=<CAMPAIGN_ID>`
+- Verified donations only:
+  - `GET /api/donations?verified=true`
+- Donations between amounts:
+  - `GET /api/donations?minAmount=50&maxAmount=200`
+- Donations in a date range:
+  - `GET /api/donations?paymentDateFrom=2026-07-01&paymentDateTo=2026-07-31`
+
+#### Response
+- Status: `200`
+- JSON:
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "donations": [
+        {
+          "_id": "...",
+          "donorName": "...",
+          "donorEmail": "...",
+          "amount": 100,
+          "status": "Pending",
+          "campaign": { /* populated campaign object */ },
+          "verified": false,
+          "verifiedBy": { "_id": "...", "fullName": "Admin Name", "email": "..." }
+        }
+      ]
+    },
+    "message": "Donations fetched successfully"
+  }
+  ```
+
+---
+
+### `PATCH /api/donations/:id/verify`
+
+- Purpose: verify a pending donation.
+- Requires auth middleware `adminAuth`.
+- Request type: `application/json`.
+
+#### Request body
+
+```json
+{
+  "verificationRemarks": "Optional remarks about verification"
+}
+```
+
+#### Response
+- Status: `200`
+- JSON:
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "donation": {
+        "_id": "...",
+        "status": "Verified",
+        "verified": true,
+        "verifiedAt": "...",
+        "verifiedBy": "...",
+        "verificationRemarks": "..."
+      }
+    },
+    "message": "Donation verified successfully"
+  }
+  ```
+
+---
+
+#### Notes for frontend use
+- Always send cookies from admin login when calling these routes.
+- If cookies are not sent, the request will fail with authorization error.
+- Use `GET /api/admin/admin-me` to confirm the admin session is still valid.
+
+### Response
+
+- Status: `200`
+- JSON:
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "donation": {
+        "_id": "...",
+        "status": "Verified",
+        "verified": true,
+        "verifiedAt": "...",
+        "verifiedBy": "...",
+        "verificationRemarks": "..."
+      }
+    },
+    "message": "Donation verified successfully"
+  }
+  ```
+
+---
+
 ## Frontend authentication hints
 
 - Send cookies with requests:
@@ -235,6 +372,4 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 ## Notes for the frontend team
 
-- Current backend only exposes admin authentication and current admin profile routes.
-- If you need additional admin actions or campaign management endpoints, those are not implemented in this backend yet.
 - The backend accepts only requests from `http://localhost:5173` by default. If your frontend runs on a different origin, update the CORS origin list in `server.js`.

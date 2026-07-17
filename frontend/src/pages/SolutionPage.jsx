@@ -1,7 +1,11 @@
-﻿export default function SolutionPage() {
+﻿import { SolutionsHero } from "../components/solutions/SolutionsHero";
+import { SolutionsGrid } from "../components/solutions/SolutionsGrid";
+
+export default function SolutionPage() {
   return (
-    <div className="p-8">
-      <h1>SolutionPage</h1>
+    <div>
+      <SolutionsHero />
+      <SolutionsGrid />
     </div>
   );
 }

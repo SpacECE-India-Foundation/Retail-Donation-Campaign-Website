@@ -19,10 +19,15 @@ export const newCampaign = async (req,res) =>{
         } = req.body
         //lets get the admin id who is creating the campaign
         const adminId = req.admin.adminId //geeting this from the token/ the middelware we created 
+        //just for debugging, remove later
+        console.log("newCampaign called by adminId:", adminId)
 
         //as the date are coming as a string we can not directly compare them with actual date object for this we will typecase them into date
         const start = new Date(startDate)
         const end = new Date(endDate)
+        //just for debugging, remove later
+        console.log("newCampaign body:", req.body)
+        console.log("newCampaign start/end:", start, end)
         //lets implement validations
         ApiError.assert(campaignName,"campaignName is required")
         ApiError.assert(campaignDescription,"Campaign description is required")
@@ -47,8 +52,9 @@ export const newCampaign = async (req,res) =>{
                 req.file.buffer,
                 "campaign-poster"
                 );
-            } catch {
-                console.log("Cloudinary Error:",error)
+            } catch (error) {
+                //just for debugging, remove later
+                console.log("Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
 
@@ -110,6 +116,9 @@ export const updateCampaignDetails = async (req,res) =>{
 
         //now we will ge the campaign id from the params
         const {campaignId} = req.params
+
+        //just for debugging, remove later
+        console.log("updateCampaignDetails called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id is required!")
 
@@ -286,6 +295,8 @@ export const updateCoverImage = async (req,res) =>{
         //first find the required id's
         const adminId = req.admin.adminId
         const {campaignId} = req.params
+        //just for debugging, remove later
+        console.log("updateCoverImage called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id not found")
 
@@ -312,7 +323,9 @@ export const updateCoverImage = async (req,res) =>{
                 req.file.buffer,
                 "campaign-poster"
                 );
-            } catch {
+            } catch (error) {
+                //just for debugging, remove later
+                console.log("updateCoverImage Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
         

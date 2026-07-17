@@ -9,6 +9,8 @@ const dbConnect = async () =>{
     try {
         const conn = await mongoose.connect(mongoDbUri)
         console.log(colors.green("Database Connected Successfully!!"))
+        //just for debugging, remove later
+        console.log("Database connection readyState:", conn.connection.readyState)
         if(conn.connection.readyState===1){
             return true
         }
