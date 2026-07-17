@@ -14,7 +14,8 @@ import campaignAdminOperationsRoutes from "./routes/AdminOperationRoutes/campaig
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
-console.log(port)
+//just for debugging, remove later
+console.log("Server port:", port)
 
 //LETS INITIALISE AN EXPRESS APP
 const app = express()
@@ -62,6 +63,8 @@ const startServer = async () =>{
         app.listen(port,()=>console.log(colors.green(`Server is listening on port ${port}`)))
     }else{
         console.log(colors.blue(`Halting Operations!!!`)); 
+        //just for debugging, remove later
+        console.log("Database connection failed, server not started")
     }
 }
 
