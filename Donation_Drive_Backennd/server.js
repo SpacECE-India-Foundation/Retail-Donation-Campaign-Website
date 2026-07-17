@@ -11,6 +11,7 @@ import { upload } from "./utils/upload.utils.js"
 import adminAuthRoutes from "./routes/Admin.auth.routes.js"
 import getAdminRoute from "./routes/AdminOperationRoutes/getAdmin.js"
 import campaignAdminOperationsRoutes from "./routes/AdminOperationRoutes/campaign.adminOperation.routes.js"
+import donationAdminOperationsRoutes from "./routes/AdminOperationRoutes/donation.adminOperation.routes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
@@ -72,6 +73,7 @@ const startServer = async () =>{
 app.use('/api/admin/auth',adminAuthRoutes)
 app.use('/api/admin',getAdminRoute)
 app.use('/api/admin/campaign',campaignAdminOperationsRoutes)
+app.use('/api/donations', donationAdminOperationsRoutes)
 
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
