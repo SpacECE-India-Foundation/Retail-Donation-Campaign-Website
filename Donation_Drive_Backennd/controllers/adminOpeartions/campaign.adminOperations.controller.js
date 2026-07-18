@@ -5,6 +5,7 @@ import { ApiError } from "../../utils/apiError.utils.js";
 import { ApiResponse } from "../../utils/apiResponse.utils.js";
 import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js";
 import { deleteFromCloudinary } from "../../utils/cloudinary.utils.js";
+import Milestone from "../../models/milestone.modals.js";
 
 
 //THIS FUNCTIONALITY DEAL WITH THE NEW CAMPAIGN CREATION
@@ -409,7 +410,7 @@ export const getCampaignDetail = async (req,res) =>{
         const [campaign, milestones] = await Promise.all([
             Campaign.findOne({
                 _id: campaignId,
-                createdBy: adminId
+                createdBy: admin
             }),
 
             Milestone.find({

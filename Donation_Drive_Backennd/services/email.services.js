@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { donationConfirmationTemplate } from "../templates/successfullDonationRegistration.template.js";
 
 class EmailService {
     constructor() {
@@ -21,6 +22,32 @@ class EmailService {
             text,
             html
         });
+    }
+
+    async sendDonationConfirmationEmail({
+        donorName,
+        donorEmail,
+        campaignName,
+        donationAmount,
+        trackingLink,
+        transactionId
+    }) {
+
+        const html = donationConfirmationTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        trackingLink,
+        transactionId
+    });
+
+        return await this.sendEmail({
+            to: donorEmail,
+            subject: `Donation Request Received - ${campaignName}`,
+            html,
+            text: `Your donation request has been received.`
+        });
+
     }
 
     async sendOtpEmail(email, otp) {

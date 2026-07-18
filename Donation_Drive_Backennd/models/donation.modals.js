@@ -65,8 +65,14 @@ const donationSchema = new mongoose.Schema(
     },
 
     screenshot: {
-      type: String,
-      required: [true, "Payment screenshot is required"],
+      url: {
+        type: String,
+        required: true,
+    },
+    publicId: {
+        type: String,
+        required: true,
+    },
     },
 
     campaign: {
