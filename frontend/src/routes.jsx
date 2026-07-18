@@ -1,4 +1,5 @@
 ﻿import { createBrowserRouter } from "react-router-dom";
+import AchievementsPage from "./pages/AchievementsPage";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import ProblemPage from "./pages/ProblemPage";
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
       { path: "/solution", element: <SolutionPage /> },
       { path: "/impact", element: <ImpactPage /> },
       { path: "/campaign", element: <CampaignPage /> },
+      { path: "/achievements", element: <AchievementsPage /> },
       { path: "/donate", element: <DonatePage /> },
       { path: "/founders", element: <FounderPage /> },
       { path: "/documents", element: <DocumentsPage /> },
