@@ -19,10 +19,15 @@ export const newCampaign = async (req,res) =>{
         } = req.body
         //lets get the admin id who is creating the campaign
         const adminId = req.admin.adminId //geeting this from the token/ the middelware we created 
+        //just for debugging, remove later
+        console.log("newCampaign called by adminId:", adminId)
 
         //as the date are coming as a string we can not directly compare them with actual date object for this we will typecase them into date
         const start = new Date(startDate)
         const end = new Date(endDate)
+        //just for debugging, remove later
+        console.log("newCampaign body:", req.body)
+        console.log("newCampaign start/end:", start, end)
         //lets implement validations
         ApiError.assert(campaignName,"campaignName is required")
         ApiError.assert(campaignDescription,"Campaign description is required")
@@ -47,8 +52,9 @@ export const newCampaign = async (req,res) =>{
                 req.file.buffer,
                 "campaign-poster"
                 );
-            } catch {
-                console.log("Cloudinary Error:",error)
+            } catch (error) {
+                //just for debugging, remove later
+                console.log("Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
 
@@ -110,6 +116,9 @@ export const updateCampaignDetails = async (req,res) =>{
 
         //now we will ge the campaign id from the params
         const {campaignId} = req.params
+
+        //just for debugging, remove later
+        console.log("updateCampaignDetails called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id is required!")
 
@@ -286,6 +295,8 @@ export const updateCoverImage = async (req,res) =>{
         //first find the required id's
         const adminId = req.admin.adminId
         const {campaignId} = req.params
+        //just for debugging, remove later
+        console.log("updateCoverImage called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id not found")
 
@@ -305,13 +316,16 @@ export const updateCoverImage = async (req,res) =>{
         ApiError.assert(req.file?.buffer,"Campaign banner image is required");
 
         let uploadResult;
+        
 
         try {
                 uploadResult = await uploadBufferToCloudinary(
                 req.file.buffer,
                 "campaign-poster"
                 );
-            } catch {
+            } catch (error) {
+                //just for debugging, remove later
+                console.log("updateCoverImage Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
         
@@ -335,6 +349,87 @@ export const updateCoverImage = async (req,res) =>{
                     "Image Updated Successfully"
                     )
                 );
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+        new ApiError(
+            error.statusCode || 500,
+            error.message
+            )
+        )
+    }
+}
+
+
+//---------------------------------------------------------THIS FUNCTTION WILL DEAL WITH THE CAMPAIGN FETCHING WHICH ARE CREATED BY THE ADMIN ITSELF--------------------------------------------
+//HERE WE CAN APPLY THE CONCEPT OF PAGINATION AND ALL BUT THE AMOUNT OF THE CMPAIGNS CAN BE LESSER SO NO NECESSAY NEED FOR THE PAGINATION OR DEBOUNCING CONCEPT
+export const fetchAdminCampaigns = async (req,res) =>{
+    try {
+        //first we will get the admin id from the token 
+        const adminId = req.admin.adminId
+
+        //now fe will simply find the campaign created by this admin id 
+        const adminCampaigns = await Campaign.find({
+            createdBy:adminId
+        })
+
+        //ApiError.notFound(adminCampaigns,"No Campaigns Created by Admin!")
+        //here, we cant use notfound because find returns the array and empty array is always truthy so it will not evoke
+        ApiError.assert(adminCampaigns.length>0,"No Campaigns Created by Admin!")
+
+        //now lets send the response with the fetched campaigns
+
+        return res.status(200).json(
+                new ApiResponse(
+                200,
+                {
+                    campaigns:adminCampaigns
+                },
+                "camapigns fetched successfully"
+            )
+        );
+
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+        new ApiError(
+            error.statusCode || 500,
+            error.message
+            )
+        )
+    }
+}
+
+
+//---------------------------------------------------HERE WE WILL IMPLEMENT THE GET CAMPAIGN DETAIL CONTROLLER------------------------------------------
+export const getCampaignDetail = async (req,res) =>{
+    try {
+        const admin = req.admin.adminId
+        const {campaignId} = req.params
+
+        //we will be sending both campaign and milestones with the response
+        const [campaign, milestones] = await Promise.all([
+            Campaign.findOne({
+                _id: campaignId,
+                createdBy: adminId
+            }),
+
+            Milestone.find({
+             campaign: campaignId
+            }).sort({ displayOrder: 1 })
+        ]);
+
+        ApiError.notFound(campaign,"No campaign found")
+
+        return res.status(200).json(
+                new ApiResponse(
+                200,
+                {
+                    campaign,
+                    milestones
+                },
+                "camapign details fetched successfully"
+            )
+        );
+
     } catch (error) {
         return res.status(error.statusCode || 500).json(
         new ApiError(

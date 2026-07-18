@@ -1,4 +1,4 @@
-﻿import express from "express"
+import express from "express"
 import "dotenv/config"
 import cors from "cors"
 import colors from "colors"
@@ -11,10 +11,13 @@ import { upload } from "./utils/upload.utils.js"
 import adminAuthRoutes from "./routes/Admin.auth.routes.js"
 import getAdminRoute from "./routes/AdminOperationRoutes/getAdmin.js"
 import campaignAdminOperationsRoutes from "./routes/AdminOperationRoutes/campaign.adminOperation.routes.js"
+import milestoneAdminOperationRoute from "./routes/AdminOperationRoutes/milestone.adminOperrations.routes.js"
+import donationAdminOperationsRoutes from "./routes/AdminOperationRoutes/donation.adminOperation.routes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
-console.log(port)
+//just for debugging, remove later
+console.log("Server port:", port)
 
 //LETS INITIALISE AN EXPRESS APP
 const app = express()
@@ -62,6 +65,8 @@ const startServer = async () =>{
         app.listen(port,()=>console.log(colors.green(`Server is listening on port ${port}`)))
     }else{
         console.log(colors.blue(`Halting Operations!!!`)); 
+        //just for debugging, remove later
+        console.log("Database connection failed, server not started")
     }
 }
 
@@ -69,7 +74,8 @@ const startServer = async () =>{
 app.use('/api/admin/auth',adminAuthRoutes)
 app.use('/api/admin',getAdminRoute)
 app.use('/api/admin/campaign',campaignAdminOperationsRoutes)
-
+app.use('/api/admin/milestone',milestoneAdminOperationRoute)
+app.use('/api/donations', donationAdminOperationsRoutes)
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler

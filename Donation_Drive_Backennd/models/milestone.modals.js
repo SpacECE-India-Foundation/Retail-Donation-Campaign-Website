@@ -37,8 +37,12 @@ const milestoneSchema = new mongoose.Schema(
     },
 
     milestoneImage: {
-      type: String,
-      default: "",
+      url: {
+        type: String,
+    },
+    publicId: {
+        type: String,
+    },
     },
 
     isCompleted: {
