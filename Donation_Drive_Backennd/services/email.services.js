@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer";
 import { donationConfirmationTemplate } from "../templates/successfullDonationRegistration.template.js";
+import { donationVerifiedTemplate } from "../templates/donationVerified.template.js";
+import { donationRejectedTemplate } from "../templates/donationRejectionTemplate.js";
 
 class EmailService {
     constructor() {
@@ -23,6 +25,32 @@ class EmailService {
             html
         });
     }
+
+    async sendDonationVerifiedEmail({
+    donorName,
+    donorEmail,
+    campaignName,
+    donationAmount,
+    transactionId,
+    certificateLink = ""
+}) {
+
+    const html = donationVerifiedTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        transactionId,
+        certificateLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `Donation Verified - ${campaignName}`,
+        html,
+        text: `Your donation has been verified successfully.`
+    });
+
+}
 
     async sendDonationConfirmationEmail({
         donorName,
@@ -49,6 +77,33 @@ class EmailService {
         });
 
     }
+
+    async sendDonationRejectedEmail({
+    donorName,
+    donorEmail,
+    campaignName,
+    donationAmount,
+    transactionId,
+    verificationRemarks,
+    resubmitLink
+}) {
+
+    const html = donationRejectedTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        transactionId,
+        verificationRemarks,
+        resubmitLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `Donation Verification Failed - ${campaignName}`,
+        html,
+        text: `Your donation could not be verified. Please review the remarks and submit again.`
+    });
+}
 
     async sendOtpEmail(email, otp) {
 

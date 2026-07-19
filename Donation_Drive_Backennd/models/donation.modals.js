@@ -132,6 +132,17 @@ const donationSchema = new mongoose.Schema(
   }
 );
 
+donationSchema.index({
+    campaign: 1,
+    status: 1,
+    createdAt: -1
+});
+
+donationSchema.index({
+    campaign: 1,
+    donorEmail: 1,
+    createdAt: -1
+});
 const Donation = mongoose.model("Donation", donationSchema);
 
 export default Donation;

@@ -1,6 +1,10 @@
 import Donation from "../../models/donation.modals.js"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
+import Campaign from "../../models/campaign.modals.js"
+import emailService from "../../services/email.services.js";
+import Message from "../../models/message.modals.js";
+import mongoose from "mongoose";
 
 export const fetchDonations = async (req, res) => {
   try {
@@ -102,46 +106,268 @@ export const fetchDonations = async (req, res) => {
   }
 }
 
-export const verifyDonation = async (req, res) => {
+// export const verifyDonation = async (req, res) => {
+//   try {
+//     const { id } = req.params
+//     const { verificationRemarks } = req.body
+
+//     //just for debugging, remove later
+//     console.log("verifyDonation called for id:", id, "adminId:", req.admin?.adminId)
+
+//     ApiError.assert(id, "Donation ID is required")
+
+//     const donation = await Donation.findById(id)
+//     ApiError.notFound(donation, "Donation not found")
+//     ApiError.assert(donation.status === "Pending", "Donation is not pending verification")
+
+//     donation.status = "Verified"
+//     donation.verified = true
+//     donation.verifiedBy = req.admin.adminId
+//     donation.verifiedAt = new Date()
+//     if (verificationRemarks !== undefined) {
+//       donation.verificationRemarks = verificationRemarks
+//     }
+
+//     await donation.save()
+
+//     return res.status(200).json(
+//       new ApiResponse(
+//         200,
+//         {
+//           donation,
+//         },
+//         "Donation verified successfully"
+//       )
+//     )
+//   } catch (error) {
+//     console.error(error)
+//     return res.status(error.statusCode || 500).json(
+//       new ApiError(
+//         error.statusCode || 500,
+//         error.message
+//       )
+//     )
+//   }
+// }
+
+
+
+//-------------------------------------------------THIS IS THE FUNCTION FOR THE FETCHING THE PENDING AND REJECTED DONATION ENTRIES FOR THE DEDICATED ADMIN FOR THOSE CAMPIGN THAT THEY HAVE CREATED----------------------------------------------------------------------------------------
+export const fetchPendingRejectedDonations = async (req,res) =>{
+  //the main goal is to show pending donation to the admin based on the campaigns they created 
   try {
-    const { id } = req.params
-    const { verificationRemarks } = req.body
+    const adminId = req.admin.adminId //this we will get from the middelware
 
-    //just for debugging, remove later
-    console.log("verifyDonation called for id:", id, "adminId:", req.admin?.adminId)
+    //---------------------------------IMPORTANT CONCEPT NOTE------------------------------
+    //till here we didn't implemented indexing in our database as a result if we find a donation for particular 
+    //campaign then query has to search entire document this is called COLLECTION SCAN (COLLSCAN) which is inefficient 
+    //so now we will implement indexing in our donations model
+    //we have implemented the indexing in this, now we can perform queries 
+    //first we will get campaigns which is created by this admin
 
-    ApiError.assert(id, "Donation ID is required")
+    const campaign = await Campaign.find({
+      createdBy:adminId
+    }).select("_id")
 
-    const donation = await Donation.findById(id)
-    ApiError.notFound(donation, "Donation not found")
-    ApiError.assert(donation.status === "Pending", "Donation is not pending verification")
+    //now we will get all the ids of this campaign just id's
+    const campaignIds = campaign.map(c=>c._id) //this will return a new array with only id numbers
 
-    donation.status = "Verified"
-    donation.verified = true
-    donation.verifiedBy = req.admin.adminId
-    donation.verifiedAt = new Date()
-    if (verificationRemarks !== undefined) {
-      donation.verificationRemarks = verificationRemarks
+    //now we will implement the second query 
+    const donations = await Donation.find({
+      campaign:{
+        $in:campaignIds
+      },
+      status: {
+        $in: ["Pending", "Rejected"]
     }
+    }).populate(
+      "campaign",
+      "campaignName"
+    ).sort({
+      createdAt:-1
+    })
 
-    await donation.save()
+    //now we have those donations we will simply send them with the response 
 
     return res.status(200).json(
-      new ApiResponse(
+        new ApiResponse(
+          200,
+          {
+            newPendingDonations:donations
+          },
+            "Campaign Fetched Successfully!!"
+          )
+      );
+
+
+  } catch (error) {
+    return res.status(error.statusCode || 500).json(
+        new ApiError(
+            error.statusCode || 500,
+            error.message
+            )
+        )
+
+  }
+}
+
+
+//-----------------------------------------------------------CONTROLLER FOR THE VERIFICATION OF DONATION----------------------------------------
+export const verifyDonation = async (req,res) =>{
+  const session = await mongoose.startSession();  //here, we had starting the session
+
+  //milestone updation is left
+  try {
+    
+    session.startTransaction();
+    //so, how the verification process will goes
+    //user get all the pending donations record
+    //user checks them manually and if everything is correct he will click on the verify so we just have to change the status of the donation send success email and make some numeric changes in the collectons
+
+    //first of all we want adminId for authentication 
+    const adminId = req.admin.adminId
+    const {donationId} = req.params
+
+    //lets check weather the donation entry is valid or not 
+    let donation = await Donation.findOne({
+      _id:donationId,
+      status:"Pending"
+    }).session(session)
+
+    ApiError.assert(donation,"Donation don't found")
+
+    //Here, we have to implement the certificate generation functionality and save those links into the collection, this is left
+
+    //lets set the status of this donation to verified
+    donation.status = "Verified"
+    //lets set verified by to the admin id
+    donation.verifiedBy = adminId
+    //lets set verified at to the current date
+    donation.verifiedAt = new Date();
+    //lets set the verified booleam to true
+    donation.verified = true;
+
+    //now we will campaign of this donation
+    let campaign = await Campaign.findById(donation.campaign).session(session)
+    ApiError.assert(campaign,"No campaign Found with this donation")
+    
+
+    //now we will save both the collections 
+    await Promise.all([
+      donation.save({session}),
+      Campaign.findByIdAndUpdate(
+        campaign._id,
+        {
+          $inc:{
+            campaignRaisedAmt: donation.amount,
+            contributors:1
+          }
+        },
+        {
+          session
+        }
+      )
+    ])
+
+    await session.commitTransaction();
+    res.status(200).json(
+    new ApiResponse(
         200,
         {
-          donation,
+            donationId: donation._id
         },
-        "Donation verified successfully"
-      )
+        "Donation verified successfully."
     )
+);
+
+    //now we will send success message through email
+    emailService.sendDonationVerifiedEmail({
+
+    donorName: donation.donorName,
+
+    donorEmail: donation.donorEmail,
+
+    campaignName: campaign.campaignName,
+
+    donationAmount: donation.amount,
+
+    transactionId: donation.transactionId,
+
+    certificateLink: donation.certificateUrl
+
+});
+    
   } catch (error) {
-    console.error(error)
+    await session.abortTransaction();
     return res.status(error.statusCode || 500).json(
-      new ApiError(
-        error.statusCode || 500,
-        error.message
-      )
+        new ApiError(
+            error.statusCode || 500,
+            error.message
+            )
+        )
+  }finally{
+    session.endSession();
+  }
+}
+
+
+
+//-------------------------------------------------FUNCTION FOR REJECTION OF DONATION---------------------------------------------------------------------------------------
+export const rejectDonation = async (req,res) =>{
+  try {
+    const adminId = req.admin.adminId
+    const {donationId} = req.params
+
+    //lets get the rejection reason from the admin
+    const {verificationRemarks} = req.body
+
+    ApiError.assert(verificationRemarks,"Verification Remarks are mandatory for Rejection")
+
+    //lets check weather the donation entry is valid or not 
+    let donation = await Donation.findOne({
+    _id: donationId,
+    status: "Pending"
+      }).populate(
+    "campaign",
+    "campaignName"
+    );
+
+    ApiError.assert(donation,"Donation doesn't exist!")
+
+    //now we just have to simply set status of this donation to rejected or cancelled and send email 
+    donation.status = "Rejected"
+    donation.verificationRemarks = verificationRemarks.trim()
+    donation.verified = false;
+    donation.verifiedBy = adminId;
+    donation.verifiedAt = new Date();
+    await donation.save()
+
+    res.status(200).json(
+    new ApiResponse(
+        200,
+        {
+            donationId: donation._id
+        },
+        "Donation Rejcted Successfully."
     )
+);
+
+    emailService.sendDonationRejectedEmail({
+    donorName: donation.donorName,
+    donorEmail: donation.donorEmail,
+    campaignName: donation.campaign.campaignName,
+    donationAmount: donation.amount,
+    transactionId: donation.transactionId,
+    verificationRemarks: donation.verificationRemarks,
+    resubmitLink: `${process.env.FRONTEND_URL}/donate/${donation.campaign._id}`
+}).catch(console.error);
+  } catch (error) {
+    console.log(error)
+    return res.status(error.statusCode || 500).json(
+        new ApiError(
+            error.statusCode || 500,
+            error.message
+            )
+        )
   }
 }
