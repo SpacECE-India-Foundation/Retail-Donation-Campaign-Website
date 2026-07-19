@@ -85,6 +85,10 @@ const campaignSchema = new mongoose.Schema(
   }
 );
 
+campaignSchema.index({
+    createdBy: 1
+});
+
 const Campaign = mongoose.model("Campaign", campaignSchema);
 
 export default Campaign;
