@@ -360,6 +360,102 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 ---
 
+## 9. Public campaign routes
+
+### `GET /api/campaigns`
+
+- Purpose: list all active campaigns for public users.
+- Request type: `application/json`.
+- No authentication required.
+
+#### Response
+- Status: `200`
+- JSON:
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "campaigns": [
+        {
+          "_id": "...",
+          "campaignName": "...",
+          "campaignDescription": "...",
+          "campaignGoalAmount": 10000,
+          "startDate": "...",
+          "endDate": "...",
+          "bannerImage": "...",
+          "createdAt": "..."
+        }
+      ]
+    },
+    "message": "Campaigns fetched successfully"
+  }
+  ```
+
+### `GET /api/campaigns/:id`
+
+- Purpose: get details for a single campaign.
+- Request type: `application/json`.
+- No authentication required.
+
+#### Path parameter
+- `id` (string, required): campaign `_id`
+
+#### Response
+- Status: `200`
+- JSON:
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "campaign": {
+        "_id": "...",
+        "campaignName": "...",
+        "campaignDescription": "...",
+        "campaignGoalAmount": 10000,
+        "startDate": "...",
+        "endDate": "...",
+        "bannerImage": "...",
+        "createdAt": "..."
+      }
+    },
+    "message": "Campaign details fetched successfully"
+  }
+  ```
+
+### `GET /api/campaigns/:id/milestones`
+
+- Purpose: get milestone items for the selected campaign.
+- Request type: `application/json`.
+- No authentication required.
+
+#### Path parameter
+- `id` (string, required): campaign `_id`
+
+#### Response
+- Status: `200`
+- JSON:
+  ```json
+  {
+    "status": 200,
+    "data": {
+      "milestones": [
+        {
+          "_id": "...",
+          "campaign": "...",
+          "milestoneTitle": "...",
+          "description": "...",
+          "displayOrder": 1,
+          "createdAt": "..."
+        }
+      ]
+    },
+    "message": "Milestones fetched successfully"
+  }
+  ```
+
+---
+
 ## Frontend authentication hints
 
 - Send cookies with requests:
