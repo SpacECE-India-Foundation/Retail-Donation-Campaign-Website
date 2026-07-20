@@ -14,6 +14,7 @@ import campaignAdminOperationsRoutes from "./routes/AdminOperationRoutes/campaig
 import milestoneAdminOperationRoute from "./routes/AdminOperationRoutes/milestone.adminOperrations.routes.js"
 import donationAdminOperationsRoutes from "./routes/AdminOperationRoutes/donation.adminOperation.routes.js"
 import donationPublicRoutes from "./routes/publicOperationRoutes/donations.routes.js"
+import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.routes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
@@ -78,6 +79,7 @@ app.use('/api/admin/campaign',campaignAdminOperationsRoutes)
 app.use('/api/admin/milestone',milestoneAdminOperationRoute)
 app.use('/api/donations', donationAdminOperationsRoutes)
 app.use('/api/public/donation',donationPublicRoutes)
+app.use('/api/campaigns', publicCampaignRoutes)
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler
