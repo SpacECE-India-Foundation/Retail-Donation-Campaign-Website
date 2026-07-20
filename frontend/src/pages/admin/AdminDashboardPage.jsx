@@ -10,8 +10,6 @@ import {
   Bell,
   SlidersHorizontal,
   Eye,
-  SquarePen,
-  Trash2,
   ArrowUpRight,
   ArrowDownRight,
   ArrowUpDown,
@@ -22,68 +20,44 @@ import {
   Download,
   X,
   AlertTriangle,
-  Plus,
   CheckCircle2,
   Clock3,
   FolderPlus,
   FileText,
   LogIn,
   CheckCheck,
-  Trash,
   Settings,
   LogOut,
   UserCircle,
+  Check,
+  Loader2,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
 import { Button } from "../../components/common/Button";
-import { logout } from "../../services/authService";
+import { logout, getCurrentAdmin } from "../../services/authService";
+import {
+  fetchAdminPendingDonations,
+  verifyDonationRequest,
+  rejectDonationRequest,
+} from "../../services/donationService";
+import { fetchAdminCampaigns } from "../../services/campaignService";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
 
 const STATUS_STYLES = {
-  Completed: "bg-emerald-100 text-emerald-700",
   Pending: "bg-amber-100 text-amber-700",
   Rejected: "bg-red-100 text-red-700",
 };
 
-const STATUS_OPTIONS = ["Pending", "Completed", "Rejected"];
-const FILTER_OPTIONS = ["All", "Completed", "Pending", "Rejected"];
-const CAMPAIGNS = ["Education Drive", "Food Donation", "Health Support", "Disaster Relief"];
-const CAMPAIGN_FILTER_OPTIONS = ["All", ...CAMPAIGNS];
+const STATUS_FILTER_OPTIONS = ["All", "Pending", "Rejected"];
 const PAGE_SIZE = 5;
-const MAX_DONATION_AMOUNT = 10_000_000;
 const TOAST_DURATION_MS = 2500;
 const SEARCH_DEBOUNCE_MS = 300;
 
-const AMOUNT_RANGE_OPTIONS = [
-  { key: "all", label: "Any amount", min: -Infinity, max: Infinity },
-  { key: "under-500", label: "Under ₹500", min: 0, max: 499 },
-  { key: "500-1500", label: "₹500 – ₹1,500", min: 500, max: 1500 },
-  { key: "1500-3000", label: "₹1,500 – ₹3,000", min: 1500, max: 3000 },
-  { key: "above-3000", label: "Above ₹3,000", min: 3000, max: Infinity },
-];
-
 const SORT_KEYS = { DONOR: "donor", AMOUNT: "amount", DATE: "date" };
-
-const DEFAULT_FILTERS = { status: "All", campaign: "All", amountRange: "all" };
-
-const INITIAL_DONATIONS = [
-  { id: 1, donor: "Rahul Sharma", campaign: "Education Drive", amount: 500, status: "Completed", date: "16 Jul" },
-  { id: 2, donor: "Priya Singh", campaign: "Food Donation", amount: 1000, status: "Pending", date: "15 Jul" },
-  { id: 3, donor: "Aman Gupta", campaign: "Health Support", amount: 2500, status: "Completed", date: "15 Jul" },
-  { id: 4, donor: "Neha Verma", campaign: "Education Drive", amount: 750, status: "Completed", date: "14 Jul" },
-  { id: 5, donor: "Kavita Rao", campaign: "Disaster Relief", amount: 1500, status: "Completed", date: "13 Jul" },
-  { id: 6, donor: "Suresh Iyer", campaign: "Food Donation", amount: 300, status: "Pending", date: "13 Jul" },
-  { id: 7, donor: "Meena Joshi", campaign: "Health Support", amount: 2000, status: "Rejected", date: "12 Jul" },
-  { id: 8, donor: "Vikram Nair", campaign: "Education Drive", amount: 600, status: "Completed", date: "11 Jul" },
-  { id: 9, donor: "Anjali Desai", campaign: "Disaster Relief", amount: 900, status: "Pending", date: "10 Jul" },
-  { id: 10, donor: "Rohit Malhotra", campaign: "Food Donation", amount: 1200, status: "Completed", date: "09 Jul" },
-  { id: 11, donor: "Sneha Kapoor", campaign: "Health Support", amount: 450, status: "Completed", date: "08 Jul" },
-  { id: 12, donor: "Arjun Reddy", campaign: "Education Drive", amount: 1800, status: "Pending", date: "07 Jul" },
-];
 
 const ACTIVITY_FEED = [
   { id: 1, icon: "donation", text: "Rahul Sharma donated ₹500", time: "Today • 10:30 AM", status: "Completed" },
@@ -98,12 +72,6 @@ const ACTIVITY_ICONS = {
   report: FileText,
   login: LogIn,
 };
-
-const INITIAL_NOTIFICATIONS = [
-  { id: 1, text: "New donation received from Rahul Sharma", time: "5m ago", read: false },
-  { id: 2, text: "Campaign 'Health Support' reached 80% of its goal", time: "1h ago", read: false },
-  { id: 3, text: "3 donations pending review", time: "3h ago", read: false },
-];
 
 const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -139,18 +107,35 @@ function formatINR(amount) {
   return `₹${Number(amount).toLocaleString("en-IN")}`;
 }
 
-function todayLabel() {
-  return new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
-}
-
-function createId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function buildCsv(rows) {
-  const header = ["Donor", "Campaign", "Amount", "Status", "Date"];
-  const escapeCell = (cell) => `"${String(cell).replace(/"/g, '""')}"`;
-  const lines = [header, ...rows.map((r) => [r.donor, r.campaign, r.amount, r.status, r.date])];
+  const header = ["Donor", "Email", "Campaign", "Amount", "Transaction ID", "Payment Mode", "Status", "Date"];
+  const escapeCell = (cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`;
+  const lines = [
+    header,
+    ...rows.map((r) => [
+      r.donorName,
+      r.donorEmail,
+      r.campaign?.campaignName ?? "",
+      r.amount,
+      r.transactionId,
+      r.paymentMode,
+      r.status,
+      formatDateTime(r.paymentDate),
+    ]),
+  ];
   return lines.map((line) => line.map(escapeCell).join(",")).join("\n");
 }
 
@@ -167,15 +152,17 @@ function downloadCsv(csvContent, filename) {
 }
 
 function getInitials(name) {
-  const parts = name.trim().split(/\s+/);
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
   const initials = parts.length === 1 ? parts[0].slice(0, 2) : `${parts[0][0]}${parts[parts.length - 1][0]}`;
   return initials.toUpperCase();
 }
 
 function hashString(value) {
   let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash << 5) - hash + value.charCodeAt(i);
+  const str = String(value ?? "");
+  for (let i = 0; i < str.length; i += 1) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
     hash |= 0;
   }
   return Math.abs(hash);
@@ -191,11 +178,6 @@ function getSparkline(seed) {
   return Array.from({ length: 7 }, (_, i) => 30 + ((base >> (i * 3)) % 70));
 }
 
-function matchesAmountRange(amount, rangeKey) {
-  const range = AMOUNT_RANGE_OPTIONS.find((r) => r.key === rangeKey) ?? AMOUNT_RANGE_OPTIONS[0];
-  return amount >= range.min && amount <= range.max;
-}
-
 function sortDonations(rows, sortConfig) {
   if (!sortConfig?.key) return rows;
   const { key, direction } = sortConfig;
@@ -206,34 +188,10 @@ function sortDonations(rows, sortConfig) {
       return (a.amount - b.amount) * factor;
     }
     if (key === SORT_KEYS.DATE) {
-      return (a.id - b.id) * factor;
+      return (new Date(a.paymentDate).getTime() - new Date(b.paymentDate).getTime()) * factor;
     }
-    return String(a[key]).localeCompare(String(b[key])) * factor;
+    return String(a.donorName ?? "").localeCompare(String(b.donorName ?? "")) * factor;
   });
-}
-
-function validateDonationFields({ donor, campaign, amount, status }) {
-  const errors = {};
-  const trimmedDonor = donor.trim();
-  const numericAmount = Number(amount);
-
-  if (!trimmedDonor || trimmedDonor.length < 2) {
-    errors.donor = "Enter a valid donor name (min 2 characters).";
-  }
-  if (!CAMPAIGNS.includes(campaign)) {
-    errors.campaign = "Select a valid campaign.";
-  }
-  if (amount === "" || amount === null || amount === undefined) {
-    errors.amount = "Amount is required.";
-  } else if (Number.isNaN(numericAmount) || numericAmount <= 0) {
-    errors.amount = "Enter an amount greater than zero.";
-  } else if (numericAmount > MAX_DONATION_AMOUNT) {
-    errors.amount = `Amount cannot exceed ${formatINR(MAX_DONATION_AMOUNT)}.`;
-  }
-  if (!STATUS_OPTIONS.includes(status)) {
-    errors.status = "Select a valid status.";
-  }
-  return errors;
 }
 
 /* ------------------------------------------------------------------ */
@@ -334,7 +292,7 @@ function useDebouncedValue(value, delay) {
 
 function StatusBadge({ status }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[status]}`}>
+    <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[status] ?? "bg-gray-100 text-gray-600"}`}>
       {status}
     </span>
   );
@@ -471,7 +429,7 @@ function NotificationBell({ notifications, unreadCount, onMarkAllRead, onMarkOne
   );
 }
 
-function ProfileMenu() {
+function ProfileMenu({ adminName, adminEmail }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const buttonId = useId();
@@ -481,6 +439,9 @@ function ProfileMenu() {
   const close = useCallback(() => setOpen(false), []);
   useClickOutside(containerRef, close, open);
   useEscapeKey(close, open);
+
+  const displayName = adminName || "Admin";
+  const displayEmail = adminEmail || "admin@spaceece.org";
 
   const handleLogout = useCallback(async () => {
     try {
@@ -503,11 +464,11 @@ function ProfileMenu() {
         className="flex items-center gap-3 rounded-full bg-white py-1.5 pl-1.5 pr-3 shadow transition duration-200 hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange sm:pr-4"
       >
         <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-orange to-orange-400 text-sm font-bold text-white shadow-inner">
-          AD
+          {getInitials(displayName)}
         </span>
         <div className="hidden text-left sm:block">
-          <p className="text-sm font-semibold leading-tight text-brand-dark">Admin</p>
-          <p className="text-xs leading-tight text-gray-400">admin@spaceece.org</p>
+          <p className="text-sm font-semibold leading-tight text-brand-dark">{displayName}</p>
+          <p className="text-xs leading-tight text-gray-400">{displayEmail}</p>
         </div>
         <ChevronDown size={16} className="hidden text-gray-400 sm:block" aria-hidden="true" />
       </button>
@@ -520,8 +481,8 @@ function ProfileMenu() {
           className="absolute right-0 z-20 mt-2 w-56 origin-top-right overflow-hidden rounded-2xl border border-gray-100 bg-white/95 shadow-2xl backdrop-blur animate-[fadeScaleIn_0.15s_ease-out]"
         >
           <div className="border-b border-gray-100 px-4 py-3">
-            <p className="text-sm font-semibold text-brand-dark">Admin</p>
-            <p className="text-xs text-gray-400">admin@spaceece.org</p>
+            <p className="text-sm font-semibold text-brand-dark">{displayName}</p>
+            <p className="text-xs text-gray-400">{displayEmail}</p>
           </div>
           <button
             role="menuitem"
@@ -551,7 +512,7 @@ function ProfileMenu() {
   );
 }
 
-function FilterPanel({ filters, onChange, onClear }) {
+function FilterPanel({ status, campaign, campaignOptions, onChange, onClear }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   const buttonId = useId();
@@ -561,10 +522,7 @@ function FilterPanel({ filters, onChange, onClear }) {
   useClickOutside(containerRef, close, open);
   useEscapeKey(close, open);
 
-  const activeCount =
-    (filters.status !== "All" ? 1 : 0) +
-    (filters.campaign !== "All" ? 1 : 0) +
-    (filters.amountRange !== "all" ? 1 : 0);
+  const activeCount = (status !== "All" ? 1 : 0) + (campaign !== "All" ? 1 : 0);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -597,13 +555,13 @@ function FilterPanel({ filters, onChange, onClear }) {
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Status</p>
             <div className="flex flex-wrap gap-2">
-              {FILTER_OPTIONS.map((option) => (
+              {STATUS_FILTER_OPTIONS.map((option) => (
                 <button
                   key={option}
                   onClick={() => onChange({ status: option })}
-                  aria-pressed={filters.status === option}
+                  aria-pressed={status === option}
                   className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                    filters.status === option
+                    status === option
                       ? "bg-brand-orange text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
@@ -620,31 +578,13 @@ function FilterPanel({ filters, onChange, onClear }) {
             </label>
             <select
               id="campaign-filter"
-              value={filters.campaign}
+              value={campaign}
               onChange={(event) => onChange({ campaign: event.target.value })}
               className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-orange"
             >
-              {CAMPAIGN_FILTER_OPTIONS.map((option) => (
+              {campaignOptions.map((option) => (
                 <option key={option} value={option}>
                   {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="amount-filter" className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-400">
-              Amount range
-            </label>
-            <select
-              id="amount-filter"
-              value={filters.amountRange}
-              onChange={(event) => onChange({ amountRange: event.target.value })}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none transition focus:border-brand-orange"
-            >
-              {AMOUNT_RANGE_OPTIONS.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
                 </option>
               ))}
             </select>
@@ -690,101 +630,45 @@ function SortableHeader({ label, sortKey, sortConfig, onSort }) {
   );
 }
 
-const DonationRow = React.memo(function DonationRow({ donation, index, isSelected, onToggleSelect, onView, onEdit, onDelete }) {
-  const avatarStyle = useMemo(() => getAvatarStyle(donation.donor), [donation.donor]);
+const DonationRow = React.memo(function DonationRow({ donation, index, onView }) {
+  const avatarStyle = useMemo(() => getAvatarStyle(donation.donorName), [donation.donorName]);
 
   return (
-    <tr
-      className={`border-b border-gray-100 transition ${index % 2 === 0 ? "bg-white" : "bg-gray-50/60"} ${
-        isSelected ? "bg-orange-50" : "hover:bg-orange-50/70"
-      }`}
-    >
-      <td className="w-10 py-5 pl-2">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => onToggleSelect(donation.id)}
-          aria-label={`Select donation from ${donation.donor}`}
-          className="h-4 w-4 rounded border-gray-300 text-brand-orange focus:ring-brand-orange"
-        />
-      </td>
-      <td className="py-5">
+    <tr className={`border-b border-gray-100 transition ${index % 2 === 0 ? "bg-white" : "bg-gray-50/60"} hover:bg-orange-50/70`}>
+      <td className="py-5 pl-2">
         <div className="flex items-center gap-3">
           <span
             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarStyle.bg} ${avatarStyle.text}`}
             aria-hidden="true"
           >
-            {getInitials(donation.donor)}
+            {getInitials(donation.donorName)}
           </span>
-          <span className="font-medium text-brand-dark">{donation.donor}</span>
+          <div>
+            <p className="font-medium text-brand-dark">{donation.donorName}</p>
+            <p className="text-xs text-gray-400">{donation.donorEmail}</p>
+          </div>
         </div>
       </td>
-      <td className="text-gray-600">{donation.campaign}</td>
+      <td className="text-gray-600">{donation.campaign?.campaignName ?? "—"}</td>
       <td className="font-semibold text-brand-dark">{formatINR(donation.amount)}</td>
+      <td className="text-gray-500">{donation.transactionId}</td>
+      <td className="text-gray-500">{donation.paymentMode}</td>
+      <td className="text-gray-500">{formatDateTime(donation.paymentDate)}</td>
       <td>
         <StatusBadge status={donation.status} />
       </td>
-      <td className="text-gray-500">{donation.date}</td>
       <td>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => onView(donation)}
-            className="rounded-lg bg-blue-50 p-2 text-blue-600 transition duration-150 hover:-translate-y-0.5 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-            aria-label={`View donation from ${donation.donor}`}
-          >
-            <Eye size={18} aria-hidden="true" />
-          </button>
-          <button
-            onClick={() => onEdit(donation)}
-            className="rounded-lg bg-orange-50 p-2 text-brand-orange transition duration-150 hover:-translate-y-0.5 hover:bg-orange-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-            aria-label={`Edit donation from ${donation.donor}`}
-          >
-            <SquarePen size={18} aria-hidden="true" />
-          </button>
-          <button
-            onClick={() => onDelete(donation)}
-            className="rounded-lg bg-red-50 p-2 text-red-600 transition duration-150 hover:-translate-y-0.5 hover:bg-red-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-            aria-label={`Delete donation from ${donation.donor}`}
-          >
-            <Trash2 size={18} aria-hidden="true" />
-          </button>
-        </div>
+        <button
+          onClick={() => onView(donation)}
+          className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition duration-150 hover:-translate-y-0.5 hover:bg-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+        >
+          <Eye size={16} aria-hidden="true" />
+          View
+        </button>
       </td>
     </tr>
   );
 });
-
-function BulkActionsBar({ count, onClearSelection, onBulkExport, onBulkDelete }) {
-  return (
-    <div className="mb-4 flex flex-col items-start justify-between gap-3 rounded-2xl border border-brand-orange/30 bg-orange-50/80 px-5 py-3 backdrop-blur sm:flex-row sm:items-center animate-[fadeSlideIn_0.15s_ease-out]">
-      <p className="text-sm font-medium text-brand-dark">
-        <span className="font-semibold">{count}</span> donation{count === 1 ? "" : "s"} selected
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={onBulkExport}
-          className="flex items-center gap-1.5 rounded-xl bg-white px-3 py-2 text-sm font-medium text-brand-dark shadow-sm transition hover:shadow-md"
-        >
-          <Download size={15} aria-hidden="true" />
-          Bulk Export
-        </button>
-        <button
-          onClick={onBulkDelete}
-          className="flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700"
-        >
-          <Trash size={15} aria-hidden="true" />
-          Bulk Delete
-        </button>
-        <button
-          onClick={onClearSelection}
-          className="rounded-xl px-3 py-2 text-sm font-medium text-gray-500 transition hover:text-brand-dark"
-        >
-          Clear
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function Pagination({ currentPage, totalPages, rangeStart, rangeEnd, totalRecords, onPageChange }) {
   const pages = useMemo(() => Array.from({ length: totalPages }, (_, i) => i + 1), [totalPages]);
@@ -868,7 +752,7 @@ const ActivityItem = React.memo(function ActivityItem({ activity, isLast }) {
 /* Modal shell                                                         */
 /* ------------------------------------------------------------------ */
 
-function ModalShell({ title, onClose, children, maxWidth = "max-w-md", icon: Icon, iconAccent = "bg-brand-orange/10 text-brand-orange" }) {
+function ModalShell({ title, onClose, children, maxWidth = "max-w-md", icon: Icon, iconAccent = "bg-brand-orange/10 text-brand-orange", headerExtra }) {
   const containerRef = useRef(null);
   const titleId = useId();
 
@@ -896,7 +780,7 @@ function ModalShell({ title, onClose, children, maxWidth = "max-w-md", icon: Ico
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`w-full ${maxWidth} rounded-3xl bg-white p-6 shadow-2xl outline-none animate-[fadeScaleIn_0.18s_ease-out]`}
+        className={`w-full ${maxWidth} max-h-[90vh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl outline-none animate-[fadeScaleIn_0.18s_ease-out]`}
       >
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -909,13 +793,16 @@ function ModalShell({ title, onClose, children, maxWidth = "max-w-md", icon: Ico
               {title}
             </h3>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
+          <div className="flex items-center gap-3">
+            {headerExtra}
+            <button
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </div>
         </div>
         {children}
       </div>
@@ -924,132 +811,162 @@ function ModalShell({ title, onClose, children, maxWidth = "max-w-md", icon: Ico
 }
 
 /* ------------------------------------------------------------------ */
-/* Donation form                                                       */
+/* Donation detail / verify-reject panel                               */
 /* ------------------------------------------------------------------ */
 
-function DonationForm({ initial, onCancel, onSubmit, submitLabel }) {
-  const [donor, setDonor] = useState(initial?.donor ?? "");
-  const [campaign, setCampaign] = useState(initial?.campaign ?? CAMPAIGNS[0]);
-  const [amount, setAmount] = useState(initial?.amount ?? "");
-  const [status, setStatus] = useState(initial?.status ?? "Pending");
-  const [errors, setErrors] = useState({});
-  const donorErrorId = useId();
-  const amountErrorId = useId();
+function DonationDetailModal({ donation, onClose, onVerify, onReject, actionLoading }) {
+  const [remark, setRemark] = useState("");
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const trimmedDonor = donor.trim();
-    const validationErrors = validateDonationFields({ donor: trimmedDonor, campaign, amount, status });
-
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
-    setErrors({});
-    onSubmit({ donor: trimmedDonor, campaign, amount: Number(amount), status });
+  const handleReject = () => {
+    if (!remark.trim()) return;
+    onReject(donation._id, remark.trim());
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      <div>
-        <label htmlFor="donor-name" className="mb-1 block text-sm font-medium text-gray-600">
-          Donor Name
-        </label>
-        <input
-          id="donor-name"
-          value={donor}
-          onChange={(event) => setDonor(event.target.value)}
-          placeholder="e.g. Kavita Rao"
-          aria-invalid={Boolean(errors.donor)}
-          aria-describedby={errors.donor ? donorErrorId : undefined}
-          className={`w-full rounded-xl border px-4 py-2.5 outline-none transition focus:border-brand-orange ${
-            errors.donor ? "border-red-400" : "border-gray-300"
-          }`}
-        />
-        {errors.donor && (
-          <p id={donorErrorId} role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-red-600">
-            <AlertTriangle size={12} aria-hidden="true" />
-            {errors.donor}
+    <ModalShell
+      title="Donation Request Details"
+      onClose={onClose}
+      icon={FileText}
+      iconAccent="bg-purple-50 text-purple-600"
+      maxWidth="max-w-3xl"
+      headerExtra={
+        <span className="text-sm text-gray-500">
+          Current Status <StatusBadge status={donation.status} />
+        </span>
+      }
+    >
+      <div className="grid gap-5 md:grid-cols-3">
+        {/* Donor info */}
+        <div className="rounded-2xl border border-gray-100 p-4 md:col-span-1">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-dark">
+            <UserCircle size={16} aria-hidden="true" />
+            Donor Information
           </p>
-        )}
-      </div>
+          <dl className="space-y-2 text-sm">
+            <div>
+              <dt className="text-xs text-gray-400">Donor Name</dt>
+              <dd className="font-medium text-brand-dark">{donation.donorName}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-gray-400">Email</dt>
+              <dd className="font-medium text-brand-dark">{donation.donorEmail}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-gray-400">Phone</dt>
+              <dd className="font-medium text-brand-dark">{donation.donorPhone || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-gray-400">Address</dt>
+              <dd className="font-medium text-brand-dark">{donation.address || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-gray-400">Message</dt>
+              <dd className="font-medium text-brand-dark">{donation.donorMessage || "—"}</dd>
+            </div>
+          </dl>
 
-      <div>
-        <label htmlFor="donor-campaign" className="mb-1 block text-sm font-medium text-gray-600">
-          Campaign
-        </label>
-        <select
-          id="donor-campaign"
-          value={campaign}
-          onChange={(event) => setCampaign(event.target.value)}
-          className="w-full rounded-xl border border-gray-300 px-4 py-2.5 outline-none transition focus:border-brand-orange"
-        >
-          {CAMPAIGNS.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 text-sm">
+            <div>
+              <p className="text-xs text-gray-400">Donation Amount</p>
+              <p className="font-semibold text-brand-dark">{formatINR(donation.amount)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Payment Mode</p>
+              <p className="font-semibold text-brand-dark">{donation.paymentMode}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Campaign</p>
+              <p className="font-semibold text-brand-dark">{donation.campaign?.campaignName ?? "—"}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-400">Payment Date</p>
+              <p className="font-semibold text-brand-dark">{formatDateTime(donation.paymentDate)}</p>
+            </div>
+          </div>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="donor-amount" className="mb-1 block text-sm font-medium text-gray-600">
-            Amount (₹)
-          </label>
-          <input
-            id="donor-amount"
-            type="number"
-            min="1"
-            max={MAX_DONATION_AMOUNT}
-            inputMode="numeric"
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            placeholder="500"
-            aria-invalid={Boolean(errors.amount)}
-            aria-describedby={errors.amount ? amountErrorId : undefined}
-            className={`w-full rounded-xl border px-4 py-2.5 outline-none transition focus:border-brand-orange ${
-              errors.amount ? "border-red-400" : "border-gray-300"
-            }`}
-          />
-          {errors.amount && (
-            <p id={amountErrorId} role="alert" className="mt-1.5 flex items-center gap-1 text-xs text-red-600">
-              <AlertTriangle size={12} aria-hidden="true" />
-              {errors.amount}
-            </p>
+        {/* Screenshot */}
+        <div className="rounded-2xl border border-gray-100 p-4 md:col-span-1">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-brand-dark">
+            <FileText size={16} aria-hidden="true" />
+            Payment Screenshot
+          </p>
+          {donation.screenshot?.url ? (
+            <img
+              src={donation.screenshot.url}
+              alt="Payment screenshot"
+              className="w-full rounded-xl border border-gray-100 object-contain"
+            />
+          ) : (
+            <div className="flex h-40 items-center justify-center rounded-xl border border-dashed text-xs text-gray-400">
+              No screenshot available
+            </div>
+          )}
+          {donation.screenshot?.url && (
+            <a
+              href={donation.screenshot.url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-block text-xs font-medium text-brand-orange hover:underline"
+            >
+              View Full Size
+            </a>
           )}
         </div>
 
-        <div>
-          <label htmlFor="donor-status" className="mb-1 block text-sm font-medium text-gray-600">
-            Status
-          </label>
-          <select
-            id="donor-status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-4 py-2.5 outline-none transition focus:border-brand-orange"
-          >
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+        {/* Transaction + action panel */}
+        <div className="space-y-4 md:col-span-1">
+          <div className="rounded-2xl bg-gray-50 p-4">
+            <p className="text-xs text-gray-400">Transaction ID</p>
+            <p className="break-all font-semibold text-brand-dark">{donation.transactionId}</p>
+            <p className="mt-3 text-xs text-gray-400">Amount</p>
+            <p className="font-semibold text-emerald-600">{formatINR(donation.amount)}</p>
+          </div>
+
+          <div>
+            <label htmlFor="admin-remark" className="mb-1 block text-sm font-medium text-gray-600">
+              Admin Remark (if rejected)
+            </label>
+            <textarea
+              id="admin-remark"
+              value={remark}
+              onChange={(event) => setRemark(event.target.value.slice(0, 250))}
+              maxLength={250}
+              rows={4}
+              placeholder="Enter reason for rejection..."
+              className="w-full resize-none rounded-xl border border-gray-300 p-3 text-sm outline-none transition focus:border-brand-orange"
+            />
+            <p className="mt-1 text-right text-xs text-gray-400">{remark.length}/250</p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              disabled={actionLoading || donation.status !== "Pending"}
+              onClick={() => onVerify(donation._id)}
+              className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {actionLoading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
+              Verify &amp; Approve
+            </button>
+            <button
+              type="button"
+              disabled={actionLoading || donation.status !== "Pending" || !remark.trim()}
+              onClick={handleReject}
+              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {actionLoading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <X size={16} aria-hidden="true" />}
+              Reject Donation
+            </button>
+            {donation.status !== "Pending" && (
+              <p className="text-center text-xs text-gray-400">
+                This donation is already {donation.status.toLowerCase()} — no further action needed.
+              </p>
+            )}
+          </div>
         </div>
       </div>
-
-      <div className="flex justify-end gap-3 pt-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-xl bg-gray-100 px-5 py-2.5 font-medium text-gray-700 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-        >
-          Cancel
-        </button>
-        <Button type="submit">{submitLabel}</Button>
-      </div>
-    </form>
+    </ModalShell>
   );
 }
 
@@ -1058,16 +975,40 @@ function DonationForm({ initial, onCancel, onSubmit, submitLabel }) {
 /* ------------------------------------------------------------------ */
 
 export default function AdminDashboardPage() {
-  const [donations, setDonations] = useState(INITIAL_DONATIONS);
+  const [donations, setDonations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
+
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
+
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [campaignFilter, setCampaignFilter] = useState("All");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [modal, setModal] = useState({ type: null, donation: null });
+
+  const [activeDonationId, setActiveDonationId] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
   const [toast, setToast] = useState("");
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [notificationsRead, setNotificationsRead] = useState(false);
+  const [adminProfile, setAdminProfile] = useState(null);
   const toastTimerRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAdmin()
+      .then((response) => {
+        if (!cancelled) setAdminProfile(response.data?.data?.admin ?? null);
+      })
+      .catch(() => {
+        // not fatal — profile menu just falls back to generic "Admin" label
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
@@ -1081,7 +1022,50 @@ export default function AdminDashboardPage() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
   }, []);
 
+  /* -------------------------- data fetching -------------------------- */
+
+  const loadDonations = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError("");
+    try {
+      const response = await fetchAdminPendingDonations();
+      setDonations(response.data?.data?.newPendingDonations ?? []);
+    } catch (error) {
+      setFetchError(error?.response?.data?.message || "Failed to load donations.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDonations();
+  }, [loadDonations]);
+
+  const loadCampaigns = useCallback(async () => {
+    setCampaignsLoading(true);
+    try {
+      const response = await fetchAdminCampaigns();
+      setCampaigns(response.data?.data?.campaigns ?? []);
+    } catch (error) {
+      // Backend returns an error (not an empty array) when the admin has
+      // zero campaigns yet — treat that specific case as "no campaigns",
+      // not a failure.
+      setCampaigns([]);
+    } finally {
+      setCampaignsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [loadCampaigns]);
+
   /* -------------------------- derived data -------------------------- */
+
+  const campaignOptions = useMemo(() => {
+    const names = new Set(donations.map((d) => d.campaign?.campaignName).filter(Boolean));
+    return ["All", ...names];
+  }, [donations]);
 
   const filteredDonations = useMemo(() => {
     const query = debouncedSearch.trim().toLowerCase();
@@ -1089,18 +1073,16 @@ export default function AdminDashboardPage() {
     return donations.filter((d) => {
       const matchesSearch =
         !query ||
-        d.donor.toLowerCase().includes(query) ||
-        d.campaign.toLowerCase().includes(query) ||
-        String(d.amount).includes(query) ||
-        d.status.toLowerCase().includes(query);
+        (d.donorName ?? "").toLowerCase().includes(query) ||
+        (d.campaign?.campaignName ?? "").toLowerCase().includes(query) ||
+        (d.transactionId ?? "").toLowerCase().includes(query);
 
-      const matchesStatus = filters.status === "All" || d.status === filters.status;
-      const matchesCampaign = filters.campaign === "All" || d.campaign === filters.campaign;
-      const matchesAmount = matchesAmountRange(d.amount, filters.amountRange);
+      const matchesStatus = statusFilter === "All" || d.status === statusFilter;
+      const matchesCampaign = campaignFilter === "All" || d.campaign?.campaignName === campaignFilter;
 
-      return matchesSearch && matchesStatus && matchesCampaign && matchesAmount;
+      return matchesSearch && matchesStatus && matchesCampaign;
     });
-  }, [donations, debouncedSearch, filters]);
+  }, [donations, debouncedSearch, statusFilter, campaignFilter]);
 
   const sortedDonations = useMemo(
     () => sortDonations(filteredDonations, sortConfig),
@@ -1119,35 +1101,52 @@ export default function AdminDashboardPage() {
   const rangeEnd = Math.min(safePage * PAGE_SIZE, sortedDonations.length);
 
   const stats = useMemo(() => {
-    const totalAmount = donations.reduce((sum, d) => sum + d.amount, 0);
-    const uniqueDonors = new Set(donations.map((d) => d.donor)).size;
-    const activeCampaigns = new Set(donations.map((d) => d.campaign)).size;
-    const monthly = donations.filter((d) => d.date.includes("Jul")).reduce((sum, d) => sum + d.amount, 0);
+    const pendingCount = donations.filter((d) => d.status === "Pending").length;
+
+    const totalRaised = campaigns.reduce((sum, c) => sum + (c.campaignRaisedAmt || 0), 0);
+    const totalContributors = campaigns.reduce((sum, c) => sum + (c.contributors || 0), 0);
+    const activeCampaignsCount = campaigns.filter((c) => c.campaignStatus === "Active").length;
 
     return [
-      { title: "Total Donations", value: formatINR(totalAmount), change: "+18% this month", isPositive: true, icon: IndianRupee, accent: STAT_ACCENTS[0] },
-      { title: "Total Donors", value: String(uniqueDonors), change: "+12 new donors", isPositive: true, icon: Users, accent: STAT_ACCENTS[1] },
-      { title: "Active Campaigns", value: String(activeCampaigns), change: "2 added this week", isPositive: true, icon: FolderKanban, accent: STAT_ACCENTS[2] },
-      { title: "Monthly Revenue", value: formatINR(monthly), change: "+9% growth", isPositive: true, icon: BarChart3, accent: STAT_ACCENTS[3] },
+      { title: "Total Raised", value: formatINR(totalRaised), change: "Across all your campaigns", isPositive: true, icon: IndianRupee, accent: STAT_ACCENTS[0] },
+      { title: "Active Campaigns", value: String(activeCampaignsCount), change: `${campaigns.length} total`, isPositive: true, icon: FolderKanban, accent: STAT_ACCENTS[1] },
+      { title: "Total Contributors", value: String(totalContributors), change: "Verified donors", isPositive: true, icon: Users, accent: STAT_ACCENTS[2] },
+      { title: "Pending Requests", value: String(pendingCount), change: "Awaiting review", isPositive: pendingCount === 0, icon: BarChart3, accent: STAT_ACCENTS[3] },
     ];
-  }, [donations]);
+  }, [donations, campaigns]);
+
+  const notifications = useMemo(() => {
+    const pendingCount = donations.filter((d) => d.status === "Pending").length;
+    if (pendingCount === 0) return [];
+    return [
+      {
+        id: "pending-donations",
+        text: `${pendingCount} donation${pendingCount === 1 ? "" : "s"} pending review`,
+        time: "Just now",
+        read: notificationsRead,
+      },
+    ];
+  }, [donations, notificationsRead]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
-  const selectedCount = selectedIds.size;
+  const activeDonation = useMemo(
+    () => donations.find((d) => d._id === activeDonationId) ?? null,
+    [donations, activeDonationId]
+  );
 
   /* ---------------------------- handlers ---------------------------- */
 
-  const handleSearchChange = useCallback((event) => {
-    setSearch(event.target.value);
-  }, []);
+  const handleSearchChange = useCallback((event) => setSearch(event.target.value), []);
 
   const handleFilterChange = useCallback((patch) => {
-    setFilters((prev) => ({ ...prev, ...patch }));
+    if (patch.status !== undefined) setStatusFilter(patch.status);
+    if (patch.campaign !== undefined) setCampaignFilter(patch.campaign);
   }, []);
 
   const handleClearFilters = useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
+    setStatusFilter("All");
+    setCampaignFilter("All");
   }, []);
 
   const handleSort = useCallback((key) => {
@@ -1157,120 +1156,63 @@ export default function AdminDashboardPage() {
     });
   }, []);
 
-  const handlePageChange = useCallback((page) => {
-    setCurrentPage(page);
-  }, []);
+  const handlePageChange = useCallback((page) => setCurrentPage(page), []);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filters, sortConfig]);
+  }, [debouncedSearch, statusFilter, campaignFilter, sortConfig]);
 
-  const handleToggleSelect = useCallback((id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+  const openViewModal = useCallback((donation) => setActiveDonationId(donation._id), []);
+  const closeModal = useCallback(() => setActiveDonationId(null), []);
+
+  const handleVerify = useCallback(
+    async (donationId) => {
+      setActionLoading(true);
+      try {
+        await verifyDonationRequest(donationId);
+        setDonations((prev) => prev.filter((d) => d._id !== donationId));
+        showToast("Donation verified successfully");
+        closeModal();
+      } catch (error) {
+        showToast(error?.response?.data?.message || "Failed to verify donation");
+      } finally {
+        setActionLoading(false);
       }
-      return next;
-    });
-  }, []);
-
-  const allOnPageSelected =
-    paginatedDonations.length > 0 && paginatedDonations.every((d) => selectedIds.has(d.id));
-
-  const handleToggleSelectAll = useCallback(() => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const pageIds = paginatedDonations.map((d) => d.id);
-      const allSelected = pageIds.length > 0 && pageIds.every((id) => next.has(id));
-
-      pageIds.forEach((id) => {
-        if (allSelected) {
-          next.delete(id);
-        } else {
-          next.add(id);
-        }
-      });
-      return next;
-    });
-  }, [paginatedDonations]);
-
-  const handleClearSelection = useCallback(() => setSelectedIds(new Set()), []);
-
-  const closeModal = useCallback(() => setModal({ type: null, donation: null }), []);
-  const openAddModal = useCallback(() => setModal({ type: "add", donation: null }), []);
-  const openViewModal = useCallback((donation) => setModal({ type: "view", donation }), []);
-  const openEditModal = useCallback((donation) => setModal({ type: "edit", donation }), []);
-  const openDeleteModal = useCallback((donation) => setModal({ type: "delete", donation }), []);
-  const openBulkDeleteModal = useCallback(() => setModal({ type: "bulk-delete", donation: null }), []);
-
-  const handleAddDonation = useCallback(
-    (form) => {
-      const newDonation = { ...form, id: createId(), date: todayLabel() };
-      setDonations((prev) => [newDonation, ...prev]);
-      closeModal();
-      showToast(`Donation from ${form.donor} added`);
     },
-    [closeModal, showToast]
+    [showToast, closeModal]
   );
 
-  const handleEditDonation = useCallback(
-    (form) => {
-      setModal((current) => {
-        if (current.donation) {
-          setDonations((prev) =>
-            prev.map((d) => (d.id === current.donation.id ? { ...d, ...form } : d))
-          );
-        }
-        return { type: null, donation: null };
-      });
-      showToast(`Donation from ${form.donor} updated`);
-    },
-    [showToast]
-  );
-
-  const handleConfirmDelete = useCallback(() => {
-    setModal((current) => {
-      if (current.donation) {
-        setDonations((prev) => prev.filter((d) => d.id !== current.donation.id));
-        setSelectedIds((prev) => {
-          const next = new Set(prev);
-          next.delete(current.donation.id);
-          return next;
-        });
-        showToast(`Donation from ${current.donation.donor} deleted`);
+  const handleReject = useCallback(
+    async (donationId, remark) => {
+      setActionLoading(true);
+      try {
+        await rejectDonationRequest(donationId, remark);
+        setDonations((prev) =>
+          prev.map((d) => (d._id === donationId ? { ...d, status: "Rejected", verificationRemarks: remark } : d))
+        );
+        showToast("Donation rejected, donor notified");
+        closeModal();
+      } catch (error) {
+        showToast(error?.response?.data?.message || "Failed to reject donation");
+      } finally {
+        setActionLoading(false);
       }
-      return { type: null, donation: null };
-    });
-  }, [showToast]);
-
-  const handleConfirmBulkDelete = useCallback(() => {
-    setDonations((prev) => prev.filter((d) => !selectedIds.has(d.id)));
-    showToast(`${selectedIds.size} donation${selectedIds.size === 1 ? "" : "s"} deleted`);
-    setSelectedIds(new Set());
-    closeModal();
-  }, [selectedIds, showToast, closeModal]);
+    },
+    [showToast, closeModal]
+  );
 
   const handleExportCsv = useCallback(() => {
     const csvContent = buildCsv(sortedDonations);
-    downloadCsv(csvContent, `donation-report-${Date.now()}.csv`);
+    downloadCsv(csvContent, `donation-requests-${Date.now()}.csv`);
     showToast("Report exported successfully");
   }, [sortedDonations, showToast]);
 
-  const handleBulkExport = useCallback(() => {
-    const rowsToExport = donations.filter((d) => selectedIds.has(d.id));
-    downloadCsv(buildCsv(rowsToExport), `donations-selected-${Date.now()}.csv`);
-    showToast(`${rowsToExport.length} donation${rowsToExport.length === 1 ? "" : "s"} exported`);
-  }, [donations, selectedIds, showToast]);
-
   const handleMarkAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotificationsRead(true);
   }, []);
 
-  const handleMarkOneRead = useCallback((id) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const handleMarkOneRead = useCallback(() => {
+    setNotificationsRead(true);
   }, []);
 
   /* ------------------------------ render ------------------------------ */
@@ -1296,7 +1238,7 @@ export default function AdminDashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-orange">Overview</p>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-dark sm:text-4xl">Admin Dashboard</h1>
             <p className="mt-2 text-gray-500">
-              Welcome back! Monitor donations, campaigns and platform activity.
+              Review, verify, and manage incoming donation requests.
             </p>
           </div>
 
@@ -1307,7 +1249,7 @@ export default function AdminDashboardPage() {
               onMarkAllRead={handleMarkAllRead}
               onMarkOneRead={handleMarkOneRead}
             />
-            <ProfileMenu />
+            <ProfileMenu adminName={adminProfile?.fullName} adminEmail={adminProfile?.email} />
           </div>
         </header>
 
@@ -1321,8 +1263,8 @@ export default function AdminDashboardPage() {
           <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Donations</p>
-              <h2 className="mt-1 text-2xl font-semibold text-brand-dark">Donation Management</h2>
-              <p className="text-gray-500">View and manage recent donations.</p>
+              <h2 className="mt-1 text-2xl font-semibold text-brand-dark">Donation Requests</h2>
+              <p className="text-gray-500">Manage and review all donation requests.</p>
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -1333,104 +1275,104 @@ export default function AdminDashboardPage() {
                   aria-hidden="true"
                 />
                 <label htmlFor="donation-search" className="sr-only">
-                  Search donor, campaign, amount or status
+                  Search donor, campaign or transaction ID
                 </label>
                 <input
                   id="donation-search"
                   value={search}
                   onChange={handleSearchChange}
-                  placeholder="Search donor, campaign, amount..."
+                  placeholder="Search donor, campaign, transaction ID..."
                   className="w-64 rounded-xl border border-gray-200 bg-gray-50/60 py-3 pl-11 pr-4 outline-none transition focus:border-brand-orange focus:bg-white focus:shadow-sm"
                 />
               </div>
 
-              <FilterPanel filters={filters} onChange={handleFilterChange} onClear={handleClearFilters} />
+              <FilterPanel
+                status={statusFilter}
+                campaign={campaignFilter}
+                campaignOptions={campaignOptions}
+                onChange={handleFilterChange}
+                onClear={handleClearFilters}
+              />
 
-              <Button className="flex items-center gap-2" onClick={openAddModal}>
-                <Plus size={18} aria-hidden="true" />
-                Add Donation
+              <Button className="flex items-center gap-2" onClick={handleExportCsv} disabled={sortedDonations.length === 0}>
+                <Download size={18} aria-hidden="true" />
+                Export Report
               </Button>
             </div>
           </div>
 
-          {selectedCount > 0 && (
-            <BulkActionsBar
-              count={selectedCount}
-              onClearSelection={handleClearSelection}
-              onBulkExport={handleBulkExport}
-              onBulkDelete={openBulkDeleteModal}
-            />
+          {isLoading && (
+            <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
+              <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+              Loading donation requests...
+            </div>
           )}
 
-          <div className="overflow-x-auto rounded-2xl border border-gray-100">
-            <table className="min-w-full">
-              <caption className="sr-only">List of recent donations</caption>
-              <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur">
-                <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  <th scope="col" className="w-10 py-4 pl-2">
-                    <input
-                      type="checkbox"
-                      checked={allOnPageSelected}
-                      onChange={handleToggleSelectAll}
-                      aria-label="Select all donations on this page"
-                      className="h-4 w-4 rounded border-gray-300 text-brand-orange focus:ring-brand-orange"
-                    />
-                  </th>
-                  <SortableHeader label="Donor" sortKey={SORT_KEYS.DONOR} sortConfig={sortConfig} onSort={handleSort} />
-                  <th scope="col">Campaign</th>
-                  <SortableHeader label="Amount" sortKey={SORT_KEYS.AMOUNT} sortConfig={sortConfig} onSort={handleSort} />
-                  <th scope="col">Status</th>
-                  <SortableHeader label="Date" sortKey={SORT_KEYS.DATE} sortConfig={sortConfig} onSort={handleSort} />
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
+          {!isLoading && fetchError && (
+            <div className="flex flex-col items-center gap-3 py-16 text-center">
+              <AlertTriangle className="text-red-400" size={28} aria-hidden="true" />
+              <p className="font-medium text-gray-600">{fetchError}</p>
+              <button
+                onClick={loadDonations}
+                className="rounded-xl bg-brand-orange px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
-              <tbody>
-                {paginatedDonations.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="py-16 text-center text-gray-400">
-                      <div className="flex flex-col items-center gap-3">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
-                          <Search size={20} className="text-gray-300" aria-hidden="true" />
-                        </span>
-                        <p className="font-medium text-gray-500">No donations match your search or filter.</p>
-                        <p className="text-sm text-gray-400">Try adjusting your filters or search term.</p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+          {!isLoading && !fetchError && (
+            <>
+              <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                <table className="min-w-full">
+                  <caption className="sr-only">List of donation requests</caption>
+                  <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur">
+                    <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      <SortableHeader label="Donor" sortKey={SORT_KEYS.DONOR} sortConfig={sortConfig} onSort={handleSort} />
+                      <th scope="col">Campaign</th>
+                      <SortableHeader label="Amount" sortKey={SORT_KEYS.AMOUNT} sortConfig={sortConfig} onSort={handleSort} />
+                      <th scope="col">Transaction ID</th>
+                      <th scope="col">Payment Mode</th>
+                      <SortableHeader label="Date & Time" sortKey={SORT_KEYS.DATE} sortConfig={sortConfig} onSort={handleSort} />
+                      <th scope="col">Status</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
 
-                {paginatedDonations.map((donation, index) => (
-                  <DonationRow
-                    key={donation.id}
-                    donation={donation}
-                    index={index}
-                    isSelected={selectedIds.has(donation.id)}
-                    onToggleSelect={handleToggleSelect}
-                    onView={openViewModal}
-                    onEdit={openEditModal}
-                    onDelete={openDeleteModal}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  <tbody>
+                    {paginatedDonations.length === 0 && (
+                      <tr>
+                        <td colSpan={8} className="py-16 text-center text-gray-400">
+                          <div className="flex flex-col items-center gap-3">
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-50">
+                              <Search size={20} className="text-gray-300" aria-hidden="true" />
+                            </span>
+                            <p className="font-medium text-gray-500">No donation requests match your search or filter.</p>
+                            <p className="text-sm text-gray-400">Try adjusting your filters or search term.</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
 
-          <div className="mt-6 flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <Pagination
-              currentPage={safePage}
-              totalPages={totalPages}
-              rangeStart={rangeStart}
-              rangeEnd={rangeEnd}
-              totalRecords={sortedDonations.length}
-              onPageChange={handlePageChange}
-            />
+                    {paginatedDonations.map((donation, index) => (
+                      <DonationRow key={donation._id} donation={donation} index={index} onView={openViewModal} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            <Button className="flex items-center gap-2" onClick={handleExportCsv}>
-              <Download size={18} aria-hidden="true" />
-              Export Report
-            </Button>
-          </div>
+              <div className="mt-6 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <Pagination
+                  currentPage={safePage}
+                  totalPages={totalPages}
+                  rangeStart={rangeStart}
+                  rangeEnd={rangeEnd}
+                  totalRecords={sortedDonations.length}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            </>
+          )}
         </Card>
 
         <Card className="rounded-3xl border border-gray-100 bg-white p-6 shadow-xl">
@@ -1455,112 +1397,14 @@ export default function AdminDashboardPage() {
         </footer>
       </div>
 
-      {modal.type === "add" && (
-        <ModalShell title="Add Donation" onClose={closeModal} icon={Plus} iconAccent="bg-brand-orange/10 text-brand-orange">
-          <DonationForm onCancel={closeModal} onSubmit={handleAddDonation} submitLabel="Save" />
-        </ModalShell>
-      )}
-
-      {modal.type === "edit" && modal.donation && (
-        <ModalShell title="Edit Donation" onClose={closeModal} icon={SquarePen} iconAccent="bg-blue-50 text-blue-600">
-          <DonationForm
-            initial={modal.donation}
-            onCancel={closeModal}
-            onSubmit={handleEditDonation}
-            submitLabel="Save Changes"
-          />
-        </ModalShell>
-      )}
-
-      {modal.type === "view" && modal.donation && (
-        <ModalShell title="Donation Details" onClose={closeModal} icon={Eye} iconAccent="bg-purple-50 text-purple-600">
-          <div className="space-y-3 text-sm">
-            <div className="flex justify-between border-b border-gray-100 pb-3">
-              <span className="text-gray-500">Donor</span>
-              <span className="font-medium text-brand-dark">{modal.donation.donor}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100 pb-3">
-              <span className="text-gray-500">Campaign</span>
-              <span className="font-medium text-brand-dark">{modal.donation.campaign}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100 pb-3">
-              <span className="text-gray-500">Amount</span>
-              <span className="font-medium text-brand-dark">{formatINR(modal.donation.amount)}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100 pb-3">
-              <span className="text-gray-500">Status</span>
-              <StatusBadge status={modal.donation.status} />
-            </div>
-            <div className="flex justify-between pb-1">
-              <span className="text-gray-500">Date</span>
-              <span className="font-medium text-brand-dark">{modal.donation.date}</span>
-            </div>
-          </div>
-
-          <div className="mt-6 flex justify-end">
-            <Button onClick={closeModal}>Close</Button>
-          </div>
-        </ModalShell>
-      )}
-
-      {modal.type === "delete" && modal.donation && (
-        <ModalShell title="Delete Donation" onClose={closeModal} icon={Trash2} iconAccent="bg-red-50 text-red-600">
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
-            </div>
-            <p className="text-brand-dark">
-              Are you sure you want to delete the donation from{" "}
-              <span className="font-semibold">{modal.donation.donor}</span>?
-            </p>
-            <p className="mt-1 text-sm text-gray-500">This action cannot be undone.</p>
-          </div>
-
-          <div className="mt-6 flex justify-center gap-3">
-            <button
-              onClick={closeModal}
-              className="rounded-xl bg-gray-100 px-5 py-2.5 font-medium text-gray-700 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmDelete}
-              className="rounded-xl bg-red-600 px-5 py-2.5 font-medium text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-            >
-              Delete
-            </button>
-          </div>
-        </ModalShell>
-      )}
-
-      {modal.type === "bulk-delete" && (
-        <ModalShell title="Delete Selected Donations" onClose={closeModal} icon={Trash} iconAccent="bg-red-50 text-red-600">
-          <div className="flex flex-col items-center text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="h-7 w-7 text-red-600" aria-hidden="true" />
-            </div>
-            <p className="text-brand-dark">
-              Are you sure you want to delete <span className="font-semibold">{selectedIds.size}</span> selected
-              donation{selectedIds.size === 1 ? "" : "s"}?
-            </p>
-            <p className="mt-1 text-sm text-gray-500">This action cannot be undone.</p>
-          </div>
-
-          <div className="mt-6 flex justify-center gap-3">
-            <button
-              onClick={closeModal}
-              className="rounded-xl bg-gray-100 px-5 py-2.5 font-medium text-gray-700 transition hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleConfirmBulkDelete}
-              className="rounded-xl bg-red-600 px-5 py-2.5 font-medium text-white transition hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
-            >
-              Delete All
-            </button>
-          </div>
-        </ModalShell>
+      {activeDonation && (
+        <DonationDetailModal
+          donation={activeDonation}
+          onClose={closeModal}
+          onVerify={handleVerify}
+          onReject={handleReject}
+          actionLoading={actionLoading}
+        />
       )}
     </div>
   );
