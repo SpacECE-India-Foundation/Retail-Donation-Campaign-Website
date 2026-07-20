@@ -1,3 +1,4 @@
+import mongoose from "mongoose"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
 import Campaign from "../../models/campaign.modals.js"
@@ -34,6 +35,10 @@ export const fetchPublicCampaignDetail = async (req, res) => {
     //just for debugging, remove later
     console.log("fetchPublicCampaignDetail called for id:", id)
     ApiError.assert(id, "Campaign ID is required")
+    ApiError.assert(
+      mongoose.Types.ObjectId.isValid(id),
+      "Invalid campaign ID"
+    )
 
     const campaign = await Campaign.findById(id)
     ApiError.notFound(campaign, "Campaign not found")
