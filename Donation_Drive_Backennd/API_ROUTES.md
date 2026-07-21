@@ -394,7 +394,7 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 ### `GET /api/campaigns/:id`
 
-- Purpose: get details for a single campaign.
+- Purpose: get details for a single campaign, including its milestones.
 - Request type: `application/json`.
 - No authentication required.
 
@@ -417,28 +417,7 @@ This document describes all backend endpoints available in the Donation Drive ba
         "endDate": "...",
         "bannerImage": "...",
         "createdAt": "..."
-      }
-    },
-    "message": "Campaign details fetched successfully"
-  }
-  ```
-
-### `GET /api/campaigns/:id/milestones`
-
-- Purpose: get milestone items for the selected campaign.
-- Request type: `application/json`.
-- No authentication required.
-
-#### Path parameter
-- `id` (string, required): campaign `_id`
-
-#### Response
-- Status: `200`
-- JSON:
-  ```json
-  {
-    "status": 200,
-    "data": {
+      },
       "milestones": [
         {
           "_id": "...",
@@ -450,7 +429,7 @@ This document describes all backend endpoints available in the Donation Drive ba
         }
       ]
     },
-    "message": "Milestones fetched successfully"
+    "message": "Campaign details fetched successfully"
   }
   ```
 
