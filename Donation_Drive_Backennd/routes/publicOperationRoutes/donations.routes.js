@@ -7,7 +7,7 @@ const donationPublicRoutes = express.Router()
 
 donationPublicRoutes.post('/new-donation',upload.single("paymentscreenshot"),registerDonation)
 donationPublicRoutes.post('/donation-details',fetchDonorDetails)
-donationPublicRoutes.patch('/re-donation',upload.single("paymentscreenshotEdited"),editDonationSubmission)
+donationPublicRoutes.patch('/re-donation/:donationId',upload.single("paymentscreenshotEdited"),editDonationSubmission)
 
 
 export default donationPublicRoutes
