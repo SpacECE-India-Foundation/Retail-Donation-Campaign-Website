@@ -73,7 +73,7 @@ function DetailField({ label, value }) {
 }
 
 function ExpandedDetails({ donation, onUpdate, isUpdating }) {
-  const isEditable = donation.status === "REJECTED";
+  const isEditable = donation.status === "Rejected";
   const [transactionId, setTransactionId] = useState(donation.transactionId);
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(donation.screenshotUrl);
@@ -220,7 +220,7 @@ function ExpandedDetails({ donation, onUpdate, isUpdating }) {
 }
 
 function DonationCard({ donation, isExpanded, onToggle, onUpdate, updatingId }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
+  const cfg = STATUS_CONFIG[donation.status] || STATUS_CONFIG.Pending;
 
   return (
     <div
