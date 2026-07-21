@@ -1,77 +1,238 @@
-﻿function DonatePage() {
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import DonationHeroBanner from "../components/common/donation/DonationHeroBanner";
+import DonationForm from "../components/common/donation/DonationForm";
+import DonationSummary from "../components/common/donation/DonationSummary";
+import CampaignOverview from "../components/common/donation/CampaignOverview";
+import CampaignMilestones from "../components/common/donation/CampaignMilestones";
+import { getCampaignDetails } from "../services/campaignService";
+import { getCampaignMilestones } from "../services/milestoneService";
+import {
+  CAMPAIGNS,
+  DEFAULT_HERO,
+  getCampaignStats,
+} from "../data/donation.mock";
+import {
+  createInitialFormState,
+  validateDonationForm,
+  preparePayload,
+  handleSubmit,
+  parseBackendError,
+} from "../utils/donationForm";
+
+export default function DonatePage() {
+  const { campaignId: routeCampaignId } = useParams();
+  const navigate = useNavigate();
+  const formSectionRef = useRef(null);
+  const formRef = useRef(null);
+
+  const [campaigns] = useState(CAMPAIGNS);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [milestones, setMilestones] = useState([]);
+  const [formData, setFormData] = useState(createInitialFormState);
+  const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const lockCampaign = Boolean(routeCampaignId);
+
+  const stats = useMemo(
+    () => (selectedCampaign ? getCampaignStats(selectedCampaign) : null),
+    [selectedCampaign],
+  );
+
+  const applyCampaign = useCallback((campaign) => {
+    if (!campaign) return;
+    setSelectedCampaign(campaign);
+    setFormData((prev) => ({
+      ...prev,
+      campaignId: campaign.campaignId,
+      campaignName: campaign.campaignName,
+    }));
+  }, []);
+
+  useEffect(() => {
+    if (!routeCampaignId) return;
+
+    const fromList = campaigns.find((c) => c.campaignId === routeCampaignId);
+    if (fromList) {
+      applyCampaign(fromList);
+      return;
+    }
+
+    let cancelled = false;
+
+    getCampaignDetails(routeCampaignId)
+      .then((data) => {
+        if (cancelled) return;
+        if (data) {
+          applyCampaign(data);
+        } else {
+          applyCampaign(campaigns[0]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) applyCampaign(campaigns[0]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [routeCampaignId, campaigns, applyCampaign]);
+
+  useEffect(() => {
+    if (!selectedCampaign?.campaignId) {
+      setMilestones([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    getCampaignMilestones(selectedCampaign.campaignId)
+      .then((data) => {
+        if (!cancelled) setMilestones(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setMilestones([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCampaign?.campaignId]);
+
+  const handleFieldChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+    if (field === "campaignId") {
+      const campaign = campaigns.find((c) => c.campaignId === value);
+      if (campaign) {
+        setSelectedCampaign(campaign);
+        setFormData((prev) => ({
+          ...prev,
+          campaignId: campaign.campaignId,
+          campaignName: campaign.campaignName,
+        }));
+      }
+    }
+  };
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    setSubmitError("");
+
+    const validationErrors = validateDonationForm(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const payload = preparePayload(formData);
+      const result = await handleSubmit(payload);
+      navigate("/thank-you", {
+        state: {
+          donorName: formData.name,
+          amount: formData.amount,
+          campaignName: formData.campaignName,
+          transactionId: result?.transactionId ?? formData.transactionId,
+        },
+      });
+    } catch (error) {
+      setSubmitError(parseBackendError(error));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const scrollToForm = () => {
+    formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    const title = selectedCampaign?.campaignName ?? "Support our campaign";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+      }
+    } catch {
+      /* user cancelled share */
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-cream px-6 py-10">
-      
-      {/* Page heading */}
-      <div className="text-center mb-10">
-        <h1 className="text-3xl font-bold text-dark">Support Our Cause</h1>
-        <p className="text-gray-600 mt-2">
-          Your contribution directly maps to immediate developmental transformations 
-          for early childhood frameworks across India.
-        </p>
-      </div>
+    <div className="min-h-screen bg-brand-cream pb-16 sm:pb-20">
+      <DonationHeroBanner
+        campaign={selectedCampaign}
+        defaultHero={DEFAULT_HERO}
+        stats={stats}
+        onDonateClick={scrollToForm}
+        onShare={handleShare}
+      />
 
-      {/* Main donation card */}
-      <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-md p-8">
+      <div className="mx-auto max-w-7xl space-y-10 px-4 sm:space-y-12 sm:px-6 lg:space-y-14 lg:px-8">
+        {selectedCampaign && stats && (
+          <>
+            <CampaignOverview stats={stats} />
 
-        {/* Amount selection */}
-        <div className="mb-6">
-          <p className="text-sm font-medium mb-2">Choose or enter a donation value (INR)</p>
-          <div className="grid grid-cols-4 gap-3">
-            <button className="border rounded-lg py-3">₹500</button>
-            <button className="border rounded-lg py-3">₹1,000</button>
-            <button className="border rounded-lg py-3">₹2,500</button>
-            <button className="border rounded-lg py-3">₹5,000</button>
-          </div>
-          <input 
-            type="text" 
-            placeholder="Other custom amount (INR)" 
-            className="w-full border rounded-lg mt-3 p-2"
-          />
-        </div>
+            <CampaignMilestones milestones={milestones} />
+          </>
+        )}
 
-        {/* Payment methods - side by side */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          
-          {/* UPI QR */}
-          <div className="border rounded-lg p-4 text-center">
-            <p className="font-semibold mb-1">Instant UPI Payment</p>
-            <p className="text-xs text-gray-500 mb-3">
-              Instant execution using GooglePay, PhonePay, Paytm or BHIM apps.
+        <section
+          id="donation-form"
+          ref={formSectionRef}
+          className="scroll-mt-24"
+          aria-labelledby="donation-form-heading"
+        >
+          <div className="mb-8 lg:mb-10">
+            <h2
+              id="donation-form-heading"
+              className="font-display text-2xl font-bold tracking-tight text-brand-dark sm:text-3xl lg:text-4xl"
+            >
+              Make Your Donation
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-muted sm:text-base">
+              Complete the form below to contribute. Every rupee goes directly
+              toward the campaign&apos;s verified milestones.
             </p>
-            <div className="border border-dashed h-32 flex items-center justify-center text-xs text-gray-400">
-              QR CODE PLACEHOLDER
+          </div>
+
+          <div className="grid items-start gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">
+            <div className="lg:col-span-7 xl:col-span-8">
+              <DonationForm
+                campaigns={campaigns}
+                formData={formData}
+                errors={errors}
+                submitError={submitError}
+                isSubmitting={isSubmitting}
+                lockCampaign={lockCampaign}
+                onFieldChange={handleFieldChange}
+                onSubmit={onSubmit}
+                formRef={formRef}
+              />
+            </div>
+
+            <div className="lg:col-span-5 lg:sticky lg:top-24 lg:self-start xl:col-span-4">
+              <DonationSummary
+                formData={formData}
+                campaign={selectedCampaign}
+                stats={stats}
+              />
             </div>
           </div>
-
-          {/* Bank transfer */}
-          <div className="border rounded-lg p-4">
-            <p className="font-semibold mb-1">Bank Wire Transfer</p>
-            <p className="text-xs text-gray-500 mb-3">
-              Process securely via standard IMPS, NEFT or RTGS banking networks.
-            </p>
-            <input placeholder="Account Name" className="w-full border-b mb-2 text-sm p-1" />
-            <input placeholder="Bank Name" className="w-full border-b mb-2 text-sm p-1" />
-            <input placeholder="Account No." className="w-full border-b mb-2 text-sm p-1" />
-            <input placeholder="IFSC Code" className="w-full border-b mb-2 text-sm p-1" />
-          </div>
-        </div>
-
-        {/* Submit button */}
-        <button className="w-full bg-primary text-white rounded-lg py-3 font-medium">
-          Proceed to donate
-        </button>
+        </section>
       </div>
-
-      {/* Post donation note */}
-      <div className="max-w-2xl mx-auto border rounded-lg p-4 mt-6 text-xs text-gray-600">
-        <strong>Post donation step:</strong> After executing your transaction, please email a copy of the 
-        payment receipt to secure your official 80G Tax Exemption Certificate. Verification and certificate 
-        dispatch are guaranteed within 48 hours.
-      </div>
-
     </div>
   );
 }
-
-export default DonatePage;

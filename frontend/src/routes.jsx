@@ -1,10 +1,11 @@
-﻿import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
 import ProblemPage from "./pages/ProblemPage";
 import SolutionPage from "./pages/SolutionPage";
 import ImpactPage from "./pages/ImpactPage";
 import CampaignPage from "./pages/CampaignPage";
+import CampaignDetailPage from "./pages/CampaignDetailPage";
 import DonatePage from "./pages/DonatePage";
 import FounderPage from "./pages/FounderPage";
 import DocumentsPage from "./pages/DocumentsPage";
@@ -27,7 +28,10 @@ const router = createBrowserRouter([
       { path: "/solution", element: <SolutionPage /> },
       { path: "/impact", element: <ImpactPage /> },
       { path: "/campaign", element: <CampaignPage /> },
+      { path: "/campaign/:id", element: <CampaignDetailPage /> },
+      { path: "/campaign/:id/donate", element: <CampaignDetailPage /> },
       { path: "/donate", element: <DonatePage /> },
+      { path: "/donate/:campaignId", element: <DonatePage /> },
       { path: "/founders", element: <FounderPage /> },
       { path: "/documents", element: <DocumentsPage /> },
       { path: "/thank-you", element: <ThankYouPage /> },

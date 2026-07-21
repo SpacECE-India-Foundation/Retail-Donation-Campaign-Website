@@ -30,7 +30,11 @@ export const Navbar = () => {
         })}
         </div>
         <div className="flex items-center">
-          <Button variant="primary" size="md" className="px-8 shadow-md">Donate now</Button>
+          <Link to="/donate">
+            <Button variant="primary" size="md" className="rounded-xl px-8 shadow-md">
+              Donate now
+            </Button>
+          </Link>
         </div>
       </div>
     </nav>);
