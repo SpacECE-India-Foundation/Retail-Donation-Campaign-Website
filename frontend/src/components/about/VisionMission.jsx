@@ -1,3 +1,6 @@
+import visionIcon from "../../assets/icons/vision-icon.png";
+import missionIcon from "../../assets/icons/mission-icon.png";
+
 export const VisionMission = () => {
   const realities = [
     "India has 1.37 million Anganwadi centres (part of ICDS) but persistent quality gaps in early stimulation for children under 3.",
@@ -26,46 +29,59 @@ export const VisionMission = () => {
             India.
           </p>
         </div>
-        
 
         {/* Vision / Mission cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-16">
           <div
-            className="p-6 rounded-2xl border"
+            className="p-6 rounded-2xl border flex gap-4 items-start"
             style={{
               background: "var(--color-brand-bg)",
               borderColor: "var(--color-brand-orange)",
             }}
           >
-            <h3
-              className="text-lg font-bold mb-2"
-              style={{ color: "var(--color-brand-orange)" }}
-            >
-              Our Vision
-            </h3>
-            <p className="text-sm text-gray-600">
-              SpacECE aspires to enrich the ecosystem for the holistic
-              development of children in the early years.
-            </p>
+            <img
+              src={visionIcon}
+              alt="Our Vision"
+              className="w-16 h-16 flex-shrink-0 rounded-lg object-contain"
+            />
+            <div>
+              <h3
+                className="text-lg font-bold mb-2"
+                style={{ color: "var(--color-brand-orange)" }}
+              >
+                Our Vision
+              </h3>
+              <p className="text-sm text-gray-600">
+                SpacECE aspires to enrich the ecosystem for the holistic
+                development of children in the early years.
+              </p>
+            </div>
           </div>
 
           <div
-            className="p-6 rounded-2xl border"
+            className="p-6 rounded-2xl border flex gap-4 items-start"
             style={{ background: "#F0F6F7", borderColor: "var(--color-brand-teal)" }}
           >
-            <h3
-              className="text-lg font-bold mb-2"
-              style={{ color: "var(--color-brand-teal)" }}
-            >
-              Our Mission
-            </h3>
-            <p className="text-sm text-gray-600">
-              SpacECE is a non-profit organisation dedicated to providing
-              quality education, promoting lifelong learning, and empowering
-              individuals and communities across India. The mission is to
-              bridge the educational gap and create equal opportunities for
-              all.
-            </p>
+            <img
+              src={missionIcon}
+              alt="Our Mission"
+              className="w-16 h-16 flex-shrink-0 rounded-lg object-contain"
+            />
+            <div>
+              <h3
+                className="text-lg font-bold mb-2"
+                style={{ color: "var(--color-brand-teal)" }}
+              >
+                Our Mission
+              </h3>
+              <p className="text-sm text-gray-600">
+                SpacECE is a non-profit organisation dedicated to providing
+                quality education, promoting lifelong learning, and
+                empowering individuals and communities across India. The
+                mission is to bridge the educational gap and create equal
+                opportunities for all.
+              </p>
+            </div>
           </div>
         </div>
 

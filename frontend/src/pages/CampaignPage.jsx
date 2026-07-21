@@ -1,7 +1,9 @@
 ﻿import React from "react";
+import CampaignCard from "../components/common/campaign/CampaignCard";
 import CriticalWindowCard from "../components/common/campaign/CriticalWindowCard";
 import ImplementationRoadmap from "../components/common/campaign/ImplementationRoadmap";
 import NationalPolicyContext from "../components/common/campaign/NationalPolicyContext";
+import mockCampaigns from "../data/mockCampaigns";
 
 // TODO: move this to services/api.js or a content file once
 // the backend/CMS source is decided.
@@ -28,7 +30,7 @@ const roadmapPhases = [
     month: "Month 8+",
     title: "Scalability Integration",
     description:
-      "Synergize strategic core modules directly into state level tracking frameworks for ICDS scaling inside Maharashtra.",
+      "Synergize strategic core modules directly into state-level tracking frameworks for ICDS scaling inside Maharashtra.",
   },
 ];
 
@@ -46,37 +48,54 @@ const policies = [
   {
     title: "ICDS Core Integration",
     description:
-      "India operates 1.37 million Anganwadi centres. SpacECE frameworks directly complement and fortify this established structural network.",
+      "India operates 1.37 million Anganwadi centres. SpacECE frameworks directly complement and strengthen this established structural network.",
   },
 ];
 
 export default function CampaignPage() {
   return (
-    <section className="bg-[#FDF6EC] min-h-screen px-6 py-16">
-      {/* Heading */}
-      <div className="max-w-3xl mx-auto text-center mb-10">
-        <h1 className="font-display text-3xl md:text-4xl font-bold text-[#0D4A52] mb-4">
-          Campaign &amp; Why Now
-        </h1>
-        <p className="text-[#1A1A1A]/70">
-          Understanding the immediate national imperative, strategic
-          implementation timelines and policy windows driving this
-          synchronized early development framework.
-        </p>
-      </div>
+    <section className="bg-[#FDF6EC] min-h-screen py-16 px-6">
+      <div className="max-w-7xl mx-auto">
 
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Top full-width card */}
-        <CriticalWindowCard />
+        {/* Hero */}
+        <div className="text-center max-w-3xl mx-auto mb-14">
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-[#0D4A52] mb-4">
+            Our Campaigns
+          </h1>
 
-        {/* Bottom two-column grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
-          <ImplementationRoadmap phases={roadmapPhases} />
-          <NationalPolicyContext
-            policies={policies}
-            note="Validated Model"
-          />
+          <p className="text-[#1A1A1A]/70">
+            Join our mission to transform early childhood development,
+            empower families and create lasting community impact through
+            our active campaigns.
+          </p>
         </div>
+
+        {/* Campaign Listing */}
+        <div className="mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {mockCampaigns.map((campaign) => (
+              <CampaignCard
+                key={campaign.id}
+                campaign={campaign}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Information Section */}
+        <div className="space-y-8">
+          <CriticalWindowCard />
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ImplementationRoadmap phases={roadmapPhases} />
+
+            <NationalPolicyContext
+              policies={policies}
+              note="Validated Model"
+            />
+          </div>
+        </div>
+
       </div>
     </section>
   );
