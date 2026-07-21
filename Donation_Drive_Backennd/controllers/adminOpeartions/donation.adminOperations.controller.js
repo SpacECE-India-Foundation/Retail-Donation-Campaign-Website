@@ -6,103 +6,197 @@ import emailService from "../../services/email.services.js";
 import Message from "../../models/message.modals.js";
 import mongoose from "mongoose";
 
-export const fetchDonations = async (req, res) => {
+// export const fetchDonations = async (req, res) => {
+//   try {
+//     const {
+//       status,
+//       campaign,
+//       donorName,
+//       donorEmail,
+//       transactionId,
+//       paymentMode,
+//       verified,
+//       minAmount,
+//       maxAmount,
+//       paymentDateFrom,
+//       paymentDateTo,
+//     } = req.query
+
+//     //just for debugging, remove later
+//     console.log("fetchDonations called with query:", req.query)
+
+//     const filter = {}
+
+//     if (status) {
+//       filter.status = status
+//     }
+//     if (campaign) {
+//       filter.campaign = campaign
+//     }
+//     if (donorName) {
+//       filter.donorName = { $regex: donorName, $options: "i" }
+//     }
+//     if (donorEmail) {
+//       filter.donorEmail = { $regex: donorEmail, $options: "i" }
+//     }
+//     if (transactionId) {
+//       filter.transactionId = { $regex: transactionId, $options: "i" }
+//     }
+//     if (paymentMode) {
+//       filter.paymentMode = paymentMode
+//     }
+//     if (verified !== undefined) {
+//       filter.verified = verified === "true" || verified === "1"
+//     }
+
+//     if (minAmount !== undefined || maxAmount !== undefined) {
+//       filter.amount = {}
+//       if (minAmount !== undefined && !isNaN(Number(minAmount))) {
+//         filter.amount.$gte = Number(minAmount)
+//       }
+//       if (maxAmount !== undefined && !isNaN(Number(maxAmount))) {
+//         filter.amount.$lte = Number(maxAmount)
+//       }
+//       if (Object.keys(filter.amount).length === 0) {
+//         delete filter.amount
+//       }
+//     }
+
+//     if (paymentDateFrom || paymentDateTo) {
+//       filter.paymentDate = {}
+//       if (paymentDateFrom) {
+//         const fromDate = new Date(paymentDateFrom)
+//         if (!isNaN(fromDate.getTime())) {
+//           filter.paymentDate.$gte = fromDate
+//         }
+//       }
+//       if (paymentDateTo) {
+//         const toDate = new Date(paymentDateTo)
+//         if (!isNaN(toDate.getTime())) {
+//           filter.paymentDate.$lte = toDate
+//         }
+//       }
+//       if (Object.keys(filter.paymentDate).length === 0) {
+//         delete filter.paymentDate
+//       }
+//     }
+
+//     const donations = await Donation.find(filter)
+//       .populate("campaign")
+//       .populate("verifiedBy", "fullName email")
+//       .sort({ createdAt: -1 })
+
+//     return res.status(200).json(
+//       new ApiResponse(
+//         200,
+//         {
+//           donations,
+//         },
+//         "Donations fetched successfully"
+//       )
+//     )
+//   } catch (error) {
+//     console.error(error)
+//     return res.status(error.statusCode || 500).json(
+//       new ApiError(
+//         error.statusCode || 500,
+//         error.message
+//       )
+//     )
+//   }
+// }
+
+//---------------------------------------------------THIS IS THE FETCH DONATION FUNCTIONALITY USING THE CONCEPT OF PAGINATION AND REAL TIME SEARCH---------------------------------------------------------------------------------------
+export const fetchDonations = async (req,res) =>{
   try {
-    const {
-      status,
-      campaign,
-      donorName,
-      donorEmail,
-      transactionId,
-      paymentMode,
-      verified,
-      minAmount,
-      maxAmount,
-      paymentDateFrom,
-      paymentDateTo,
-    } = req.query
+    //we will give the data based on the search filters and the pagination 
+    const adminId = req.admin.adminId
+    const page = Number(req.query.page)||1
+    const limit = Number(req.query.limit) ||10 //this is the limit of responses on a single page
+    const search = req.query.search?.trim()
+    const campaign = req.query.campaign
+    const status = req.query.status
 
-    //just for debugging, remove later
-    console.log("fetchDonations called with query:", req.query)
+    const skip = (page-1)*limit
 
-    const filter = {}
-
-    if (status) {
-      filter.status = status
+    let filter = {
+      admin:adminId
     }
-    if (campaign) {
+
+    //if there is a serch parameter in the query so we have to search using owner email,name, transactionId
+    if (search) {
+    filter.$or = [
+        {
+            donorName: {
+                $regex: search,
+                $options: "i"  //this is for case insensitivity
+            }
+        },
+        {
+            donorEmail: {
+                $regex: search,
+                $options: "i"
+            }
+        },
+        {
+            transactionId: {
+                $regex: search,
+                $options: "i"
+            }
+        }
+    ];
+}
+
+    //if campaign is filetered though queries 
+    if(campaign){
       filter.campaign = campaign
     }
-    if (donorName) {
-      filter.donorName = { $regex: donorName, $options: "i" }
-    }
-    if (donorEmail) {
-      filter.donorEmail = { $regex: donorEmail, $options: "i" }
-    }
-    if (transactionId) {
-      filter.transactionId = { $regex: transactionId, $options: "i" }
-    }
-    if (paymentMode) {
-      filter.paymentMode = paymentMode
-    }
-    if (verified !== undefined) {
-      filter.verified = verified === "true" || verified === "1"
+
+    //if there is a status filter
+    if(status){
+      filter.status = status
     }
 
-    if (minAmount !== undefined || maxAmount !== undefined) {
-      filter.amount = {}
-      if (minAmount !== undefined && !isNaN(Number(minAmount))) {
-        filter.amount.$gte = Number(minAmount)
-      }
-      if (maxAmount !== undefined && !isNaN(Number(maxAmount))) {
-        filter.amount.$lte = Number(maxAmount)
-      }
-      if (Object.keys(filter.amount).length === 0) {
-        delete filter.amount
-      }
-    }
+  
+    //now we will find members based on the parameters
+    const [donations,totalDonations] = await Promise.all([
+      Donation.find(filter)
+      .populate("campaign, campaignName")
+      .sort({createdAt:-1})
+      .skip(skip)
+      .limit(limit)
+    ],
 
-    if (paymentDateFrom || paymentDateTo) {
-      filter.paymentDate = {}
-      if (paymentDateFrom) {
-        const fromDate = new Date(paymentDateFrom)
-        if (!isNaN(fromDate.getTime())) {
-          filter.paymentDate.$gte = fromDate
-        }
-      }
-      if (paymentDateTo) {
-        const toDate = new Date(paymentDateTo)
-        if (!isNaN(toDate.getTime())) {
-          filter.paymentDate.$lte = toDate
-        }
-      }
-      if (Object.keys(filter.paymentDate).length === 0) {
-        delete filter.paymentDate
-      }
-    }
+      Donation.countDocuments(filter)
+  )
 
-    const donations = await Donation.find(filter)
-      .populate("campaign")
-      .populate("verifiedBy", "fullName email")
-      .sort({ createdAt: -1 })
+  ApiError.assert(donations,"No result for the search")
 
-    return res.status(200).json(
-      new ApiResponse(
-        200,
-        {
-          donations,
-        },
-        "Donations fetched successfully"
-      )
-    )
+   return res.status(200).json(
+        new ApiResponse(
+          200,
+          {
+            donations,
+            pagination:{
+              totalDonations,
+              totalPages = Match.ceil(totalDonations/limit),
+              pageSize:limit,
+              currentPage:page
+            }
+          },
+            "Campaign Fetched Successfully!!"
+          )
+      );
+
+
   } catch (error) {
-    console.error(error)
+    console.log(error)
     return res.status(error.statusCode || 500).json(
-      new ApiError(
-        error.statusCode || 500,
-        error.message
-      )
-    )
+        new ApiError(
+            error.statusCode || 500,
+            error.message
+            )
+        )
   }
 }
 
@@ -174,18 +268,26 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
 
     //now we will implement the second query 
     const donations = await Donation.find({
-      campaign:{
-        $in:campaignIds
+      campaign: {
+        $in: campaignIds
       },
-      status: {
-        $in: ["Pending", "Rejected"]
-    }
-    }).populate(
+      $or: [
+      {
+        status: "Pending"
+      },
+      {
+        status: "Rejected",
+        resubmissionCount: { $gt: 0 }
+      }
+    ]
+  })
+    .populate(
       "campaign",
       "campaignName"
-    ).sort({
-      createdAt:-1
-    })
+    )
+    .sort({
+      createdAt: -1
+    });
 
     //now we have those donations we will simply send them with the response 
 
