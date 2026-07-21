@@ -7,7 +7,7 @@ import { rejectDonation } from "../../controllers/adminOpeartions/donation.admin
 
 const donationAdminOperationsRoutes = express.Router()
 
-donationAdminOperationsRoutes.get("/", adminAuth, fetchDonations)
+donationAdminOperationsRoutes.get("/fetch-donations", adminAuth, fetchDonations)
 // donationAdminOperationsRoutes.patch("/:id/verify", adminAuth, verifyDonation)
 donationAdminOperationsRoutes.get('/pending-donation',adminAuth,fetchPendingRejectedDonations)
 donationAdminOperationsRoutes.post('/verify-donation/:donationId',adminAuth,verifyDonation)
