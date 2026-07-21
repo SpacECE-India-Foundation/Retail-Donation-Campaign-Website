@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
 import Campaign from "../../models/campaign.modals.js"
+import Milestone from "../../models/milestone.modals.js"
 
 export const fetchPublicCampaigns = async (req, res) => {
   try {
@@ -40,7 +41,11 @@ export const fetchPublicCampaignDetail = async (req, res) => {
       "Invalid campaign ID"
     )
 
-    const campaign = await Campaign.findById(id)
+    const [campaign, milestones] = await Promise.all([
+      Campaign.findById(id),
+      Milestone.find({ campaign: id }).sort({ displayOrder: 1 }),
+    ])
+
     ApiError.notFound(campaign, "Campaign not found")
 
     return res.status(200).json(
@@ -48,6 +53,7 @@ export const fetchPublicCampaignDetail = async (req, res) => {
         200,
         {
           campaign,
+          milestones,
         },
         "Campaign details fetched successfully"
       )
