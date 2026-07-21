@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Heart,
+
   Search,
   ChevronDown,
   ChevronUp,
@@ -11,58 +12,22 @@ import {
   Loader2,
   Inbox,
 } from "lucide-react";
-
-const MOCK_DONATIONS = [
-  {
-    id: "DON-2045",
-    campaign: "Education For All",
-    amount: 2500,
-    status: "VERIFIED",
-    date: "2026-07-20",
-    donorName: "John Doe",
-    email: "john.doe@gmail.com",
-    phone: "9876543210",
-    paymentMode: "UPI",
-    transactionId: "AXH9873JD",
-    address: "Indore, Madhya Pradesh",
-    message: "Thank you for your generous support!",
-    screenshotUrl:
-      "https://placehold.co/300x200/16a34a/ffffff?text=Payment+Successful",
-    remarks: "Donation Verified Successfully",
-  },
-  {
-    id: "DON-2032",
-    campaign: "Food Distribution",
-    amount: 500,
-    status: "PENDING",
-    date: "2026-07-18",
-    donorName: "John Doe",
-    email: "john.doe@gmail.com",
-    phone: "9876543210",
-    paymentMode: "UPI",
-    transactionId: "AXH879SDH",
-    address: "Indore, Madhya Pradesh",
-    message: "Thank you for your support!",
-    screenshotUrl:
-      "https://placehold.co/300x200/eab308/ffffff?text=Payment+Pending",
-    remarks: "",
-  },
-];
+import { findDonationsByEmail, updateDonation } from "../services/donationService";
 
 const STATUS_CONFIG = {
-  VERIFIED: {
+  Verified: {
     label: "VERIFIED",
     icon: CheckCircle2,
     badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
     border: "border-l-emerald-500",
   },
-  PENDING: {
+  Pending: {
     label: "PENDING",
     icon: Clock,
     badge: "bg-amber-50 text-amber-700 border-amber-200",
     border: "border-l-amber-500",
   },
-  REJECTED: {
+  Rejected: {
     label: "REJECTED",
     icon: XCircle,
     badge: "bg-rose-50 text-rose-700 border-rose-200",
@@ -70,36 +35,9 @@ const STATUS_CONFIG = {
   },
 };
 
-function mockFindDonations(email) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const match = MOCK_DONATIONS.filter(
-        (d) => d.email.toLowerCase() === email.trim().toLowerCase()
-      ).sort((a, b) => new Date(b.date) - new Date(a.date));
-      resolve(match);
-    }, 900);
-  });
-}
-
-function mockUpdateDonation(id, { transactionId, screenshotFile }) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        ok: true,
-        donation: {
-          id,
-          transactionId,
-          screenshotUrl: screenshotFile
-            ? URL.createObjectURL(screenshotFile)
-            : undefined,
-        },
-      });
-    }, 700);
-  });
-}
 
 function StatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.PENDING;
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
   const Icon = cfg.icon;
   return (
     <span
@@ -135,7 +73,7 @@ function DetailField({ label, value }) {
 }
 
 function ExpandedDetails({ donation, onUpdate, isUpdating }) {
-  const isPending = donation.status === "PENDING";
+  const isEditable = donation.status === "REJECTED";
   const [transactionId, setTransactionId] = useState(donation.transactionId);
   const [screenshotFile, setScreenshotFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(donation.screenshotUrl);
@@ -169,20 +107,14 @@ function ExpandedDetails({ donation, onUpdate, isUpdating }) {
 
   const confirmUpdate = () => {
     setConfirmOpen(false);
-    onUpdate(donation.id, { transactionId: transactionId.trim(), screenshotFile });
+    onUpdate(donation._id, { transactionId: transactionId.trim(), screenshotFile });
   };
 
   return (
     <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-5 sm:px-6">
       <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
         <DetailField label="Donor Name" value={donation.donorName} />
-        <DetailField label="Email" value={donation.email} />
-        <DetailField label="Phone" value={donation.phone} />
-        <DetailField label="Payment Mode" value={donation.paymentMode} />
-        <DetailField label="Address" value={donation.address} />
-        <DetailField label="Message" value={donation.message || "—"} />
-
-        {isPending ? (
+        {isEditable ? (
           <div>
             <label className="text-xs font-medium uppercase tracking-wide text-slate-400">
               Transaction ID
@@ -198,9 +130,9 @@ function ExpandedDetails({ donation, onUpdate, isUpdating }) {
           <DetailField label="Transaction ID" value={donation.transactionId} />
         )}
 
-        {donation.remarks && (
-          <DetailField label="Remarks" value={donation.remarks} />
-        )}
+        {donation.verificationRemarks && (
+  <DetailField label="Remarks" value={donation.verificationRemarks} />
+)}
       </div>
 
       <div className="mt-5">
@@ -213,7 +145,7 @@ function ExpandedDetails({ donation, onUpdate, isUpdating }) {
             alt="Payment screenshot"
             className="h-24 w-36 rounded-lg border border-slate-200 object-cover"
           />
-          {isPending && (
+          {isEditable && (
             <div>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50">
                 <Upload className="h-4 w-4" />
@@ -231,7 +163,7 @@ function ExpandedDetails({ donation, onUpdate, isUpdating }) {
         </div>
       </div>
 
-      {isPending && (
+      {isEditable && (
         <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-4">
           <button
             type="button"
@@ -288,7 +220,7 @@ function ExpandedDetails({ donation, onUpdate, isUpdating }) {
 }
 
 function DonationCard({ donation, isExpanded, onToggle, onUpdate, updatingId }) {
-  const cfg = STATUS_CONFIG[donation.status] || STATUS_CONFIG.PENDING;
+  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.Pending;
 
   return (
     <div
@@ -301,9 +233,9 @@ function DonationCard({ donation, isExpanded, onToggle, onUpdate, updatingId }) 
       >
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-slate-800">
-            {donation.campaign}
+            {donation.campaign?.campaignName}
           </p>
-          <p className="text-xs text-slate-400">Donation #{donation.id}</p>
+          <p className="text-xs text-slate-400">Donation #{donation._id}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 sm:gap-6">
@@ -312,7 +244,7 @@ function DonationCard({ donation, isExpanded, onToggle, onUpdate, updatingId }) 
           </span>
           <StatusBadge status={donation.status} />
           <span className="text-xs text-slate-400">
-            {formatDate(donation.date)}
+            {formatDate(donation.paymentDate)}
           </span>
           <span className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600">
             View Details
@@ -329,7 +261,7 @@ function DonationCard({ donation, isExpanded, onToggle, onUpdate, updatingId }) 
         <ExpandedDetails
           donation={donation}
           onUpdate={onUpdate}
-          isUpdating={updatingId === donation.id}
+          isUpdating={updatingId === donation._id}
         />
       )}
     </div>
@@ -404,7 +336,7 @@ export default function TrackDonationsPage() {
     setStatus("loading");
     setExpandedId(null);
     try {
-      const results = await mockFindDonations(email); // TODO: replace with GET /donations?email=
+      const results = await findDonationsByEmail(email);
       setDonations(results);
       setStatus("done");
     } catch {
@@ -416,18 +348,19 @@ export default function TrackDonationsPage() {
   const handleUpdate = async (id, payload) => {
     setUpdatingId(id);
     try {
-      const res = await mockUpdateDonation(id, payload); // TODO: replace with PATCH /donations/:id
+      const res = await updateDonation(id, payload);
       setDonations((prev) =>
-        prev.map((d) =>
-          d.id === id
-            ? {
-                ...d,
-                transactionId: payload.transactionId,
-                screenshotUrl: res.donation.screenshotUrl || d.screenshotUrl,
-              }
-            : d
-        )
-      );
+      prev.map((d) =>
+      d._id === id
+        ? {
+          ...d,
+          transactionId: payload.transactionId,
+        }
+      : d
+     )
+   );
+
+
       setToast({ type: "success", message: "Donation updated successfully." });
     } catch {
       setToast({ type: "error", message: "Update failed. Please try again." });
@@ -505,12 +438,12 @@ export default function TrackDonationsPage() {
               <div className="space-y-4">
                 {donations.map((donation) => (
                   <DonationCard
-                    key={donation.id}
+                    key={donation._id}
                     donation={donation}
-                    isExpanded={expandedId === donation.id}
+                    isExpanded={expandedId === donation._id}
                     onToggle={() =>
                       setExpandedId((prev) =>
-                        prev === donation.id ? null : donation.id
+                        prev === donation._id ? null : donation._id
                       )
                     }
                     onUpdate={handleUpdate}
