@@ -2,14 +2,15 @@
 import { Button } from './Button';
 export const Navbar = () => {
     const location = useLocation();
-    const navLinks = [
-        { name: 'Mission', path: '/about' },
-        { name: 'Solutions', path: '/solution' },
-        { name: 'Impact', path: '/impact' },
-        { name: 'Campaign', path: '/campaign' },
-        { name: 'Founders', path: '/founders' },
-        { name: 'Documents', path: '/documents' },
-    ];
+   const navLinks = [
+    { name: 'Mission', path: '/about' },
+    { name: 'Solutions', path: '/solution' },
+    { name: 'Impact', path: '/impact' },
+    { name: 'Campaign', path: '/campaign' },
+    { name: 'Achievements', path: '/achievements' },
+    { name: 'Founders', path: '/founders' },
+    { name: 'Documents', path: '/documents' },
+];
     return (<nav className="w-full border-b border-gray-300 bg-[var(--color-brand-bg)]">
       <div className="mx-auto flex h-24 max-w-[1400px] items-center justify-between px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">

@@ -37,6 +37,18 @@ export const submitPublicDonation = (frontendPayload) =>
 export const getDonationStatus = (transactionId) =>
   api.get(`${PUBLIC_DONATION_BASE}/track/${transactionId}`);
 
+/** Legacy public donation endpoint kept for existing callers. */
+export const submitDonation = (data) => api.post("/donations", data);
+
 /** Admin-only — do not use on the public donate page */
 export const getDonations = (params) =>
   api.get("/admin/donations", { params });
+
+export const fetchAdminPendingDonations = () =>
+  api.get("/donations/pending-donation");
+
+export const verifyDonationRequest = (donationId) =>
+  api.post(`/donations/verify-donation/${donationId}`);
+
+export const rejectDonationRequest = (donationId, verificationRemarks) =>
+  api.post(`/donations/reject-donation/${donationId}`, { verificationRemarks });

@@ -20,8 +20,14 @@ const campaignSchema = new mongoose.Schema(
     },
 
     campaignBanner: {
-      type: String,
-      required: [true, "Campaign banner is required"],
+      url: {
+        type: String,
+        required: true,
+    },
+    publicId: {
+        type: String,
+        required: true,
+    },
     },
 
     startDate: {
@@ -42,7 +48,7 @@ const campaignSchema = new mongoose.Schema(
 
     campaignStatus: {
       type: String,
-      enum: ["Upcoming", "Active", "Completed", "Cancelled"],
+      enum: ["Upcoming", "Active", "Completed", "inActive"],
       default: "Upcoming",
       required: true,
     },
@@ -78,6 +84,10 @@ const campaignSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+campaignSchema.index({
+    createdBy: 1
+});
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
 

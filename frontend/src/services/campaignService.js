@@ -1,4 +1,4 @@
-﻿import api from "./api";
+import api from "./api";
 import { getCampaignById } from "../data/donation.mock";
 
 export const getCampaignProgress = () => api.get("/campaigns/progress");
@@ -77,3 +77,5 @@ export const getCampaignDetails = async (campaignId) => {
 
   return getCampaignById(campaignId);
 };
+
+export const fetchAdminCampaigns = () => api.get("/admin/campaign/admin-campaigns");

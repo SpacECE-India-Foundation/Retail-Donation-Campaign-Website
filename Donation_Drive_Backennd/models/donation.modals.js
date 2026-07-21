@@ -65,8 +65,14 @@ const donationSchema = new mongoose.Schema(
     },
 
     screenshot: {
-      type: String,
-      required: [true, "Payment screenshot is required"],
+      url: {
+        type: String,
+        required: true,
+    },
+    publicId: {
+        type: String,
+        required: true,
+    },
     },
 
     campaign: {
@@ -120,12 +126,27 @@ const donationSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    resubmissionCount: {
+    type: Number,
+    default: 0
+}
   },
   {
     timestamps: true,
   }
 );
 
+donationSchema.index({
+    campaign: 1,
+    status: 1,
+    createdAt: -1
+});
+
+donationSchema.index({
+    campaign: 1,
+    donorEmail: 1,
+    createdAt: -1
+});
 const Donation = mongoose.model("Donation", donationSchema);
 
 export default Donation;

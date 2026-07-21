@@ -19,6 +19,9 @@ export const adminAuth = async (req,res, next)=>{
             adminId : tokenDecode.adminId
         }
 
+        //just for debugging, remove later
+        console.log("adminAuth passed for adminId:", tokenDecode.adminId)
+
         next()
 
     } catch (error) {

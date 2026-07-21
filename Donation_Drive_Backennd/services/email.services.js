@@ -1,4 +1,8 @@
 import nodemailer from "nodemailer";
+import { donationConfirmationTemplate } from "../templates/successfullDonationRegistration.template.js";
+import { donationVerifiedTemplate } from "../templates/donationVerified.template.js";
+import { donationRejectedTemplate } from "../templates/donationRejectionTemplate.js";
+import { resendDonationRequestTemplate } from "../templates/resendDonationRequest.template.js";
 
 class EmailService {
     constructor() {
@@ -22,6 +26,111 @@ class EmailService {
             html
         });
     }
+
+    async sendDonationVerifiedEmail({
+    donorName,
+    donorEmail,
+    campaignName,
+    donationAmount,
+    transactionId,
+    certificateLink = ""
+}) {
+
+    const html = donationVerifiedTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        transactionId,
+        certificateLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `Donation Verified - ${campaignName}`,
+        html,
+        text: `Your donation has been verified successfully.`
+    });
+
+}
+
+async sendDonationResubmittedEmail({
+    donorName,
+    donorEmail,
+    campaignName,
+    donationAmount,
+    transactionId,
+    trackingLink
+}) {
+
+    const html = resendDonationRequestTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        transactionId,
+        trackingLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `Updated Donation Received - ${campaignName}`,
+        html,
+        text: "Your updated donation request has been received and is now pending verification."
+    });
+
+}
+
+    async sendDonationConfirmationEmail({
+        donorName,
+        donorEmail,
+        campaignName,
+        donationAmount,
+        trackingLink,
+        transactionId
+    }) {
+
+        const html = donationConfirmationTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        trackingLink,
+        transactionId
+    });
+
+        return await this.sendEmail({
+            to: donorEmail,
+            subject: `Donation Request Received - ${campaignName}`,
+            html,
+            text: `Your donation request has been received.`
+        });
+
+    }
+
+    async sendDonationRejectedEmail({
+    donorName,
+    donorEmail,
+    campaignName,
+    donationAmount,
+    transactionId,
+    verificationRemarks,
+    resubmitLink
+}) {
+
+    const html = donationRejectedTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        transactionId,
+        verificationRemarks,
+        resubmitLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `Donation Verification Failed - ${campaignName}`,
+        html,
+        text: `Your donation could not be verified. Please review the remarks and submit again.`
+    });
+}
 
     async sendOtpEmail(email, otp) {
 

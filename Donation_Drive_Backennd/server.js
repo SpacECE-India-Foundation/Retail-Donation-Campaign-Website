@@ -10,10 +10,16 @@ import { registerAdmin } from "./controllers/authControllers/admin.auth.controll
 import { upload } from "./utils/upload.utils.js"
 import adminAuthRoutes from "./routes/Admin.auth.routes.js"
 import getAdminRoute from "./routes/AdminOperationRoutes/getAdmin.js"
+import campaignAdminOperationsRoutes from "./routes/AdminOperationRoutes/campaign.adminOperation.routes.js"
+import milestoneAdminOperationRoute from "./routes/AdminOperationRoutes/milestone.adminOperrations.routes.js"
+import donationAdminOperationsRoutes from "./routes/AdminOperationRoutes/donation.adminOperation.routes.js"
+import donationPublicRoutes from "./routes/publicOperationRoutes/donations.routes.js"
+import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.routes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
-console.log(port)
+//just for debugging, remove later
+console.log("Server port:", port)
 
 //LETS INITIALISE AN EXPRESS APP
 const app = express()
@@ -46,11 +52,6 @@ app.use(cors(corsOptions))
 app.use(express.json())
 app.use(cookieParser())
 
-//just for debugging, remove later
-app.use((req, res, next) => {
-  console.log("Incoming request:", req.method, req.url)
-  next()
-})
 
 //---------------------------------------------------INITIAL SERVER RUNNING ENDPOINT--------------------------------------------------------------
 //lets make the running endpoint
@@ -58,14 +59,35 @@ app.get('/',(req,res)=>res.send(
     "Retail Donation Drive Server!!"
 ))
 
-//---------------------------------------------------ADMIN AUTH ROUTES--------------------------------------------------------------
-app.post("/api/admin/auth/register-admin", upload.single("profileImage"), registerAdmin)
+//-------------------------------------------------------DATABASE CONNECTION ESTABLISHMENT----------------------------------------------
+//lets establish the connection with the database and if the connection is established then only listen the server
+const startServer = async () =>{
+    const dataBaseConnected = await dbConnect()
+    if(dataBaseConnected){
+        app.listen(port,()=>console.log(colors.green(`Server is listening on port ${port}`)))
+    }else{
+        console.log(colors.blue(`Halting Operations!!!`)); 
+        //just for debugging, remove later
+        console.log("Database connection failed, server not started")
+    }
+}
 
+//---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
+app.use('/api/admin/auth',adminAuthRoutes)
+app.use('/api/admin',getAdminRoute)
+app.use('/api/admin/campaign',campaignAdminOperationsRoutes)
+app.use('/api/admin/milestone',milestoneAdminOperationRoute)
+app.use('/api/donations', donationAdminOperationsRoutes)
+app.use('/api/public/donation',donationPublicRoutes)
+app.use('/api/campaigns', publicCampaignRoutes)
+
+//----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler
 app.use((req, res) => {
   res.status(404).json(new ApiResponse(404, null, "Route not found"))
 })
 
+//------------------------------------------------------GLOBAL ERROR HANDLER----------------------------------------------
 // global error handler
 app.use((err, req, res, next) => {
   console.error("Global error handler:", err)
@@ -94,21 +116,6 @@ app.use((err, req, res, next) => {
     new ApiResponse(err.statusCode || 500, null, err.message || "Internal Server Error")
   )
 })
-
-//-------------------------------------------------------DATABASE CONNECTION ESTABLISHMENT----------------------------------------------
-//lets establish the connection with the database and if the connection is established then only listen the server
-const startServer = async () =>{
-    const dataBaseConnected = await dbConnect()
-    if(dataBaseConnected){
-        app.listen(port,()=>console.log(colors.green(`Server is listening on port ${port}`)))
-    }else{
-        console.log(colors.blue(`Halting Operations!!!`)); 
-    }
-}
-
-//---------------------------------------------------ROUTING IMPLEMENTATION-----------------------------------------
-app.use('/api/admin/auth',adminAuthRoutes)
-app.use('/api/admin',getAdminRoute)
 
 //---------------------------------------------------LETS START THE SERVER NOW-----------------------------------------
 startServer()
