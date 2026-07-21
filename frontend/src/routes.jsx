@@ -16,6 +16,7 @@ import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
+import AdminLayout from "./components/admin/AdminLayout";
 
 const router = createBrowserRouter([
   {
@@ -36,15 +37,37 @@ const router = createBrowserRouter([
       { path: "/verify/:verificationId", element: <VerifyCertificatePage /> },
     ],
   },
-    { path: "/admin/login", element: <AdminLoginPage /> },
-
+  { path: "/admin/login", element: <AdminLoginPage /> },
   {
     path: "/admin",
     element: (
       <ProtectedRoute>
-        <AdminDashboardPage />
+        <AdminLayout />
       </ProtectedRoute>
     ),
+    children: [
+      { index: true, element: <AdminDashboardPage /> },
+      {
+        path: "verification-queue",
+        element: <div className="text-brand-dark">Verification Queue — coming soon</div>,
+      },
+      {
+        path: "donation-history",
+        element: <div className="text-brand-dark">Donation History — coming soon</div>,
+      },
+      {
+        path: "campaigns",
+        element: <div className="text-brand-dark">Campaigns — coming soon</div>,
+      },
+      {
+        path: "reports",
+        element: <div className="text-brand-dark">Reports — coming soon</div>,
+      },
+      {
+        path: "settings",
+        element: <div className="text-brand-dark">Settings — coming soon</div>,
+      },
+    ],
   },
 ]);
 

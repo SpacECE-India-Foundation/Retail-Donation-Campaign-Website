@@ -1229,8 +1229,6 @@ export default function AdminDashboardPage() {
       `}</style>
 
       <div className="mx-auto max-w-7xl space-y-8">
-        <div className="h-1 w-full rounded-full bg-gradient-to-r from-brand-orange via-orange-300 to-transparent" aria-hidden="true" />
-
         <Toast message={toast} />
 
         <header className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -1252,6 +1250,8 @@ export default function AdminDashboardPage() {
             <ProfileMenu adminName={adminProfile?.fullName} adminEmail={adminProfile?.email} />
           </div>
         </header>
+
+        <div className="h-1 w-full rounded-full bg-gradient-to-r from-brand-orange via-orange-300 to-transparent" aria-hidden="true" />
 
         <section aria-label="Key metrics" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
           {stats.map((item) => (
