@@ -127,7 +127,7 @@ export default function AdminLoginPage() {
                 type="email"
                 placeholder="admin@spaceece.org"
                 value={email}
-                disabled={showForgotPassword}
+                 disabled={isSubmitting}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-gray-300 py-3 pl-12 pr-4 outline-none transition-all focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20 disabled:bg-gray-100 disabled:cursor-not-allowed"
               />

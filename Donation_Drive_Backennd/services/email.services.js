@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { donationConfirmationTemplate } from "../templates/successfullDonationRegistration.template.js";
 import { donationVerifiedTemplate } from "../templates/donationVerified.template.js";
 import { donationRejectedTemplate } from "../templates/donationRejectionTemplate.js";
+import { resendDonationRequestTemplate } from "../templates/resendDonationRequest.template.js";
 
 class EmailService {
     constructor() {
@@ -48,6 +49,32 @@ class EmailService {
         subject: `Donation Verified - ${campaignName}`,
         html,
         text: `Your donation has been verified successfully.`
+    });
+
+}
+
+async sendDonationResubmittedEmail({
+    donorName,
+    donorEmail,
+    campaignName,
+    donationAmount,
+    transactionId,
+    trackingLink
+}) {
+
+    const html = resendDonationRequestTemplate({
+        donorName,
+        campaignName,
+        donationAmount,
+        transactionId,
+        trackingLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `Updated Donation Received - ${campaignName}`,
+        html,
+        text: "Your updated donation request has been received and is now pending verification."
     });
 
 }
