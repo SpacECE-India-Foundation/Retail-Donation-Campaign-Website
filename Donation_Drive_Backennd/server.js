@@ -15,6 +15,7 @@ import milestoneAdminOperationRoute from "./routes/AdminOperationRoutes/mileston
 import donationAdminOperationsRoutes from "./routes/AdminOperationRoutes/donation.adminOperation.routes.js"
 import donationPublicRoutes from "./routes/publicOperationRoutes/donations.routes.js"
 import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.routes.js"
+import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 const port = process.env.PORT
@@ -30,7 +31,8 @@ const app = express()
 
 //NOW THIS SECTION WILL HAVE THE CORS RELATED POLICIES, WE WILL CREATE AN ARRAY OF ALLOWED ORIGINS, IF SOMEONE WNATS TO ADD OTHER ORIGINS OF FRONTEND REQUEST THEY CAN ADD THE ADDRESS IN THIS ARRAY
 const allowedOrigins = [
-    "http://localhost:5173" //currently localhost is set in allowed origins as we are working on localhost
+    "http://localhost:5173", //currently localhost is set in allowed origins as we are working on localhost
+    "http://localhost:5174"
 ]
 
 const corsOptions = {
@@ -80,6 +82,7 @@ app.use('/api/admin/milestone',milestoneAdminOperationRoute)
 app.use('/api/donations', donationAdminOperationsRoutes)
 app.use('/api/public/donation',donationPublicRoutes)
 app.use('/api/campaigns', publicCampaignRoutes)
+app.use('/api/public/donation',donationWallRoute)
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler
