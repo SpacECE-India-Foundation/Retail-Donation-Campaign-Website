@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Button } from './Button';
 export const StickyDonateBar = ({ isVisible = true }) => {
     if (!isVisible)
@@ -8,9 +9,11 @@ export const StickyDonateBar = ({ isVisible = true }) => {
           <span className="font-bold text-gray-900 text-sm">Every child deserves a start</span>
           <span className="text-xs text-gray-500 font-medium">Support our cause</span>
         </div>
-        <Button variant="primary" className="whitespace-nowrap px-6 py-2 text-sm shadow-md">
-          Donate now
-        </Button>
+        <Link to="/donate">
+          <Button variant="primary" className="whitespace-nowrap rounded-xl px-6 py-2 text-sm shadow-md">
+            Donate now
+          </Button>
+        </Link>
       </div>
     </div>);
 };

@@ -6,10 +6,17 @@
 
 :root {
   --color-brand-orange: #E8741A;
-  --color-brand-orange-hover: #D06817;
+  --color-brand-orange-hover: #D86712;
   --color-brand-dark: #1A1A1A;
   --color-brand-teal: #0D4A52;
-  --color-brand-bg: #FDF6EC;
+  --color-brand-bg: #FFF8F2;
+  --color-brand-card: #FFFFFF;
+  --color-brand-border: #ECECEC;
+  --color-brand-success: #22C55E;
+  --color-brand-warning: #F59E0B;
+  --color-brand-danger: #EF4444;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #6B7280;
 
   font-family: "DM Sans", sans-serif;
 }
