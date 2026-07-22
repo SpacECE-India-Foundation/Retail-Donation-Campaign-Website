@@ -19,7 +19,7 @@ class EmailService {
 
     async sendEmail({to, subject, html, text}) {
         return await this.transporter.sendMail({
-            from: `"${process.env.APP_NAME || "SPACECE INDIA FOUNDATION"}" <${process.env.SMTP_FROM}>`,
+            from: process.env.SMTP_FROM,
             to,
             subject,
             text,
