@@ -18,7 +18,9 @@ import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.route
 import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
-const port = process.env.PORT
+//falls back to 5000 (matching frontend/.env.example's VITE_API_URL) if PORT isn't set in .env,
+//since an undefined PORT passed to app.listen() leads to unpredictable/random-port binding
+const port = process.env.PORT || 5000
 //just for debugging, remove later
 console.log("Server port:", port)
 
@@ -32,16 +34,20 @@ const app = express()
 //NOW THIS SECTION WILL HAVE THE CORS RELATED POLICIES, WE WILL CREATE AN ARRAY OF ALLOWED ORIGINS, IF SOMEONE WNATS TO ADD OTHER ORIGINS OF FRONTEND REQUEST THEY CAN ADD THE ADDRESS IN THIS ARRAY
 const allowedOrigins = [
     "http://localhost:5173", //currently localhost is set in allowed origins as we are working on localhost
-    "http://localhost:5174"
+    "http://127.0.0.1:5173", //some setups open the Vite dev server via 127.0.0.1 instead of localhost
+    "http://localhost:5174", //Vite falls back to 5174 when 5173 is already in use
+    "http://127.0.0.1:5174"
 ]
 
 const corsOptions = {
     origin : function(origin,callback){
-        if(!origin || allowedOrigins.includes(origin)){ //here, this condition means that if the origin is not defined or null or if the origin is from the allowed origins then we will allow it 
+        if(!origin || allowedOrigins.includes(origin)){ //here, this condition means that if the origin is not defined or null or if the origin is from the allowed origins then we will allow it
             //here, !origin is for the postman testing as it doenst send request with the browser headers
             //callback(error, allow)
             callback(null,true)
         }else{
+            //just for debugging, remove later - logs the exact rejected origin so a mismatch (wrong port, http vs https, etc.) is easy to spot
+            console.log(colors.red(`CORS rejected origin: ${origin}`))
             callback(new Error("Not Allowed by CORS!!"))
         }
     },

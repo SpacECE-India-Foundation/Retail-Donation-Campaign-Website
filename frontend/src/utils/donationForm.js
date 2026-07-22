@@ -1,6 +1,6 @@
-import { PAYMENT_MODES } from "../data/donation.mock";
-
 export const MAX_DONATION_AMOUNT = 10000000;
+export const AMOUNT_PRESETS = [500, 1000, 2500, 5000];
+export const PAYMENT_MODES = ["UPI", "Bank Transfer"];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
