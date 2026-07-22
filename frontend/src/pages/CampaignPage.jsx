@@ -19,6 +19,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { Button } from "../components/common/Button";
+import ImplementationRoadmap from "../components/common/campaign/ImplementationRoadmap";
 import { calculateCampaignStats, fetchCampaigns } from "../services/campaignService";
 import { formatINR } from "../utils/donationForm";
 import { cn } from "../utils/cn";
@@ -74,12 +75,41 @@ function CampaignListingCard({ campaign, onNavigate }) {
   const { style: categoryStyle, icon: CategoryIcon } = getCategoryConfig(campaign.category);
   const isUrgent = campaign.daysLeft > 0 && campaign.daysLeft <= 15;
 
+  const goToDetails = () => {
+    // TEMP DEBUG LOG — remove once click behavior is confirmed in the browser.
+    console.log("[CampaignCard] card handler fired -> navigating to details", campaign.campaignId);
+    onNavigate(`/campaign/${campaign.campaignId}`);
+  };
+
+  const handleCardKeyDown = (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      goToDetails();
+    }
+  };
+
+  const handleDonateClick = (event) => {
+    // TEMP DEBUG LOG — remove once click behavior is confirmed in the browser.
+    console.log(
+      "[CampaignCard] donate button handler fired, calling stopPropagation()",
+      campaign.campaignId,
+    );
+    event.stopPropagation();
+    onNavigate(`/donate/${campaign.campaignId}`);
+  };
+
   return (
     <article
+      role="link"
+      tabIndex={0}
+      onClick={goToDetails}
+      onKeyDown={handleCardKeyDown}
+      aria-label={`View details for ${campaign.campaignName}`}
       className={cn(
-        "group flex h-full flex-col overflow-hidden rounded-2xl border border-brand-border/70 bg-white",
+        "group flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-brand-border/70 bg-white",
         "shadow-[0_4px_16px_-8px_rgba(26,26,26,0.12)]",
         "transition-all duration-300 ease-out hover:-translate-y-1 hover:border-brand-orange/30 hover:shadow-xl",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-2",
       )}
     >
       <div className="relative h-44 shrink-0 overflow-hidden rounded-t-2xl bg-brand-cream">
@@ -172,22 +202,14 @@ function CampaignListingCard({ campaign, onNavigate }) {
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3.5">
           <Button
             size="sm"
-            variant="outline"
-            className="h-8 rounded-xl text-[11px] font-semibold"
-            onClick={() => onNavigate(`/campaign/${campaign.campaignId}`)}
+            className="h-11 w-full rounded-full text-sm font-semibold shadow-md shadow-brand-orange/20"
+            onClick={handleDonateClick}
           >
-            Details
-          </Button>
-          <Button
-            size="sm"
-            className="h-8 rounded-xl text-[11px] font-semibold shadow-md shadow-brand-orange/20"
-            onClick={() => onNavigate(`/donate/${campaign.campaignId}`)}
-          >
-            Donate
-            <ArrowRight size={13} className="ml-1.5" />
+            Donate Now
+            <ArrowRight size={15} className="ml-1.5" />
           </Button>
         </div>
       </div>
@@ -336,7 +358,10 @@ export default function CampaignPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-[1440px] px-6 py-14 sm:py-16 lg:px-8 lg:py-20 xl:px-10">
+      <section
+        id="all-campaigns"
+        className="mx-auto max-w-[1440px] scroll-mt-20 px-6 py-14 sm:py-16 lg:px-8 lg:py-20 xl:px-10"
+      >
         <div className="mb-8 flex flex-col gap-5 sm:mb-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -448,6 +473,10 @@ export default function CampaignPage() {
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-16 sm:mt-20 lg:mt-24">
+            <ImplementationRoadmap />
           </div>
         </div>
       </section>

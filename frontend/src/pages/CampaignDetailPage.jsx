@@ -201,9 +201,7 @@ export default function CampaignDetailPage() {
           </aside>
         </section>
 
-        {campaign.milestones?.length > 0 && (
-          <CampaignMilestones milestones={campaign.milestones} />
-        )}
+        <CampaignMilestones milestones={campaign.milestones ?? []} />
       </div>
     </div>
   );

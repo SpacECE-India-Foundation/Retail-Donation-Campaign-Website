@@ -234,9 +234,7 @@ export default function DonatePage() {
           <>
             <CampaignOverview stats={stats} />
 
-            {milestones.length > 0 && (
-              <CampaignMilestones milestones={milestones} />
-            )}
+            <CampaignMilestones milestones={milestones} />
           </>
         )}
 

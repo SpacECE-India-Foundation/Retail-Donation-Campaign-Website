@@ -120,13 +120,9 @@ export default function DonationForm({
                 id={id}
                 value={formData.campaignId}
                 onChange={handleCampaignChange}
-                disabled={lockCampaign}
                 aria-invalid={hasError}
                 aria-describedby={errorId}
-                className={cn(
-                  inputClass(hasError),
-                  lockCampaign && "cursor-not-allowed bg-brand-cream/50 opacity-80",
-                )}
+                className={inputClass(hasError)}
               >
                 <option value="">Select a campaign</option>
                 {campaigns.map((campaign) => (
@@ -140,7 +136,7 @@ export default function DonationForm({
 
           {lockCampaign && formData.campaignName && (
             <p className="-mt-2 rounded-lg bg-brand-teal/5 px-3 py-2 text-xs text-brand-teal">
-              Campaign pre-selected from your link — no need to choose again.
+              Campaign pre-selected from your link — you can change it below if needed.
             </p>
           )}
         </FormSection>
