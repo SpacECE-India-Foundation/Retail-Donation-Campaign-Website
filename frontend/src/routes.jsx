@@ -8,6 +8,7 @@ import ImpactPage from "./pages/ImpactPage";
 import CampaignPage from "./pages/CampaignPage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import DonatePage from "./pages/DonatePage";
+import DonationWallPage from "./pages/DonationWallPage";
 import FounderPage from "./pages/FounderPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ThankYouPage from "./pages/ThankYouPage";
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
       { path: "/campaign/:id/donate", element: <CampaignDetailPage /> },
       { path: "/achievements", element: <AchievementsPage /> },
       { path: "/donate", element: <DonatePage /> },
+      { path: "/donation-wall", element: <DonationWallPage /> },
       { path: "/donate/:campaignId", element: <DonatePage /> },
       { path: "/founders", element: <FounderPage /> },
       { path: "/documents", element: <DocumentsPage /> },
