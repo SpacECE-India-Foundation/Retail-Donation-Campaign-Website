@@ -18,6 +18,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import VerificationQueuePage from "./pages/admin/VerificationQueuePage";
 import DonationHistoryPage from "./pages/admin/DonationHistoryPage";
 import CampaignsPage from "./pages/admin/CampaignsPage";
+import ReportsPage from "./pages/admin/ReportsPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -68,7 +69,7 @@ const router = createBrowserRouter([
       },
       {
         path: "reports",
-        element: <div className="text-brand-dark">Reports — coming soon</div>,
+        element: <ReportsPage />,
       },
       {
         path: "settings",
