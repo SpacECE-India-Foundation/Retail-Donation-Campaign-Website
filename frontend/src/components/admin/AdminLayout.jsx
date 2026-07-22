@@ -150,9 +150,15 @@ function ProfileMenu({ adminName, adminEmail, collapsed }) {
   );
 }
 
+const SIDEBAR_PREF_KEY = "adminSidebarDefaultExpanded";
+
 export default function AdminLayout() {
   const [adminProfile, setAdminProfile] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // respects the "Sidebar starts expanded" preference set on the Settings page
+    const stored = localStorage.getItem(SIDEBAR_PREF_KEY);
+    return stored === null ? true : stored === "true";
+  });
 
   useEffect(() => {
     let cancelled = false;
