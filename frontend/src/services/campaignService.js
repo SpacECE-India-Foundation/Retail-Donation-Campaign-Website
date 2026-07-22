@@ -79,3 +79,34 @@ export const getCampaignDetails = async (campaignId) => {
 };
 
 export const fetchAdminCampaigns = () => api.get("/admin/campaign/admin-campaigns");
+
+export const fetchCampaignDetail = (campaignId) =>
+  api.get(`/admin/campaign/campaign-details/${campaignId}`);
+
+function buildCampaignFormData(fields) {
+  const formData = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      formData.append(key, value);
+    }
+  });
+  return formData;
+}
+
+// fields: { campaignName, campaignDescription, startDate, endDate, campaignGoalAmount, campaignBanner (File) }
+// note: no explicit Content-Type header here — axios/the browser auto-sets
+// "multipart/form-data" WITH the correct boundary when the body is a FormData
+// instance; setting it manually strips the boundary and the server can't parse the file out.
+export const createCampaign = (fields) =>
+  api.post("/admin/campaign/new-campaign", buildCampaignFormData(fields));
+
+// payload: any subset of { campaignName, campaignDescription, campaignGoalAmount, startDate, endDate, campaignStatus }
+export const updateCampaign = (campaignId, payload) =>
+  api.patch(`/admin/campaign/update-campaign/${campaignId}`, payload);
+
+// campaignBannerFile: a File object
+export const updateCampaignImage = (campaignId, campaignBannerFile) => {
+  const formData = new FormData();
+  formData.append("campaignBanner", campaignBannerFile);
+  return api.patch(`/admin/campaign/update-image/${campaignId}`, formData);
+};
