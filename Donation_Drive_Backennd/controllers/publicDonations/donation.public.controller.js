@@ -273,7 +273,7 @@ export const fetchDonorDetails = async (req,res) =>{
 export const editDonationSubmission = async (req,res) =>{
     //in edit donation submission we just have the transactionId, screenshot and cash amount
     try {
-        const {
+        let {
             amount,
             transactionId,
         } = req.body
@@ -327,8 +327,6 @@ export const editDonationSubmission = async (req,res) =>{
         Number.isFinite(donationAmount) && donationAmount > 0,
         "Invalid donation amount"
     );
-
-    DonationExistAndRejected.amount = donationAmount;
 }
 
         ApiError.assert(
@@ -346,7 +344,7 @@ export const editDonationSubmission = async (req,res) =>{
                     "donation-screenshots"
                                 );
             } catch (error) {
-                throw new ApiError(500, "Failed to upload campaign banner");
+                throw new ApiError(500, "Failed to upload donation screenshot");
             }
         }
 
@@ -355,7 +353,8 @@ export const editDonationSubmission = async (req,res) =>{
         DonationExistAndRejected.screenshot.publicId = uploadResult.public_id
         if(transactionId!==undefined) DonationExistAndRejected.transactionId =transactionId
         if(amount!==undefined) DonationExistAndRejected.amount = amount
-        DonationExistAndRejected.resubmissionCount += 1;
+        DonationExistAndRejected.resubmissionCount =
+    (DonationExistAndRejected.resubmissionCount || 0) + 1;
 
         await DonationExistAndRejected.save()
 
