@@ -1,22 +1,11 @@
 import api from "./api";
-import { getMilestonesByCampaignId } from "../data/donation.mock";
+import { normalizeMilestone } from "./campaignService";
 
-/**
- * Public campaign milestones (replace with live API when available).
- * Admin reference: GET /api/admin/milestone/:campaignId/milestones
- */
 export const getCampaignMilestones = async (campaignId) => {
-  if (!campaignId) {
-    return [];
-  }
+  if (!campaignId) return [];
 
-  try {
-    const { data } = await api.get(`/public/campaign/${campaignId}/milestones`);
-    const milestones = data?.data ?? data;
-    return Array.isArray(milestones) ? milestones : [];
-  } catch {
-    return getMilestonesByCampaignId(campaignId);
-  }
+  const { data } = await api.get(`/campaigns/${campaignId}`);
+  const milestones = data?.data?.milestones ?? data?.milestones ?? [];
+
+  return Array.isArray(milestones) ? milestones.map(normalizeMilestone) : [];
 };
-
-export const getMilestones = () => api.get("/milestones");

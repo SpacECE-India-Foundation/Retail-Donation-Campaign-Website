@@ -1,24 +1,52 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { AlertCircle, Loader2 } from "lucide-react";
 import DonationHeroBanner from "../components/common/donation/DonationHeroBanner";
 import DonationForm from "../components/common/donation/DonationForm";
 import DonationSummary from "../components/common/donation/DonationSummary";
 import CampaignOverview from "../components/common/donation/CampaignOverview";
 import CampaignMilestones from "../components/common/donation/CampaignMilestones";
-import { getCampaignDetails } from "../services/campaignService";
-import { getCampaignMilestones } from "../services/milestoneService";
 import {
-  CAMPAIGNS,
-  DEFAULT_HERO,
-  getCampaignStats,
-} from "../data/donation.mock";
+  fetchCampaigns,
+  getCampaignDetails,
+  calculateCampaignStats,
+} from "../services/campaignService";
+import { submitPublicDonation } from "../services/donationService";
 import {
   createInitialFormState,
   validateDonationForm,
   preparePayload,
-  handleSubmit,
   parseBackendError,
 } from "../utils/donationForm";
+
+function CampaignState({ type, message, onRetry }) {
+  const isError = type === "error";
+
+  return (
+    <div className="mx-auto flex min-h-[360px] max-w-3xl flex-col items-center justify-center px-6 py-16 text-center">
+      <div className={isError ? "mb-4 text-brand-danger" : "mb-4 text-brand-orange"}>
+        {isError ? (
+          <AlertCircle size={32} aria-hidden="true" />
+        ) : (
+          <Loader2 size={32} className="animate-spin" aria-hidden="true" />
+        )}
+      </div>
+      <h1 className="font-display text-2xl font-bold text-brand-dark">
+        {isError ? "Donation page unavailable" : "Loading campaigns"}
+      </h1>
+      <p className="mt-2 text-sm text-brand-muted">{message}</p>
+      {onRetry && (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-5 rounded-xl border border-brand-border bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors hover:border-brand-orange hover:text-brand-orange"
+        >
+          Try Again
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function DonatePage() {
   const { campaignId: routeCampaignId } = useParams();
@@ -26,24 +54,37 @@ export default function DonatePage() {
   const formSectionRef = useRef(null);
   const formRef = useRef(null);
 
-  const [campaigns] = useState(CAMPAIGNS);
+  const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [milestones, setMilestones] = useState([]);
   const [formData, setFormData] = useState(createInitialFormState);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const lockCampaign = Boolean(routeCampaignId);
 
   const stats = useMemo(
-    () => (selectedCampaign ? getCampaignStats(selectedCampaign) : null),
+    () => (selectedCampaign ? calculateCampaignStats(selectedCampaign) : null),
     [selectedCampaign],
   );
 
   const applyCampaign = useCallback((campaign) => {
-    if (!campaign) return;
+    if (!campaign) {
+      setSelectedCampaign(null);
+      setMilestones([]);
+      setFormData((prev) => ({
+        ...prev,
+        campaignId: "",
+        campaignName: "",
+      }));
+      return;
+    }
+
     setSelectedCampaign(campaign);
+    setMilestones(Array.isArray(campaign.milestones) ? campaign.milestones : []);
     setFormData((prev) => ({
       ...prev,
       campaignId: campaign.campaignId,
@@ -51,55 +92,44 @@ export default function DonatePage() {
     }));
   }, []);
 
-  useEffect(() => {
-    if (!routeCampaignId) return;
+  const loadCampaignData = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError("");
 
-    const fromList = campaigns.find((c) => c.campaignId === routeCampaignId);
-    if (fromList) {
-      applyCampaign(fromList);
-      return;
-    }
+    try {
+      const campaignList = await fetchCampaigns();
+      setCampaigns(campaignList);
 
-    let cancelled = false;
-
-    getCampaignDetails(routeCampaignId)
-      .then((data) => {
-        if (cancelled) return;
-        if (data) {
-          applyCampaign(data);
-        } else {
-          applyCampaign(campaigns[0]);
+      if (routeCampaignId) {
+        const detail = await getCampaignDetails(routeCampaignId);
+        if (!detail) {
+          applyCampaign(null);
+          setLoadError("The selected campaign could not be found.");
+          return;
         }
-      })
-      .catch(() => {
-        if (!cancelled) applyCampaign(campaigns[0]);
-      });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [routeCampaignId, campaigns, applyCampaign]);
+        applyCampaign(detail);
+        setCampaigns((prev) => {
+          const exists = prev.some((campaign) => campaign.campaignId === detail.campaignId);
+          return exists
+            ? prev.map((campaign) => (campaign.campaignId === detail.campaignId ? detail : campaign))
+            : [detail, ...prev];
+        });
+      } else {
+        applyCampaign(null);
+      }
+    } catch (error) {
+      setCampaigns([]);
+      applyCampaign(null);
+      setLoadError(error?.response?.data?.message || "Unable to load campaigns right now.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [applyCampaign, routeCampaignId]);
 
   useEffect(() => {
-    if (!selectedCampaign?.campaignId) {
-      setMilestones([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    getCampaignMilestones(selectedCampaign.campaignId)
-      .then((data) => {
-        if (!cancelled) setMilestones(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setMilestones([]);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedCampaign?.campaignId]);
+    loadCampaignData();
+  }, [loadCampaignData]);
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -112,14 +142,7 @@ export default function DonatePage() {
     }
     if (field === "campaignId") {
       const campaign = campaigns.find((c) => c.campaignId === value);
-      if (campaign) {
-        setSelectedCampaign(campaign);
-        setFormData((prev) => ({
-          ...prev,
-          campaignId: campaign.campaignId,
-          campaignName: campaign.campaignName,
-        }));
-      }
+      applyCampaign(campaign || null);
     }
   };
 
@@ -127,7 +150,7 @@ export default function DonatePage() {
     event.preventDefault();
     setSubmitError("");
 
-    const validationErrors = validateDonationForm(formData);
+    const validationErrors = validateDonationForm(formData, campaigns);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
@@ -136,7 +159,8 @@ export default function DonatePage() {
     setIsSubmitting(true);
     try {
       const payload = preparePayload(formData);
-      const result = await handleSubmit(payload);
+      const response = await submitPublicDonation(payload);
+      const result = response?.data?.data ?? response?.data ?? {};
       navigate("/thank-you", {
         state: {
           donorName: formData.name,
@@ -170,11 +194,36 @@ export default function DonatePage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <CampaignState message="Fetching available campaigns for the donation form." />
+    );
+  }
+
+  if (loadError) {
+    return (
+      <CampaignState
+        type="error"
+        message={loadError}
+        onRetry={loadCampaignData}
+      />
+    );
+  }
+
+  if (campaigns.length === 0) {
+    return (
+      <CampaignState
+        type="error"
+        message="There are no campaigns available for donation right now."
+        onRetry={loadCampaignData}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-brand-cream pb-16 sm:pb-20">
       <DonationHeroBanner
         campaign={selectedCampaign}
-        defaultHero={DEFAULT_HERO}
         stats={stats}
         onDonateClick={scrollToForm}
         onShare={handleShare}
@@ -185,7 +234,9 @@ export default function DonatePage() {
           <>
             <CampaignOverview stats={stats} />
 
-            <CampaignMilestones milestones={milestones} />
+            {milestones.length > 0 && (
+              <CampaignMilestones milestones={milestones} />
+            )}
           </>
         )}
 
@@ -203,8 +254,7 @@ export default function DonatePage() {
               Make Your Donation
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-brand-muted sm:text-base">
-              Complete the form below to contribute. Every rupee goes directly
-              toward the campaign&apos;s verified milestones.
+              Complete the form below to contribute to an available campaign.
             </p>
           </div>
 

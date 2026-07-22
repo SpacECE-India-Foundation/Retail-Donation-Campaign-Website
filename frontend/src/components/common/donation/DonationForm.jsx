@@ -9,7 +9,7 @@ import {
 import { Button } from "../Button";
 import FormField, { inputClass } from "./FormField";
 import FormSection from "./FormSection";
-import { AMOUNT_PRESETS, PAYMENT_MODES } from "../../../data/donation.mock";
+import { AMOUNT_PRESETS, PAYMENT_MODES } from "../../../utils/donationForm";
 import { cn } from "../../../utils/cn";
 
 export default function DonationForm({
