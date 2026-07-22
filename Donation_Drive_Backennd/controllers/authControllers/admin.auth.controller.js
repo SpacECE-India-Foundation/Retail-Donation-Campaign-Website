@@ -1,4 +1,3 @@
-
 import Admin from "../../models/admin.modals.js"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
@@ -12,18 +11,18 @@ import bcrypt from "bcryptjs";
 
 
 //---------------------------------------------------THE ADMIN REGISTRATION CONTROLLER---------------------------------------------------
-//STEP1 : WE WILL TAKE THE BASIC DETAILS FROM THE REQUEST BODY FOR THE ADMIN PROFILE 
+//STEP1 : WE WILL TAKE THE BASIC DETAILS FROM THE REQUEST BODY FOR THE ADMIN PROFILE
 //STEP2 : WE WILL APPLY VALIDATION CHECK ON ALL THE FIELDS
 // STEP3 : CHECK WEATHER THE PROVIDED EMAIL/ID ALREADY REGISTERED AS AN ADMIN OR NOT
 //STEP 4: IF WE FOUND THE SAME CREDENTIALS WE  WILL RETURN THE RESPONSE WITH THE USER ALREADY EXIST WITH THE GIVEN CREDENTIALS
 //STEP 5: ELSE WE WILL GENERATE THE ACCES TOKEN AND REFRSH TOKEN
-//STEP 6: SAVE THE ADMIN PROFILE IN THE DB COLLECTION 
+//STEP 6: SAVE THE ADMIN PROFILE IN THE DB COLLECTION
 //STEP 7: WE WILL SEND COOKIES TO BROWSER
 
 
 export const registerAdmin = async (req,res) =>{
     try {
-        //getting all the required info from the request body 
+        //getting all the required info from the request body
         const {
             fullName,
             email,
@@ -40,7 +39,7 @@ export const registerAdmin = async (req,res) =>{
         ApiError.assert(password && password.length>=8,"Password is required and should be 8 digits longer")
 
         //we will now find whether there a admin exist with the given credentials
-        const isAdminExist = await Admin.findOne({ email })    
+        const isAdminExist = await Admin.findOne({ email })
 
         ApiError.assert(!isAdminExist,"Admin already Registered with the given Email, Please Sign In!")
 
@@ -67,19 +66,19 @@ export const registerAdmin = async (req,res) =>{
             profileImage: profileImageUrl,
         })
 
-        //now we will generate the access and refresh token 
+        //now we will generate the access and refresh token
         const accessToken = generateAccessToken({
             adminId: newAdmin._id
         })
 
-        //generating the refresh token 
+        //generating the refresh token
         const refreshToken = generateRefreshToken({ adminId: newAdmin._id })
 
         //for the security purposes we will storing the refreshtoken in hashed form in our admin collection
         newAdmin.refreshToken = await bcrypt.hash(refreshToken, 12)
 
         await newAdmin.save()
-      
+
       //now till here the account creation is completed, we will now send our tokens using the cookies to the browser
         res.cookie(
             "accessToken",
@@ -101,7 +100,7 @@ export const registerAdmin = async (req,res) =>{
             sameSite: "strict",
             maxAge: 14 * 24 * 60 * 60 * 1000,
             }
-        );  
+        );
 
         //here we will implement the successfull mail sending funtionality
 
@@ -180,7 +179,7 @@ export const adminLogin = async (req,res) =>{
             adminId:admin._id
         })
 
-        //now we will update the newly generated refresh token to the collection 
+        //now we will update the newly generated refresh token to the collection
         admin.refreshToken = await bcrypt.hash(refreshToken,12)
 
         //here we will update the other details rearding the login activities for the admin
@@ -212,7 +211,7 @@ export const adminLogin = async (req,res) =>{
             }
         );
 
-        
+
         return res.status(200).json(
             new ApiResponse(
             200,
@@ -401,3 +400,119 @@ export const logoutAdmin = async (req, res) => {
         );
     }
 };
+
+
+//---------------------------------------------------------THIS FUNCTION LETS A LOGGED-IN ADMIN UPDATE THEIR OWN PROFILE----------------------------------------
+export const updateAdminProfile = async (req,res) =>{
+    try {
+        //this is a protected route so we will get the adminId from the adminAuth middleware
+        const adminId = req.admin.adminId
+
+        const { fullName, phone } = req.body
+        //just for debugging, remove later
+        console.log("updateAdminProfile called for adminId:", adminId)
+
+        const admin = await Admin.findById(adminId)
+        ApiError.notFound(admin,"Admin not found")
+
+        if(fullName !== undefined){
+            const trimmedName = fullName.trim()
+            ApiError.assert(trimmedName.length >= 3,"Full name should be at least 3 characters")
+            admin.fullName = trimmedName
+        }
+
+        if(phone !== undefined){
+            if(phone === ""){
+                admin.phone = ""
+            }else{
+                ApiError.assert(/^[6-9]\d{9}$/.test(phone),"Please enter a valid phone number")
+                admin.phone = phone
+            }
+        }
+
+        //if a new profile image file was uploaded, push it to cloudinary and update the url
+        if(req.file?.buffer){
+            const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images")
+            admin.profileImage = uploadResult.secure_url
+        }
+
+        await admin.save()
+
+        return res.status(200).json(
+            new ApiResponse(
+            200,
+            {
+                adminId: admin._id,
+                fullName: admin.fullName,
+                email: admin.email,
+                phone: admin.phone,
+                profileImage: admin.profileImage
+            },
+            "Profile updated successfully"
+            )
+        );
+
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiError(
+                error.statusCode || 500,
+                error.message
+            )
+        )
+    }
+}
+
+
+//---------------------------------------------------------THIS FUNCTION LETS A LOGGED-IN ADMIN CHANGE THEIR OWN PASSWORD----------------------------------------
+export const changePassword = async (req,res) =>{
+    try {
+        const adminId = req.admin.adminId
+        const { currentPassword, newPassword } = req.body
+        //just for debugging, remove later
+        console.log("changePassword called for adminId:", adminId)
+
+        ApiError.assert(currentPassword,"Current password is required")
+        ApiError.assert(newPassword && newPassword.length >= 8,"New password is required and should be 8 characters or longer")
+
+        //need the actual password hash back, since the schema hides it with select:false by default
+        const admin = await Admin.findById(adminId).select("+password")
+        ApiError.notFound(admin,"Admin not found")
+
+        const isCurrentPasswordCorrect = await bcrypt.compare(currentPassword, admin.password)
+        ApiError.assert(isCurrentPasswordCorrect,"Current password is incorrect")
+
+        admin.password = await bcrypt.hash(newPassword, 12)
+        admin.passwordChangedAt = new Date()
+        //invalidating the existing refresh token forces a fresh login on other sessions too
+        admin.refreshToken = null
+        await admin.save()
+
+        //clear this session's cookies as well, so the admin has to log back in with the new password
+        res.clearCookie("accessToken", {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production"
+        });
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production"
+        });
+
+        return res.status(200).json(
+            new ApiResponse(
+            200,
+            null,
+            "Password changed successfully! Please log in again."
+            )
+        );
+
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiError(
+                error.statusCode || 500,
+                error.message
+            )
+        )
+    }
+}
