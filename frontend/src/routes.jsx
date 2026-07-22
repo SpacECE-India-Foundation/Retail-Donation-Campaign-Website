@@ -19,6 +19,7 @@ import VerificationQueuePage from "./pages/admin/VerificationQueuePage";
 import DonationHistoryPage from "./pages/admin/DonationHistoryPage";
 import CampaignsPage from "./pages/admin/CampaignsPage";
 import ReportsPage from "./pages/admin/ReportsPage";
+import SettingsPage from "./pages/admin/SettingsPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -73,7 +74,7 @@ const router = createBrowserRouter([
       },
       {
         path: "settings",
-        element: <div className="text-brand-dark">Settings — coming soon</div>,
+        element: <SettingsPage />,
       },
     ],
   },
