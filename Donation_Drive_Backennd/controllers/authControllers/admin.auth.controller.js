@@ -379,3 +379,25 @@ res.clearCookie("refreshToken", {
         );
     }
 }
+
+export const logoutAdmin = async (req, res) => {
+    try {
+        res.clearCookie("accessToken", {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production"
+        });
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production"
+        });
+        return res.status(200).json(
+            new ApiResponse(200, null, "Logged out successfully")
+        );
+    } catch (error) {
+        return res.status(500).json(
+            new ApiError(500, error.message)
+        );
+    }
+};

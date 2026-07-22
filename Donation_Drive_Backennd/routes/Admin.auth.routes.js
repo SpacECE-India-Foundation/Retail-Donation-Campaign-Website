@@ -4,7 +4,9 @@ import { adminLogin } from "../controllers/authControllers/admin.auth.controller
 import { forgotPassword } from "../controllers/authControllers/admin.auth.controller.js"
 import { verifyOtp } from "../controllers/authControllers/admin.auth.controller.js"
 import { resetPassword } from "../controllers/authControllers/admin.auth.controller.js"
+import { logoutAdmin } from "../controllers/authControllers/admin.auth.controller.js"
 import { upload } from "../utils/upload.utils.js"
+import { adminAuth } from "../middelwares/adminAuth.middelware.js"
 //THIS ROUTES FILE IS FOR ALL THE OPERATION REGARDING THE ADMIN AUTHENTICATION FUNCTIONALITITES
 const adminAuthRoutes = express.Router()
 
@@ -13,6 +15,6 @@ adminAuthRoutes.post('/login-admin',adminLogin)
 adminAuthRoutes.post('/forgot-password',forgotPassword)
 adminAuthRoutes.post('/verify-otp',verifyOtp)
 adminAuthRoutes.post('/reset-password',resetPassword)
-
+adminAuthRoutes.post('/logout',adminAuth,logoutAdmin)
 
 export default adminAuthRoutes
