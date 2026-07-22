@@ -235,7 +235,7 @@ export default function AdminLayout() {
       </button>
 
       {/* Main content — this is the only part that scrolls */}
-      <main className="h-full min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <main className="h-full min-w-0 flex-1 overflow-y-auto p-4 pl-9 sm:p-6 sm:pl-11 lg:p-8 lg:pl-14">
         <Outlet />
       </main>
     </div>

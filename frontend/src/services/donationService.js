@@ -52,3 +52,5 @@ export const verifyDonationRequest = (donationId) =>
 
 export const rejectDonationRequest = (donationId, verificationRemarks) =>
   api.post(`/donations/reject-donation/${donationId}`, { verificationRemarks });
+
+export const fetchDonations = (params) => api.get("/donations/fetch-donations", { params });
