@@ -11,9 +11,13 @@ export default function DonationHeroBanner({
   onDonateClick,
   onShare,
 }) {
-  const title = campaign?.campaignName ?? defaultHero.title;
-  const description = campaign?.shortDescription ?? campaign?.description ?? defaultHero.description;
-  const banner = campaign?.banner ?? defaultHero.banner;
+  const title = campaign?.campaignName ?? defaultHero?.title ?? "Support a Campaign";
+  const description =
+    campaign?.shortDescription ??
+    campaign?.description ??
+    defaultHero?.description ??
+    "Choose a campaign and make a verified contribution.";
+  const banner = campaign?.banner ?? defaultHero?.banner ?? "";
   const category = campaign?.category ?? "Community Campaign";
 
   return (
@@ -37,11 +41,15 @@ export default function DonationHeroBanner({
 
       <div className="overflow-hidden rounded-3xl shadow-[0_20px_60px_-12px_rgba(26,26,26,0.15)]">
         <div className="relative min-h-[320px] sm:min-h-[420px]">
-          <img
-            src={banner}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          {banner ? (
+            <img
+              src={banner}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-brand-dark" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/95 via-brand-dark/70 to-brand-dark/30" />
 
           <div className="relative flex min-h-[320px] flex-col justify-end p-6 sm:min-h-[420px] sm:p-12">

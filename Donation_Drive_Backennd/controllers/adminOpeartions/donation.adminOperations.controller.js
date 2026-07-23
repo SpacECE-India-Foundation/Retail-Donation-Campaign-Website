@@ -16,6 +16,9 @@ export const fetchDonations = async (req, res) => {
     const search = req.query.search?.trim()
     const campaignFilter = req.query.campaign
     const status = req.query.status
+    const paymentMode = req.query.paymentMode
+    const fromDate = req.query.fromDate
+    const toDate = req.query.toDate
 
     const skip = (page - 1) * limit
 
@@ -64,6 +67,25 @@ export const fetchDonations = async (req, res) => {
     //if there is a status filter
     if (status) {
       filter.status = status
+    }
+
+    //if there is a payment mode filter
+    if (paymentMode) {
+      filter.paymentMode = paymentMode
+    }
+
+    //if there is a date range filter (based on when the donation was submitted)
+    if (fromDate || toDate) {
+      filter.createdAt = {}
+      if (fromDate) {
+        filter.createdAt.$gte = new Date(fromDate)
+      }
+      if (toDate) {
+        //include the entire "to" day, not just midnight
+        const endOfDay = new Date(toDate)
+        endOfDay.setHours(23, 59, 59, 999)
+        filter.createdAt.$lte = endOfDay
+      }
     }
 
     //now we will find donations based on the parameters, plus a total count for pagination

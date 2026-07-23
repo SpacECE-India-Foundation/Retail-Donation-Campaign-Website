@@ -16,6 +16,11 @@ import VerifyCertificatePage from "./pages/VerifyCertificatePage";
 import ComponentShowcase from "./pages/ComponentShowcase";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
+import VerificationQueuePage from "./pages/admin/VerificationQueuePage";
+import DonationHistoryPage from "./pages/admin/DonationHistoryPage";
+import CampaignsPage from "./pages/admin/CampaignsPage";
+import ReportsPage from "./pages/admin/ReportsPage";
+import SettingsPage from "./pages/admin/SettingsPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -55,23 +60,23 @@ const router = createBrowserRouter([
       { index: true, element: <AdminDashboardPage /> },
       {
         path: "verification-queue",
-        element: <div className="text-brand-dark">Verification Queue — coming soon</div>,
+        element: <VerificationQueuePage />,
       },
       {
         path: "donation-history",
-        element: <div className="text-brand-dark">Donation History — coming soon</div>,
+        element: <DonationHistoryPage />,
       },
       {
         path: "campaigns",
-        element: <div className="text-brand-dark">Campaigns — coming soon</div>,
+        element: <CampaignsPage />,
       },
       {
         path: "reports",
-        element: <div className="text-brand-dark">Reports — coming soon</div>,
+        element: <ReportsPage />,
       },
       {
         path: "settings",
-        element: <div className="text-brand-dark">Settings — coming soon</div>,
+        element: <SettingsPage />,
       },
     ],
   },
