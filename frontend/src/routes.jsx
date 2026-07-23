@@ -12,7 +12,6 @@ import DonatePage from "./pages/DonatePage";
 import FounderPage from "./pages/FounderPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ThankYouPage from "./pages/ThankYouPage";
-import VerifyCertificatePage from "./pages/VerifyCertificatePage";
 import ComponentShowcase from "./pages/ComponentShowcase";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
@@ -25,6 +24,7 @@ import SettingsPage from "./pages/admin/SettingsPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
+import CertificateVerificationPage from "./pages/verifyCertificate";
 
 const router = createBrowserRouter([
   {
@@ -46,7 +46,7 @@ const router = createBrowserRouter([
       { path: "/founders", element: <FounderPage /> },
       { path: "/documents", element: <DocumentsPage /> },
       { path: "/thank-you", element: <ThankYouPage /> },
-      { path: "/verify/:verificationId", element: <VerifyCertificatePage /> },
+      { path: "/verify/:certificateId", element: <CertificateVerificationPage /> },
     ],
   },
   { path: "/admin/login", element: <AdminLoginPage /> },

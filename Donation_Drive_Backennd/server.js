@@ -90,6 +90,7 @@ app.use('/api/donations', donationAdminOperationsRoutes)
 app.use('/api/public/donation',donationPublicRoutes)
 app.use('/api/campaigns', publicCampaignRoutes)
 app.use('/api/public/donation',donationWallRoute)
+app.use('/api/public/certificate',certificatePublicRoutes)
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler
