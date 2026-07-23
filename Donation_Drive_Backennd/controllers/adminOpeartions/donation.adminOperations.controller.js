@@ -5,6 +5,8 @@ import Campaign from "../../models/campaign.modals.js"
 import Milestone from "../../models/milestone.modals.js"
 import emailService from "../../services/email.services.js";
 import Message from "../../models/message.modals.js";
+import Certificate from "../../models/certificate.modals.js";
+import certificateService from "../../services/certificate.services.js";
 import mongoose from "mongoose";
 
 //---------------------------------------------------THIS IS THE FETCH DONATION FUNCTIONALITY USING THE CONCEPT OF PAGINATION AND REAL TIME SEARCH---------------------------------------------------------------------------------------
@@ -30,6 +32,9 @@ export const fetchDonations = async (req, res) => {
     }).select("_id")
 
     const campaignIds = adminCampaigns.map((c) => c._id)
+    //just for debugging, remove later
+    console.log("fetchDonations adminId:", adminId)
+    console.log("fetchDonations adminCampaignIds:", campaignIds)
 
     let filter = {
       campaign: { $in: campaignIds }
@@ -98,6 +103,11 @@ export const fetchDonations = async (req, res) => {
         .limit(limit),
       Donation.countDocuments(filter)
     ])
+    //just for debugging, remove later
+    console.log("fetchDonations result count:", donations.length, "totalDonations:", totalDonations)
+    console.log("fetchDonations sample:", donations.slice(0, 5).map(d => ({ id: d._id, status: d.status, campaign: d.campaign, transactionId: d.transactionId })))
+    //just for debugging, remove later
+    console.log("fetchDonations result count:", donations.length, "totalDonations:", totalDonations)
 
     return res.status(200).json(
       new ApiResponse(
@@ -144,9 +154,21 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
       createdBy:adminId
     }).select("_id")
 
+    //just for debugging, remove later
+    console.log("fetchPendingRejectedDonations adminId:", adminId)
+    console.log("fetchPendingRejectedDonations campaignIds:", campaign.map(c => c._id))
+
     //now we will get all the ids of this campaign just id's
     const campaignIds = campaign.map(c=>c._id) //this will return a new array with only id numbers
 
+    //just for debugging, remove later
+    console.log("fetchPendingRejectedDonations filter:", {
+      campaign: { $in: campaignIds },
+      $or: [
+        { status: "Pending" },
+        { status: "Rejected", resubmissionCount: { $gt: 0 } }
+      ]
+    })
     //now we will implement the second query
     const donations = await Donation.find({
       campaign: {
@@ -230,6 +252,10 @@ export const verifyDonation = async (req,res) =>{
   try {
 
     session.startTransaction();
+    //just for debugging, remove later
+    console.log("verifyDonation request params:", req.params)
+    console.log("verifyDonation adminId:", req.admin?.adminId)
+
     //so, how the verification process will goes
     //user get all the pending donations record
     //user checks them manually and if everything is correct he will click on the verify so we just have to change the status of the donation send success email and make some numeric changes in the collectons
@@ -250,11 +276,47 @@ export const verifyDonation = async (req,res) =>{
       ]
     }).session(session)
 
+    //just for debugging, remove later
+    console.log("verifyDonation found donation:", donation ? {
+      id: donation._id,
+      status: donation.status,
+      transactionId: donation.transactionId,
+      campaign: donation.campaign,
+      certificateGenerated: donation.certificateGenerated
+    } : null)
+
     ApiError.assert(donation,"Donation don't found")
 
-    //Here, we have to implement the certificate generation functionality and save those links into the collection, this is left
+    //Get campaign before generating certificate
+    let campaign = await Campaign.findById(donation.campaign).session(session)
+    //just for debugging, remove later
+    console.log("verifyDonation found campaign:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
+    ApiError.assert(campaign,"No campaign Found with this donation")
 
-    //lets set the status of this donation to verified
+    //Generate certificate for verified donation with error handling
+    let certificateData = null;
+    try {
+      certificateData = await certificateService.generateAndUploadCertificate({
+        donorName: donation.donorName,
+        campaignName: campaign.campaignName,
+        amount: donation.amount,
+        donationDate: donation.paymentDate,
+      });
+      //just for debugging, remove later
+      console.log("verifyDonation certificateData:", certificateData)
+    } catch (certError) {
+      console.error("Certificate generation failed, continuing with verification:", certError.message);
+      //Certificate generation failure should not block donation verification
+      //Log the error but allow the donation to be verified without certificate
+    }
+
+    //Update donation with certificate information if generated successfully
+    if (certificateData) {
+      donation.certificateGenerated = true;
+      donation.certificateUrl = certificateData.certificateUrl;
+    }
+
+    //Set the status of this donation to verified
     donation.status = "Verified"
     //lets set verified by to the admin id
     donation.verifiedBy = adminId
@@ -263,13 +325,8 @@ export const verifyDonation = async (req,res) =>{
     //lets set the verified booleam to true
     donation.verified = true;
 
-    //now we will campaign of this donation
-    let campaign = await Campaign.findById(donation.campaign).session(session)
-    ApiError.assert(campaign,"No campaign Found with this donation")
-
-
-    //now we will save both the collections
-    await Promise.all([
+    //Save donation, update campaign, and create certificate record in parallel
+    const saveOperations = [
       donation.save({session}),
       Campaign.findByIdAndUpdate(
         campaign._id,
@@ -283,7 +340,28 @@ export const verifyDonation = async (req,res) =>{
           session
         }
       )
-    ])
+    ];
+
+    //Add certificate creation if certificate was generated
+    if (certificateData) {
+      saveOperations.push(
+        Certificate.create([{
+          certificateId: certificateData.certificateId,
+          donation: donation._id,
+          donorName: donation.donorName,
+          campaignName: campaign.campaignName,
+          amount: donation.amount,
+          donationDate: donation.paymentDate,
+          certificateUrl: certificateData.certificateUrl,
+          publicId: certificateData.publicId,
+          verificationUrl: certificateData.verificationUrl,
+          verified: true,
+          verifiedAt: new Date(),
+        }], { session })
+      );
+    }
+
+    await Promise.all(saveOperations)
 
     //campaignRaisedAmt just moved — recalculate which milestones this reaches
     await syncMilestoneCompletion(campaign._id, session)

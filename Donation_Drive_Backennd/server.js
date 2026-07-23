@@ -15,6 +15,7 @@ import milestoneAdminOperationRoute from "./routes/AdminOperationRoutes/mileston
 import donationAdminOperationsRoutes from "./routes/AdminOperationRoutes/donation.adminOperation.routes.js"
 import donationPublicRoutes from "./routes/publicOperationRoutes/donations.routes.js"
 import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.routes.js"
+import certificatePublicRoutes from "./routes/publicOperationRoutes/certificate.routes.js"
 import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER

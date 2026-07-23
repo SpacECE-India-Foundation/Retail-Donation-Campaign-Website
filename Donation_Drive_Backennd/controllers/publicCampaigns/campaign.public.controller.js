@@ -8,7 +8,11 @@ export const fetchPublicCampaigns = async (req, res) => {
   try {
     //just for debugging, remove later
     console.log("fetchPublicCampaigns called")
-    const campaigns = await Campaign.find({}).sort({ createdAt: -1 })
+    const query = {}
+    console.log("fetchPublicCampaigns query:", query)
+    const campaigns = await Campaign.find(query).sort({ createdAt: -1 })
+    //just for debugging, remove later
+    console.log("fetchPublicCampaigns result count:", campaigns.length)
 
     return res.status(200).json(
       new ApiResponse(
@@ -41,10 +45,19 @@ export const fetchPublicCampaignDetail = async (req, res) => {
       "Invalid campaign ID"
     )
 
+    const campaignQuery = { _id: id }
+    const milestoneQuery = { campaign: id }
+    //just for debugging, remove later
+    console.log("fetchPublicCampaignDetail campaignQuery:", campaignQuery)
+    console.log("fetchPublicCampaignDetail milestoneQuery:", milestoneQuery)
+
     const [campaign, milestones] = await Promise.all([
       Campaign.findById(id),
-      Milestone.find({ campaign: id }).sort({ displayOrder: 1 }),
+      Milestone.find(milestoneQuery).sort({ displayOrder: 1 }),
     ])
+    //just for debugging, remove later
+    console.log("fetchPublicCampaignDetail campaign result:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
+    console.log("fetchPublicCampaignDetail milestone count:", milestones.length)
 
     ApiError.notFound(campaign, "Campaign not found")
 

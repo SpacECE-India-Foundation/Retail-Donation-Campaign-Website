@@ -368,10 +368,19 @@ export const fetchAdminCampaigns = async (req,res) =>{
         //first we will get the admin id from the token 
         const adminId = req.admin.adminId
 
+        //just for debugging, remove later
+        console.log("fetchAdminCampaigns adminId:", adminId)
+        const campaignQuery = { createdBy: adminId }
+        console.log("fetchAdminCampaigns query:", campaignQuery)
+
         //now fe will simply find the campaign created by this admin id 
-        const adminCampaigns = await Campaign.find({
-            createdBy:adminId
-        })
+        const adminCampaigns = await Campaign.find(campaignQuery)
+
+        //just for debugging, remove later
+        console.log("fetchAdminCampaigns result count:", adminCampaigns.length)
+        console.log("fetchAdminCampaigns results:", adminCampaigns.map(c => ({ id: c._id, name: c.campaignName, createdBy: c.createdBy })))
+        const campaignCountTotal = await Campaign.countDocuments({})
+        console.log("fetchAdminCampaigns total campaigns in DB:", campaignCountTotal)
 
         //ApiError.notFound(adminCampaigns,"No Campaigns Created by Admin!")
         //here, we cant use notfound because find returns the array and empty array is always truthy so it will not evoke

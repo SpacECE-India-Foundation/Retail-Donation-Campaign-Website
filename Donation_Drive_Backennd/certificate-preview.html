@@ -1,0 +1,324 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Appreciation Certificate</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        @page {
+          size: A4 landscape;
+          margin: 20mm;
+        }
+
+        html,
+        body {
+          width: 100%;
+          height: 100%;
+          margin: 0;
+          padding: 0;
+          font-family: 'Georgia', serif;
+          background: #f5f5f5;
+        }
+
+        .certificate-container {
+          width: calc(100% - 40px);
+          height: calc(100% - 40px);
+          margin: 20px auto;
+          padding: 28px;
+          background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+          border: 2px solid #2c3e50;
+          box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16);
+          position: relative;
+          overflow: hidden;
+          box-sizing: border-box;
+        }
+
+        .certificate-container::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 8px;
+          background: linear-gradient(90deg, #e74c3c, #3498db, #2ecc71);
+        }
+
+        .certificate-content {
+          text-align: center;
+          position: relative;
+          z-index: 1;
+        }
+
+        .logo-section {
+          margin-bottom: 30px;
+        }
+
+        .logo-text {
+          font-size: 24px;
+          font-weight: bold;
+          color: #2c3e50;
+          letter-spacing: 2px;
+        }
+
+        .logo-tagline {
+          font-size: 12px;
+          color: #7f8c8d;
+          margin-top: 5px;
+          font-style: italic;
+        }
+
+        .certificate-title {
+          font-size: 34px;
+          font-weight: bold;
+          color: #e74c3c;
+          margin: 24px 0;
+          text-transform: uppercase;
+          letter-spacing: 2px;
+          text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .certificate-subtitle {
+          font-size: 15px;
+          color: #34495e;
+          margin-bottom: 30px;
+          font-style: italic;
+        }
+
+        .certificate-body {
+          margin: 40px 0;
+          line-height: 1.8;
+        }
+
+        .certificate-body p {
+          font-size: 14px;
+          color: #2c3e50;
+          margin: 15px 0;
+        }
+
+        .donor-name {
+          font-size: 24px;
+          font-weight: bold;
+          color: #2c3e50;
+          margin: 18px 0;
+          border-bottom: 2px solid #3498db;
+          padding-bottom: 8px;
+        }
+
+        .campaign-info {
+          background: #ecf0f1;
+          padding: 16px;
+          border-radius: 8px;
+          margin: 20px 0;
+          border-left: 4px solid #3498db;
+        }
+
+        .info-row {
+          display: flex;
+          justify-content: space-around;
+          margin: 10px 0;
+          font-size: 14px;
+        }
+
+        .info-label {
+          font-weight: bold;
+          color: #34495e;
+          min-width: 100px;
+        }
+
+        .info-value {
+          color: #2c3e50;
+          font-weight: 600;
+        }
+
+        .verification-section {
+          /* moved to a compact floating panel on the right when printed */
+          position: absolute;
+          right: 36px;
+          bottom: 36px;
+          width: 36%;
+          min-width: 220px;
+          padding: 14px 18px;
+          background: #f7fbff;
+          border-radius: 8px;
+          border: 2px dashed #bcdff6;
+        }
+
+        /* place QR at bottom-left corner (absolute inside container) */
+        .qr-code {
+          position: absolute;
+          left: 36px;
+          bottom: 36px;
+          width: auto;
+          height: auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: white;
+          padding: 6px;
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        .qr-code img {
+          width: 140px;
+          height: 140px;
+          display: block;
+        }
+
+        .verification-text {
+          font-size: 11px;
+          color: #7f8c8d;
+          margin-top: 10px;
+          word-break: break-all;
+        }
+
+        /* signature block sits at bottom-right */
+        .certificate-footer {
+          position: absolute;
+          right: 40px;
+          bottom: 36px;
+          text-align: right;
+          max-width: 38%;
+        }
+
+        .signature-box {
+          text-align: right;
+          min-width: 180px;
+        }
+
+        .signature-line {
+          border-top: 2px solid #2c3e50;
+          width: 160px;
+          margin: 30px 0 6px auto;
+        }
+
+        .signature-name {
+          font-size: 12px;
+          font-weight: bold;
+          color: #2c3e50;
+        }
+
+        .signature-title {
+          font-size: 11px;
+          color: #7f8c8d;
+          font-style: italic;
+        }
+
+        .certificate-id {
+          font-size: 9px;
+          color: #95a5a6;
+          margin-top: 30px;
+          text-align: center;
+        }
+
+        .footer-text {
+          font-size: 11px;
+          color: #7f8c8d;
+          margin-top: 20px;
+          text-align: center;
+          font-style: italic;
+        }
+
+        @media print {
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          .certificate-container {
+            margin: 0;
+            box-shadow: none;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="certificate-container">
+        <div class="certificate-content">
+          <!-- Logo Section -->
+          <div class="logo-section">
+            <div class="logo-text">SPACECE INDIA FOUNDATION</div>
+            <div class="logo-tagline">Supporting Children & Community Education</div>
+          </div>
+
+          <!-- Certificate Title -->
+          <div class="certificate-title">Certificate of Appreciation</div>
+
+          <!-- Certificate Subtitle -->
+          <div class="certificate-subtitle">This is to certify that</div>
+
+          <!-- Donor Name -->
+          <div class="donor-name">donor testone</div>
+
+          <!-- Certificate Body -->
+          <div class="certificate-body">
+            <p>has generously contributed to the cause of</p>
+            <p style="font-size: 16px; font-weight: bold; color: #e74c3c;">
+              testcampaign
+            </p>
+            <p>and demonstrated remarkable compassion and commitment to making a positive impact in our community.</p>
+          </div>
+
+          <!-- Campaign & Donation Info -->
+          <div class="campaign-info">
+            <div class="info-row">
+              <div>
+                <div class="info-label">Donation Amount</div>
+                <div class="info-value">₹100</div>
+              </div>
+              <div>
+                <div class="info-label">Date</div>
+                <div class="info-value">Thu Jul 23 2026 14:59:18 GMT+0530 (India Standard Time)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verification Section -->
+          <div class="verification-section">
+            <p style="font-size: 12px; color: #34495e; margin-bottom: 10px;">
+              <strong>Certificate Verification</strong>
+            </p>
+            <div class="qr-code">
+              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA" alt="QR Code" />
+            </div>
+            <p style="font-size: 11px; color: #7f8c8d; margin-top: 10px;">
+              Scan the QR code to verify certificate authenticity or visit:
+            </p>
+            <div class="verification-text">https://example.com/verify/preview</div>
+          </div>
+
+          <!-- Closing Statement -->
+          <p style="font-size: 13px; color: #34495e; margin-top: 30px; font-weight: bold;">
+            With our heartfelt gratitude and best wishes
+          </p>
+
+          <!-- Signature Section -->
+          <div class="certificate-footer">
+            <div class="signature-box">
+              <div class="signature-line"></div>
+              <div class="signature-name">Authorized Signatory</div>
+              <div class="signature-title">SPACECE INDIA FOUNDATION</div>
+            </div>
+          </div>
+
+          <!-- Certificate ID -->
+          <div class="certificate-id">
+            Certificate ID: preview-certificate-id
+          </div>
+
+          <!-- Footer -->
+          <div class="footer-text">
+            This certificate is issued in recognition of the generous contribution made to support our mission of providing quality education and care to underprivileged children. Every donation makes a real difference.
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  
