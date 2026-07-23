@@ -9,7 +9,6 @@ import ImpactPage from "./pages/ImpactPage";
 import CampaignPage from "./pages/CampaignPage";
 import CampaignDetailPage from "./pages/CampaignDetailPage";
 import DonatePage from "./pages/DonatePage";
-import DonationWallPage from "./pages/DonationWallPage";
 import FounderPage from "./pages/FounderPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import ThankYouPage from "./pages/ThankYouPage";
@@ -20,6 +19,7 @@ import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
 import VerificationQueuePage from "./pages/admin/VerificationQueuePage";
 import DonationHistoryPage from "./pages/admin/DonationHistoryPage";
 import CampaignsPage from "./pages/admin/CampaignsPage";
+import AdminCampaignDetailPage from "./pages/admin/AdminCampaignDetailPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
@@ -42,7 +42,6 @@ const router = createBrowserRouter([
       { path: "/campaign/:id/donate", element: <CampaignDetailPage /> },
       { path: "/achievements", element: <AchievementsPage /> },
       { path: "/donate", element: <DonatePage /> },
-      { path: "/donation-wall", element: <DonationWallPage /> },
       { path: "/donate/:campaignId", element: <DonatePage /> },
       { path: "/founders", element: <FounderPage /> },
       { path: "/documents", element: <DocumentsPage /> },
@@ -71,6 +70,10 @@ const router = createBrowserRouter([
       {
         path: "campaigns",
         element: <CampaignsPage />,
+      },
+      {
+        path: "campaigns/:campaignId",
+        element: <AdminCampaignDetailPage />,
       },
       {
         path: "reports",

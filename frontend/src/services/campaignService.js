@@ -57,12 +57,33 @@ export const normalizeMilestone = (milestone = {}) => ({
   milestoneTitle: milestone.milestoneTitle || milestone.title || "Milestone",
   description: milestone.description || "",
   targetAmount: toNumber(milestone.targetAmount),
-  raisedAmount: toNumber(milestone.raisedAmount),
+  // Preserve "no value" as null rather than coercing to 0 — CampaignMilestones only
+  // falls back to displaying targetAmount for a completed milestone when raisedAmount
+  // is null/undefined. The Milestone schema has no raisedAmount field at all today, so
+  // this must stay null (not 0), or every completed milestone renders "Raised: ₹0".
+  raisedAmount: milestone.raisedAmount != null ? toNumber(milestone.raisedAmount) : null,
   displayOrder: toNumber(milestone.displayOrder),
   image: milestone.milestoneImage?.url || milestone.image || "",
   isCompleted: Boolean(milestone.isCompleted),
   completedAt: milestone.completedAt || null,
 });
+
+// Each milestone's targetAmount is an absolute checkpoint on the campaign's total raised
+// amount (like a marathon's distance markers — the "20k" marker means 20k total run, not
+// "20k more" after the "10k" marker). So a milestone's own progress is just how much of
+// its own target the campaign's total raised amount covers, capped at that target — no
+// subtracting other milestones' targets. This overlays a live raisedAmount onto each
+// milestone (fully covered once raised >= its target) so the current one shows real
+// progress instead of sitting at a flat 0% until it snaps to 100%.
+export const withMilestoneProgress = (milestones = [], raisedAmount = 0) => {
+  const sorted = [...milestones].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+
+  return sorted.map((milestone) => {
+    const target = toNumber(milestone.targetAmount);
+    const liveRaised = Math.min(Math.max(raisedAmount, 0), target);
+    return { ...milestone, raisedAmount: liveRaised };
+  });
+};
 
 export const normalizeCampaign = (campaign = {}) => {
   const campaignId = campaign._id || campaign.campaignId || campaign.id || "";
@@ -117,14 +138,18 @@ export const getCampaignDetails = async (campaignId) => {
   const { data } = await api.get(`/campaigns/${campaignId}`);
   const payload = data?.data ?? data;
   const campaign = payload?.campaign ?? payload;
-  const milestones = Array.isArray(payload?.milestones)
-    ? payload.milestones.map(normalizeMilestone)
-    : [];
+  const rawMilestones = Array.isArray(payload?.milestones) ? payload.milestones : [];
 
   if (!campaign) return null;
 
+  const normalizedCampaign = normalizeCampaign(campaign);
+  const milestones = withMilestoneProgress(
+    rawMilestones.map(normalizeMilestone),
+    normalizedCampaign.raised,
+  );
+
   return {
-    ...normalizeCampaign(campaign),
+    ...normalizedCampaign,
     milestones,
   };
 };

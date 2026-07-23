@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef, useId } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Pencil,
@@ -8,7 +9,6 @@ import {
   Loader2,
   AlertTriangle,
   Calendar,
-  Target,
   Users,
   Upload,
   Info,
@@ -19,10 +19,8 @@ import {
 import { Card } from "../../components/common/Card";
 import {
   fetchAdminCampaigns,
-  fetchCampaignDetail,
   createCampaign,
   updateCampaign,
-  updateCampaignImage,
 } from "../../services/campaignService";
 
 /* ------------------------------------------------------------------ */
@@ -220,7 +218,7 @@ const inputClass =
 /* Campaign card                                                       */
 /* ------------------------------------------------------------------ */
 
-const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView, onChangeBanner }) {
+const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView }) {
   const goal = Number(campaign.campaignGoalAmt ?? 0);
   const raised = Number(campaign.campaignRaisedAmt ?? 0);
   const progress = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
@@ -235,13 +233,6 @@ const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView
             <ImageIcon size={32} aria-hidden="true" />
           </div>
         )}
-        <button
-          onClick={() => onChangeBanner(campaign)}
-          className="absolute right-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/60 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur transition hover:bg-black/75"
-        >
-          <ImageIcon size={13} aria-hidden="true" />
-          Change Banner
-        </button>
         <span className="absolute left-3 top-3">
           <StatusBadge status={campaign.campaignStatus} />
         </span>
@@ -602,196 +593,11 @@ function EditCampaignModal({ campaign, onClose, onUpdated, showToast }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Change banner modal                                                 */
-/* ------------------------------------------------------------------ */
-
-function ChangeBannerModal({ campaign, onClose, onUpdated, showToast }) {
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(campaign.campaignBanner?.url ?? "");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleFileChange = (event) => {
-    const selected = event.target.files?.[0];
-    if (!selected) return;
-    setFile(selected);
-    setPreview(URL.createObjectURL(selected));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError("");
-    if (!file) {
-      setError("Please choose a new image first.");
-      return;
-    }
-    setIsSubmitting(true);
-    try {
-      await updateCampaignImage(campaign._id, file);
-      showToast("Banner updated successfully");
-      onUpdated();
-      onClose();
-    } catch (err) {
-      setError(err?.response?.data?.message || "Failed to update banner.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <ModalShell title="Change Campaign Banner" onClose={onClose} icon={ImageIcon} maxWidth="max-w-lg">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            <AlertTriangle size={15} aria-hidden="true" />
-            {error}
-          </div>
-        )}
-        <div className="flex h-40 w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-gray-200 bg-gray-50">
-          {preview ? (
-            <img src={preview} alt="Banner preview" className="h-full w-full object-cover" />
-          ) : (
-            <ImageIcon size={28} className="text-gray-300" aria-hidden="true" />
-          )}
-        </div>
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
-          <Upload size={15} aria-hidden="true" />
-          Choose New Image
-          <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-        </label>
-        <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
-          <button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100">
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Upload size={15} aria-hidden="true" />}
-            Upload
-          </button>
-        </div>
-      </form>
-    </ModalShell>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* View details modal                                                  */
-/* ------------------------------------------------------------------ */
-
-function ViewCampaignModal({ campaignId, onClose }) {
-  const [detail, setDetail] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setError("");
-    fetchCampaignDetail(campaignId)
-      .then((response) => {
-        if (!cancelled) setDetail(response.data?.data ?? null);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.message || "Failed to load campaign details.");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [campaignId]);
-
-  const campaign = detail?.campaign;
-  const milestones = detail?.milestones ?? [];
-
-  return (
-    <ModalShell title="Campaign Details" onClose={onClose} icon={FolderKanban} iconAccent="bg-blue-50 text-blue-600" maxWidth="max-w-2xl">
-      {isLoading && (
-        <div className="flex items-center justify-center gap-2 py-12 text-gray-400">
-          <Loader2 size={20} className="animate-spin" aria-hidden="true" />
-          Loading...
-        </div>
-      )}
-      {!isLoading && error && (
-        <div className="flex flex-col items-center gap-2 py-12 text-center text-gray-500">
-          <AlertTriangle className="text-red-400" size={24} aria-hidden="true" />
-          {error}
-        </div>
-      )}
-      {!isLoading && !error && campaign && (
-        <div className="space-y-5">
-          {campaign.campaignBanner?.url && (
-            <img src={campaign.campaignBanner.url} alt={campaign.campaignName} className="h-40 w-full rounded-xl object-cover" />
-          )}
-          <div className="flex items-center justify-between">
-            <h4 className="text-lg font-semibold text-brand-dark">{campaign.campaignName}</h4>
-            <StatusBadge status={campaign.campaignStatus} />
-          </div>
-          <p className="text-sm text-gray-500">{campaign.campaignDescription}</p>
-
-          <div className="grid grid-cols-2 gap-4 rounded-2xl border border-gray-100 p-4 text-sm sm:grid-cols-4">
-            <div>
-              <p className="flex items-center gap-1 text-xs text-gray-400">
-                <Target size={12} aria-hidden="true" /> Goal
-              </p>
-              <p className="font-semibold text-brand-dark">{formatINR(campaign.campaignGoalAmt)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400">Raised</p>
-              <p className="font-semibold text-brand-dark">{formatINR(campaign.campaignRaisedAmt)}</p>
-            </div>
-            <div>
-              <p className="flex items-center gap-1 text-xs text-gray-400">
-                <Users size={12} aria-hidden="true" /> Contributors
-              </p>
-              <p className="font-semibold text-brand-dark">{campaign.contributors ?? 0}</p>
-            </div>
-            <div>
-              <p className="flex items-center gap-1 text-xs text-gray-400">
-                <Calendar size={12} aria-hidden="true" /> Duration
-              </p>
-              <p className="font-semibold text-brand-dark">
-                {formatDate(campaign.startDate)} – {formatDate(campaign.endDate)}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-sm font-semibold text-brand-dark">Milestones</p>
-            {milestones.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-gray-200 p-4 text-center text-sm text-gray-400">
-                No milestones added for this campaign yet.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {milestones.map((milestone, index) => (
-                  <li key={milestone._id ?? index} className="flex items-center justify-between rounded-xl border border-gray-100 p-3 text-sm">
-                    <span className="font-medium text-brand-dark">
-                      {milestone.title ?? milestone.milestoneName ?? milestone.name ?? `Milestone ${index + 1}`}
-                    </span>
-                    {(milestone.targetAmount ?? milestone.amount) !== undefined && (
-                      <span className="text-gray-500">{formatINR(milestone.targetAmount ?? milestone.amount)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
-    </ModalShell>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Main page                                                           */
 /* ------------------------------------------------------------------ */
 
 export default function CampaignsPage() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
@@ -800,8 +606,6 @@ export default function CampaignsPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
-  const [bannerCampaign, setBannerCampaign] = useState(null);
-  const [viewingCampaignId, setViewingCampaignId] = useState(null);
 
   const showToast = useCallback((message) => {
     setToast(message);
@@ -904,8 +708,7 @@ export default function CampaignsPage() {
               key={campaign._id}
               campaign={campaign}
               onEdit={setEditingCampaign}
-              onView={(c) => setViewingCampaignId(c._id)}
-              onChangeBanner={setBannerCampaign}
+              onView={(c) => navigate(`/admin/campaigns/${c._id}`)}
             />
           ))}
         </div>
@@ -923,17 +726,6 @@ export default function CampaignsPage() {
           showToast={showToast}
         />
       )}
-
-      {bannerCampaign && (
-        <ChangeBannerModal
-          campaign={bannerCampaign}
-          onClose={() => setBannerCampaign(null)}
-          onUpdated={loadCampaigns}
-          showToast={showToast}
-        />
-      )}
-
-      {viewingCampaignId && <ViewCampaignModal campaignId={viewingCampaignId} onClose={() => setViewingCampaignId(null)} />}
     </div>
   );
 }
