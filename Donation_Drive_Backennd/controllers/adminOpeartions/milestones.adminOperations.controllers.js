@@ -11,12 +11,18 @@ import mongoose from "mongoose";
 
 
 //--------------------------------------------------FUNCTION TO ADD MILESTONE--------------------------------------
+// NOTE ON MILESTONE MODEL: each milestone's targetAmount is an absolute checkpoint on the
+// campaign's total raised amount (like a marathon's distance markers — the "20k" marker
+// means 20k total run, not "20k more" after the "10k" marker). So a milestone completes
+// once campaignRaisedAmt reaches its own targetAmount directly, independent of any other
+// milestone. Target amounts are NOT summed against the campaign goal — each one just has
+// to individually fit within it.
 export const addMilestone = async (req,res) =>{
     try {
         //milestones are completely dependent on the campaigns so we need a campaign id for this and that will be find in params
         const adminId = req.admin.adminId
         const {campaignId} = req.params
-        
+
         //now lets check weather this camapign exist ot not
         const camapign = await Campaign.findOne({
             _id:campaignId,
@@ -61,22 +67,18 @@ export const addMilestone = async (req,res) =>{
             "Display order already exists."
         );
 
-        //we have to monitor that all the milestone target amount should not exceed the overall camapign goal Amount
-        const totalAllocated = milestones.reduce((sum,item)=>sum+item.targetAmount,0)
-        ApiError.assert(
-        totalAllocated + Number(targetAmount) <= camapign.campaignGoalAmt,
-        "Total milestone amount exceeds campaign goal."
-        );
-
+        //each milestone's target amount is an absolute checkpoint on the campaign's total
+        //raised amount, so it just needs to individually fit within the campaign goal —
+        //it is NOT summed together with other milestones' target amounts.
         ApiError.assert(
             !isNaN(Number(targetAmount)) &&
             Number(targetAmount) > 0 &&
             Number(targetAmount) <= camapign.campaignGoalAmt,
             "Invalid target amount"
         )
-        
+
         let uploadResult;
-        
+
         if(req.file?.buffer){
             try {
                 uploadResult = await uploadBufferToCloudinary(
@@ -213,7 +215,9 @@ export const updateMilestone = async (req, res) => {
             );
         }
 
-        // Target amount validation
+        // Target amount validation — each milestone's target is an absolute checkpoint on
+        // the campaign's total raised amount, so it only needs to individually fit within
+        // the campaign goal. It is NOT summed against other milestones' target amounts.
         if (targetAmount !== undefined) {
 
             targetAmount = Number(targetAmount);
@@ -223,16 +227,9 @@ export const updateMilestone = async (req, res) => {
                 "Invalid target amount."
             );
 
-            // Existing total excluding current milestone
-            const totalAllocated =
-                milestones.reduce(
-                    (sum, item) => sum + item.targetAmount,
-                    0
-                ) - milestone.targetAmount;
-
             ApiError.assert(
-                totalAllocated + targetAmount <= campaign.campaignGoalAmt,
-                "Total milestone amount exceeds campaign goal."
+                targetAmount <= campaign.campaignGoalAmt,
+                "Target amount cannot exceed the campaign goal."
             );
         }
 
@@ -389,16 +386,16 @@ export const deleteMilestone = async (req,res) =>{
         _id: campaignId,
         createdBy: adminId
         });
-        
+
         ApiError.notFound(campaign, "Campaign not found");
 
         const milestone = await Milestone.findOneAndDelete({
             _id: milestoneId,
             campaign: campaignId
             })
-        
+
         ApiError.notFound(milestone,"Milestone not found");
-        
+
         await Milestone.updateMany(
             {
                 campaign: campaignId,
@@ -459,7 +456,7 @@ export const fetchAdminMilestones = async (req,res) =>{
 
         ApiError.notFound(campaign,"No such campaign Found!!")
 
-        //now lets fetch the milestones for this 
+        //now lets fetch the milestones for this
         const milestones = await Milestone.find({
             campaign:campaignId
         }).sort({ displayOrder: 1 })

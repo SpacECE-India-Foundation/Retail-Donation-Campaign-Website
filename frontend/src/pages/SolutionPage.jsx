@@ -1,12 +1,19 @@
-﻿import {
+﻿ import {
   Users,
   IndianRupee,
   GraduationCap,
   Heart,
-} from "lucide-react";
+ } from "lucide-react";
 import DonationWall from "../components/common/donation/DonationWall";
+import { useState } from "react";
 
 export default function SolutionPage() {
+  const [statistics, setStatistics] = useState({
+    totalRaised: 0,
+    totalDonations: 0,
+    totalCampaigns: 0,
+  });
+
   return (
     <div className="bg-[#FFF8F1] pb-40">
 
@@ -45,7 +52,7 @@ export default function SolutionPage() {
                 </div>
 
                 <h2 className="text-[30px] leading-none font-black text-violet-700">
-                  2,731
+                  {statistics.totalDonations.toLocaleString("en-IN")}
                 </h2>
 
                 <p className="mt-1 text-xs font-medium text-gray-600">
@@ -61,7 +68,7 @@ export default function SolutionPage() {
                 </div>
 
                 <h2 className="text-[30px] leading-none font-black text-pink-700">
-                  ₹24.8L
+                   ₹{statistics.totalRaised.toLocaleString("en-IN")}
                 </h2>
 
                 <p className="mt-1 text-xs font-medium text-gray-600">
@@ -93,11 +100,11 @@ export default function SolutionPage() {
                 </div>
 
                 <h2 className="text-[30px] leading-none font-black text-orange-600">
-                  18
+                   {statistics.totalCampaigns.toLocaleString("en-IN")}
                 </h2>
 
                 <p className="mt-1 text-xs font-medium text-gray-600">
-                  Active Campaigns
+                  Campaigns
                 </p>
               </div>
 
@@ -114,7 +121,7 @@ export default function SolutionPage() {
       backgroundImage: "url('/donation_wall_background.png')",
     }}
     >
-        <DonationWall />
+        <DonationWall setStatistics={setStatistics} /> 
       </div>
 
     </div>
