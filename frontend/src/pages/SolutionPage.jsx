@@ -12,13 +12,13 @@ export default function SolutionPage() {
 
       {/* ================= HERO ================= */}
 
-      <div className="relative w-full h-[560px] overflow-visible">
+     <div className="relative w-full overflow-visible" style={{ aspectRatio: "2109 / 745" }}>
 
         <img
-          src="/coverImage2.png"
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover" 
-        />
+        src="/coverImage2.png"
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover object-top"
+       />
 
         {/* ================= FLOATING GLASS CARD ================= */}
 
