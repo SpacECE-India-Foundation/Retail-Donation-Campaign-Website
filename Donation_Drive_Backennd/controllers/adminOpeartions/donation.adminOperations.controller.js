@@ -2,6 +2,7 @@ import Donation from "../../models/donation.modals.js"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
 import Campaign from "../../models/campaign.modals.js"
+import Milestone from "../../models/milestone.modals.js"
 import emailService from "../../services/email.services.js";
 import Message from "../../models/message.modals.js";
 import Certificate from "../../models/certificate.modals.js";
@@ -18,6 +19,9 @@ export const fetchDonations = async (req, res) => {
     const search = req.query.search?.trim()
     const campaignFilter = req.query.campaign
     const status = req.query.status
+    const paymentMode = req.query.paymentMode
+    const fromDate = req.query.fromDate
+    const toDate = req.query.toDate
 
     const skip = (page - 1) * limit
 
@@ -71,10 +75,25 @@ export const fetchDonations = async (req, res) => {
       filter.status = status
     }
 
-    //just for debugging, remove later
-    console.log("fetchDonations filter:", filter)
-    //just for debugging, remove later
-    console.log("fetchDonations filter:", filter)
+    //if there is a payment mode filter
+    if (paymentMode) {
+      filter.paymentMode = paymentMode
+    }
+
+    //if there is a date range filter (based on when the donation was submitted)
+    if (fromDate || toDate) {
+      filter.createdAt = {}
+      if (fromDate) {
+        filter.createdAt.$gte = new Date(fromDate)
+      }
+      if (toDate) {
+        //include the entire "to" day, not just midnight
+        const endOfDay = new Date(toDate)
+        endOfDay.setHours(23, 59, 59, 999)
+        filter.createdAt.$lte = endOfDay
+      }
+    }
+
     //now we will find donations based on the parameters, plus a total count for pagination
     const [donations, totalDonations] = await Promise.all([
       Donation.find(filter)
@@ -198,11 +217,38 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
 }
 
 
+//--------------------------------------------------HELPER: SYNC MILESTONE COMPLETION AGAINST CAMPAIGN RAISED AMOUNT--------------------------------------------------
+// Each milestone's targetAmount is an absolute checkpoint on the campaign's total raised
+// amount (like a marathon's distance markers — the "20k" marker means 20k total run, not
+// "20k more" after the "10k" marker). So milestone N completes the moment campaignRaisedAmt
+// reaches ITS OWN targetAmount, independent of any other milestone — no summing across
+// milestones. Called inside verifyDonation's transaction right after campaignRaisedAmt is
+// incremented, so it always re-evaluates every milestone against the fresh total — meaning
+// any previously-missed completions catch up automatically on the next verified donation.
+async function syncMilestoneCompletion(campaignId, session) {
+  const [freshCampaign, milestones] = await Promise.all([
+    Campaign.findById(campaignId).session(session),
+    Milestone.find({ campaign: campaignId }).sort({ displayOrder: 1 }).session(session)
+  ])
+
+  if (!freshCampaign) return
+
+  const now = new Date()
+
+  for (const milestone of milestones) {
+    if (!milestone.isCompleted && milestone.targetAmount <= freshCampaign.campaignRaisedAmt) {
+      milestone.isCompleted = true
+      milestone.completedAt = now
+      await milestone.save({ session })
+    }
+  }
+}
+
+
 //-----------------------------------------------------------CONTROLLER FOR THE VERIFICATION OF DONATION----------------------------------------
 export const verifyDonation = async (req,res) =>{
   const session = await mongoose.startSession();  //here, we had starting the session
 
-  //milestone updation is left
   try {
 
     session.startTransaction();
@@ -316,6 +362,9 @@ export const verifyDonation = async (req,res) =>{
     }
 
     await Promise.all(saveOperations)
+
+    //campaignRaisedAmt just moved — recalculate which milestones this reaches
+    await syncMilestoneCompletion(campaign._id, session)
 
     await session.commitTransaction();
     res.status(200).json(
