@@ -2,6 +2,7 @@ import Donation from "../../models/donation.modals.js"
 import { ApiError } from "../../utils/apiError.utils.js"
 import { ApiResponse } from "../../utils/apiResponse.utils.js"
 import Campaign from "../../models/campaign.modals.js"
+import Milestone from "../../models/milestone.modals.js"
 import emailService from "../../services/email.services.js";
 import Message from "../../models/message.modals.js";
 import mongoose from "mongoose";
@@ -194,11 +195,38 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
 }
 
 
+//--------------------------------------------------HELPER: SYNC MILESTONE COMPLETION AGAINST CAMPAIGN RAISED AMOUNT--------------------------------------------------
+// Each milestone's targetAmount is an absolute checkpoint on the campaign's total raised
+// amount (like a marathon's distance markers — the "20k" marker means 20k total run, not
+// "20k more" after the "10k" marker). So milestone N completes the moment campaignRaisedAmt
+// reaches ITS OWN targetAmount, independent of any other milestone — no summing across
+// milestones. Called inside verifyDonation's transaction right after campaignRaisedAmt is
+// incremented, so it always re-evaluates every milestone against the fresh total — meaning
+// any previously-missed completions catch up automatically on the next verified donation.
+async function syncMilestoneCompletion(campaignId, session) {
+  const [freshCampaign, milestones] = await Promise.all([
+    Campaign.findById(campaignId).session(session),
+    Milestone.find({ campaign: campaignId }).sort({ displayOrder: 1 }).session(session)
+  ])
+
+  if (!freshCampaign) return
+
+  const now = new Date()
+
+  for (const milestone of milestones) {
+    if (!milestone.isCompleted && milestone.targetAmount <= freshCampaign.campaignRaisedAmt) {
+      milestone.isCompleted = true
+      milestone.completedAt = now
+      await milestone.save({ session })
+    }
+  }
+}
+
+
 //-----------------------------------------------------------CONTROLLER FOR THE VERIFICATION OF DONATION----------------------------------------
 export const verifyDonation = async (req,res) =>{
   const session = await mongoose.startSession();  //here, we had starting the session
 
-  //milestone updation is left
   try {
 
     session.startTransaction();
@@ -256,6 +284,9 @@ export const verifyDonation = async (req,res) =>{
         }
       )
     ])
+
+    //campaignRaisedAmt just moved — recalculate which milestones this reaches
+    await syncMilestoneCompletion(campaign._id, session)
 
     await session.commitTransaction();
     res.status(200).json(
