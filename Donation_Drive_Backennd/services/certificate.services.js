@@ -1,11 +1,12 @@
 import { v4 as uuidv4 } from "uuid";
 import puppeteer from "puppeteer";
 import { certificateTemplate } from "../templates/certificate.template.js";
-import { generateQRCode, isValidCertificateId } from "../utils/qrcode.utils.js";
+import { generateQRCode} from "../utils/qrcode.utils.js";
 import { uploadBufferToCloudinary, deleteFromCloudinary } from "../utils/cloudinary.utils.js";
 import { ApiError } from "../utils/apiError.utils.js";
 import fs from "fs";
 import path from "path";
+import generateDisplayCertificateNo from "../utils/generateCertificateNumber.utils.js";
 
 class CertificateService {
   constructor() {
@@ -45,16 +46,20 @@ class CertificateService {
     try {
       // Step 1: Generate unique certificate ID (UUID v4)
       const certificateId = uuidv4();
-      const baseUrl = process.env.APP_URL || "http://localhost:5000";
-      const verificationUrl = `${baseUrl}/api/verify-certificate/${certificateId}`;
+      const displayCertificateNo = generateDisplayCertificateNo();
+      const baseUrl = process.env.CLIENT_ADDRESS || "http://localhost:5000";
+      const verificationUrl = `${process.env.CLIENT_ADDRESS}/verify/${certificateId}`;;
+      console.log('certificateId',certificateId)
 
       // Step 2: Generate QR code as data URI
-      const qrCodeDataUri = await generateQRCode(certificateId, baseUrl);
+      const qrCodeDataUri = await generateQRCode(verificationUrl);
+
 
       // Step 3: Prepare certificate template data
       const certificateData = {
         donorName: certData.donorName,
         campaignName: certData.campaignName,
+         displayCertificateNo,
         amount: certData.amount,
         donationDate: this._formatDate(certData.donationDate),
         qrCodeDataUri,
@@ -89,6 +94,7 @@ class CertificateService {
         certificateUrl: cloudinaryResult.secure_url,
         publicId: cloudinaryResult.public_id,
         verificationUrl,
+         displayCertificateNo,
       };
     } catch (error) {
       console.error("Error generating certificate:", error.message);

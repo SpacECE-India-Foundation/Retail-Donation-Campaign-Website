@@ -348,6 +348,7 @@ export const verifyDonation = async (req,res) =>{
         Certificate.create([{
           certificateId: certificateData.certificateId,
           donation: donation._id,
+          displayCertificateNo: certificateData.displayCertificateNo,
           donorName: donation.donorName,
           campaignName: campaign.campaignName,
           amount: donation.amount,

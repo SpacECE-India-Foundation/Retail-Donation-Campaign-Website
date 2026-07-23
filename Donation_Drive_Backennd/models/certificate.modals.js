@@ -67,6 +67,12 @@ const certificateSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    displayCertificateNo: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+},
 
     lastViewedAt: {
       type: Date,

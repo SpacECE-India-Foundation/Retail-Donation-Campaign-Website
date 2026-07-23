@@ -20,7 +20,7 @@ export const verifyCertificate = async (req, res) => {
     const certificate = await Certificate.findOne({
       certificateId: certificateId,
     }).select(
-      "certificateId donorName campaignName amount donationDate certificateUrl verificationUrl verifiedAt viewCount lastViewedAt createdAt"
+      "certificateId displayCertificateNo donorName campaignName amount donationDate certificateUrl verificationUrl verifiedAt viewCount lastViewedAt createdAt"
     );
 
     ApiError.notFound(certificate, "Certificate not found or invalid");
@@ -49,6 +49,7 @@ export const verifyCertificate = async (req, res) => {
         {
           certificate: {
             certificateId: certificate.certificateId,
+            displayCertificateNo: certificate.displayCertificateNo,
             donorName: certificate.donorName,
             campaignName: certificate.campaignName,
             amount: certificate.amount,
