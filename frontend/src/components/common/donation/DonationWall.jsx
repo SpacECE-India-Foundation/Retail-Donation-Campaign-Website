@@ -152,7 +152,7 @@ export default function DonationWall() {
   const topContributionId = topOverallId;
 
   return (
-    <section className="w-full py-14 px-4 sm:px-8" style={{ backgroundColor: "#FFF6ED" }}>
+    <section className="w-full py-14 px-4 sm:px-8">
       <div className="text-center mb-8">
         <h2 className="text-3xl sm:text-4xl font-serif font-semibold flex items-center justify-center gap-2 text-gray-900">
           <Heart className="w-6 h-6 text-rose-400 fill-rose-200" />
@@ -176,41 +176,41 @@ export default function DonationWall() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 max-w-6xl mx-auto">
-            {donations.map((d, i) => {
-              const style = BADGE_STYLES[i % BADGE_STYLES.length];
-              const isTop = d._id === topContributionId;
-              return (
-                <div
-                  key={d._id}
-                  className={`relative bg-white rounded-2xl p-5 shadow-sm border ${
-                    isTop ? "border-amber-300" : "border-gray-100"
-                  }`}
-                >
-                  {isTop && (
-                    <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-medium px-3 py-1 rounded-full mb-3">
-                      <Trophy className="w-3 h-3" /> Top Contribution
-                    </span>
-                  )}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 ${style.bg} ${style.text}`}>
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-semibold text-gray-800">{d.donorName || "Anonymous"}</h3>
-                  <p className={`text-lg font-bold mt-1 ${isTop ? "text-violet-600" : style.text}`}>
-                    {formatINR(d.amount)}
-                  </p>
-                  {d.campaign?.campaignName && (
-                    <p className="text-xs text-gray-400 mt-1">for {d.campaign.campaignName}</p>
-                  )}
-                  <p className="text-sm text-gray-500 mt-2 leading-snug">{d.donorMessage}</p>
-                  <div className="flex items-center justify-between mt-4">
-                    <span className="text-xs text-gray-400">{relativeTime(d.verifiedAt)}</span>
-                    <Heart className="w-4 h-4 text-gray-300" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+  {donations.map((d, i) => {
+    const style = BADGE_STYLES[i % BADGE_STYLES.length];
+    const isTop = d._id === topContributionId;
+    return (
+      <div
+        key={d._id}
+        className={`relative bg-white rounded-2xl p-7 shadow-sm border ${
+          isTop ? "border-amber-300" : "border-gray-100"
+        }`}
+      >
+        {isTop && (
+          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-sm font-medium px-3 py-1 rounded-full mb-4">
+            <Trophy className="w-4 h-4" /> Top Contribution
+          </span>
+        )}
+        <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${style.bg} ${style.text}`}>
+          <Sparkles className="w-7 h-7" />
+        </div>
+        <h3 className="font-semibold text-lg text-gray-800">{d.donorName || "Anonymous"}</h3>
+        <p className={`text-2xl font-bold mt-1 ${isTop ? "text-violet-600" : style.text}`}>
+          {formatINR(d.amount)}
+        </p>
+        {d.campaign?.campaignName && (
+          <p className="text-sm text-gray-400 mt-1">for {d.campaign.campaignName}</p>
+        )}
+        <p className="text-base text-gray-500 mt-3 leading-snug">{d.donorMessage}</p>
+        <div className="flex items-center justify-between mt-5">
+          <span className="text-sm text-gray-400">{relativeTime(d.verifiedAt)}</span>
+          <Heart className="w-5 h-5 text-gray-300" />
+        </div>
+        </div>
+        );
+        })}
+      </div>
 
           {pagination && pagination.totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-10">
