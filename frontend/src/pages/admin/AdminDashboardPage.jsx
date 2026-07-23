@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
   BarChart3,
   Users,
@@ -8,11 +9,14 @@ import {
   ArrowDownRight,
   Loader2,
   AlertTriangle,
+  Bell,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
 import { fetchAdminPendingDonations } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
+
+const NOTIFICATION_POLL_MS = 60000;
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -53,8 +57,115 @@ function getSparkline(seed) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Shared hooks (duplicated locally, matching existing project convention) */
+/* ------------------------------------------------------------------ */
+
+function useClickOutside(ref, onOutside, active) {
+  useEffect(() => {
+    if (!active) return undefined;
+    function handlePointerDown(event) {
+      if (ref.current && !ref.current.contains(event.target)) {
+        onOutside(event);
+      }
+    }
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [active, onOutside, ref]);
+}
+
+function useEscapeKey(onEscape, active) {
+  useEffect(() => {
+    if (!active) return undefined;
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onEscape(event);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [active, onEscape]);
+}
+
+/* ------------------------------------------------------------------ */
 /* Presentational subcomponents                                        */
 /* ------------------------------------------------------------------ */
+
+// Deliberately has no "seen/unseen" tracking of its own — the notification list IS the
+// list of donations still needing review (Pending, or Rejected-with-resubmission). Once
+// an admin verifies/rejects one on the Verification Queue page, it naturally drops out of
+// this list on the next refresh, so "reviewed -> disappears" falls out of the existing
+// data model for free, no extra dismiss/seen state needed.
+function NotificationBell({ items }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  const close = useCallback(() => setOpen(false), []);
+
+  useClickOutside(containerRef, close, open);
+  useEscapeKey(close, open);
+
+  const count = items.length;
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-label={`Notifications${count > 0 ? ` (${count} need review)` : ""}`}
+        aria-expanded={open}
+        className="relative rounded-full border border-gray-100 bg-white p-2.5 text-gray-500 shadow-sm transition hover:bg-gray-50"
+      >
+        <Bell size={18} aria-hidden="true" />
+        {count > 0 && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+            {count > 9 ? "9+" : count}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-2xl">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="font-semibold text-brand-dark">Needs Review</p>
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {count === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-gray-400">You're all caught up.</p>
+            ) : (
+              <ul className="divide-y divide-gray-50">
+                {items.slice(0, 8).map((donation) => (
+                  <li key={donation._id}>
+                    <Link
+                      to="/admin/verification-queue"
+                      onClick={close}
+                      className="block px-4 py-3 transition hover:bg-orange-50"
+                    >
+                      <p className="text-sm font-medium text-brand-dark">
+                        {donation.donorName || "Donor"} · {formatINR(donation.amount)}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-gray-400">
+                        {donation.campaign?.campaignName ?? "Campaign"} ·{" "}
+                        {donation.status === "Rejected" ? "Resubmitted, needs re-review" : "Pending verification"}
+                      </p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          {count > 0 && (
+            <Link
+              to="/admin/verification-queue"
+              onClick={close}
+              className="block border-t border-gray-100 px-4 py-3 text-center text-sm font-medium text-brand-orange transition hover:bg-orange-50"
+            >
+              Review all ({count})
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const StatCard = React.memo(function StatCard({ title, value, change, isPositive, icon: Icon, accent }) {
   const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight;
@@ -103,8 +214,11 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
 
-  const loadOverview = useCallback(async () => {
-    setIsLoading(true);
+  // silent=true skips the full-page loading spinner — used for the background poll so
+  // the notification bell's count refreshes without the whole dashboard flashing back
+  // to a loading state every 60 seconds.
+  const loadOverview = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setIsLoading(true);
     setFetchError("");
     try {
       const [donationsRes, campaignsRes] = await Promise.allSettled([
@@ -119,14 +233,19 @@ export default function AdminDashboardPage() {
         campaignsRes.status === "fulfilled" ? campaignsRes.value.data?.data?.campaigns ?? [] : []
       );
     } catch (error) {
-      setFetchError("Failed to load dashboard overview.");
+      if (!silent) setFetchError("Failed to load dashboard overview.");
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadOverview();
+    // Light polling so the notification bell's count stays reasonably fresh without
+    // requiring a manual page reload — no websockets/backend push exists, so this is
+    // the simple option. Silent so it doesn't interrupt whatever the admin is doing.
+    const intervalId = setInterval(() => loadOverview({ silent: true }), NOTIFICATION_POLL_MS);
+    return () => clearInterval(intervalId);
   }, [loadOverview]);
 
   const stats = useMemo(() => {
@@ -145,10 +264,13 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand-orange">Overview</p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-dark sm:text-4xl">Admin Dashboard</h1>
-        <p className="mt-2 text-gray-500">Welcome back! Monitor donations, campaigns and platform activity.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-orange">Overview</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-dark sm:text-4xl">Admin Dashboard</h1>
+          <p className="mt-2 text-gray-500">Welcome back! Monitor donations, campaigns and platform activity.</p>
+        </div>
+        <NotificationBell items={donations} />
       </div>
 
       <div className="h-1 w-full rounded-full bg-gradient-to-r from-brand-orange via-orange-300 to-transparent" aria-hidden="true" />
