@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
+import TrackDonationsPage from "./pages/TrackDonationsPage";
 import AchievementsPage from "./pages/AchievementsPage";
 import HomePage from "./pages/HomePage";
 import AboutPage from "./pages/AboutPage";
@@ -30,6 +31,7 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { path: "/", element: <HomePage /> },
+     { path: "/track-donations", element: <TrackDonationsPage /> },
       { path: "/components", element: <ComponentShowcase /> },
       { path: "/about", element: <AboutPage /> },
       { path: "/problem", element: <ProblemPage /> },
