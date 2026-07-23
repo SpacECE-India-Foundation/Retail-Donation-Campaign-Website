@@ -13,6 +13,10 @@ import { deleteFromCloudinary } from "../../utils/cloudinary.utils.js";
 export const registerDonation = async (req,res) =>{
     
     try {
+        //just for debugging, remove later
+        console.log("registerDonation request body:", req.body)
+        console.log("registerDonation file attached:", Boolean(req.file && req.file.buffer))
+
         //This will be a publicly available form so there no authentication needed we can directly start by taking the input from the body
         let {
             donorName,
@@ -118,6 +122,17 @@ export const registerDonation = async (req,res) =>{
             })
         ])
 
+        //just for debugging, remove later
+        console.log("registerDonation validation:", {
+          campaign,
+          campaignExists,
+          donorEmail,
+          donorValid,
+          transactionId,
+          isTransactionIdExist,
+          filePresent: Boolean(req.file && req.file.buffer)
+        })
+
         //now we will check weather the booleans are false then we will return the not conitunous message
         ApiError.assert(campaignExists,"Campaign Associated with this donation is Invalid")
         ApiError.assert(!donorValid,"We have already received your donation request. Please wait a few minutes before trying again.")
@@ -132,6 +147,12 @@ export const registerDonation = async (req,res) =>{
             req.file.buffer,
             "donation-screenshots"
             );
+            //just for debugging, remove later
+            console.log("registerDonation uploadResult:", {
+              secure_url: uploadResult?.secure_url,
+              public_id: uploadResult?.public_id,
+              status: uploadResult ? "ok" : "missing"
+            })
         } catch (error) {
             //just for debugging, remove later
             console.log("Cloudinary Error:", error)
@@ -218,10 +239,12 @@ export const fetchDonorDetails = async (req,res) =>{
         );
 
         const normalizedEmail = donorEmail.trim().toLowerCase();
+        //just for debugging, remove later
+        console.log("fetchDonorDetails normalizedEmail:", normalizedEmail)
+        const donationQuery = { donorEmail: normalizedEmail }
+        console.log("fetchDonorDetails query:", donationQuery)
         //now we will fetch all the details of the donations made by this email in the order that the recent donation appears first
-        const donations = await Donation.find({
-                    donorEmail: normalizedEmail
-                })
+        const donations = await Donation.find(donationQuery)
                 .populate(
                     "campaign",
                     "campaignName"
@@ -242,6 +265,10 @@ export const fetchDonorDetails = async (req,res) =>{
                     createdAt:-1
                 });
 
+        //just for debugging, remove later
+        console.log("fetchDonorDetails donations count:", donations.length,
+          donations.map((d) => ({ id: d._id, status: d.status, email: d.donorEmail, campaign: d.campaign }))
+        )
         //lets check weather this email exist or not 
         ApiError.assert(donations.length>0,"No donation for this email")
 

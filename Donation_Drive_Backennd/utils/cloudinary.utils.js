@@ -1,3 +1,4 @@
+import fs from "fs"
 import { v2 as cloudinary } from "cloudinary"
 import { Readable } from "stream"
 
@@ -8,41 +9,55 @@ cloudinary.config({
   secure: true,
 })
 
-export const uploadBufferToCloudinary = async (buffer, folder = "donation_drive") => {
+export const uploadBufferToCloudinary = async (
+  bufferOrPath,
+  folder = "donation_drive",
+  resourceType = "image"
+) => {
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-    folder,
-    resource_type: "image",
-
-    transformation: [
-      {
-        width: 1200,
-        height: 675,
-        crop: "fill",
-        gravity: "auto",
+        folder,
+        resource_type: resourceType,
+        transformation:
+          resourceType === "image"
+            ? [
+                {
+                  width: 1200,
+                  height: 675,
+                  crop: "fill",
+                  gravity: "auto",
+                },
+                {
+                  quality: "auto",
+                },
+                {
+                  fetch_format: "auto",
+                },
+                {
+                  flags: "progressive",
+                },
+              ]
+            : undefined,
       },
-      {
-        quality: "auto",
-      },
-      {
-        fetch_format: "auto",
-      },
-      {
-        flags: "progressive",
-      },
-    ],
-  },
-  (error, result) => {
-    if (error) {
-      reject(error);
-    } else {
-      resolve(result);
-    }
-  }
+      (error, result) => {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(result)
+        }
+      }
     )
 
-    Readable.from(buffer).pipe(uploadStream)
+    if (typeof bufferOrPath === "string") {
+      fs.createReadStream(bufferOrPath).pipe(uploadStream)
+    } else if (Buffer.isBuffer(bufferOrPath)) {
+      Readable.from(bufferOrPath).pipe(uploadStream)
+    } else if (bufferOrPath instanceof ArrayBuffer || ArrayBuffer.isView(bufferOrPath)) {
+      Readable.from(Buffer.from(bufferOrPath)).pipe(uploadStream)
+    } else {
+      reject(new Error("uploadBufferToCloudinary expects a Buffer or local file path"))
+    }
   })
 }
 
