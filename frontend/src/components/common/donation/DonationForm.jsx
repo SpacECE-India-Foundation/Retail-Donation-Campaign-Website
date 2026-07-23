@@ -5,6 +5,15 @@ import {
   X,
   IndianRupee,
   ImagePlus,
+  Wallet,
+  ShieldCheck,
+  Smartphone,
+  User,
+  Landmark,
+  Hash,
+  KeyRound,
+  Info,
+  Copy,
 } from "lucide-react";
 import { Button } from "../Button";
 import FormField, { inputClass } from "./FormField";
@@ -283,6 +292,113 @@ export default function DonationForm({
                 </select>
               )}
             </FormField>
+          </div>
+
+          {/* Organisation Payment Details */}
+          <div className="rounded-2xl border border-brand-border/60 bg-brand-cream/40 p-5 sm:p-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange">
+                  <Wallet size={20} aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-brand-dark sm:text-lg">
+                    Organisation Payment Details
+                  </h3>
+                  <p className="mt-1 text-sm text-brand-muted">
+                    Complete your payment using the QR code or bank details
+                    below.
+                  </p>
+                </div>
+              </div>
+
+              <span className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-full border border-brand-teal/20 bg-brand-teal/5 px-3 py-1.5 text-xs font-semibold text-brand-teal">
+                <ShieldCheck size={14} aria-hidden="true" />
+                Secure Payment
+              </span>
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2 lg:items-stretch">
+              {/* QR Card */}
+              <div className="group overflow-hidden rounded-2xl border border-brand-border bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                <div className="flex flex-col items-center gap-3 p-6">
+                  <div className="overflow-hidden rounded-xl border border-brand-border bg-white p-3 transition-colors duration-300 group-hover:border-brand-orange/40">
+                    <img
+                      src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=SpaceECE%20Foundation%20Donation%20Demo"
+                      alt="Demo QR code for organisation payment"
+                      className="h-40 w-40 rounded-md object-contain sm:h-48 sm:w-48"
+                    />
+                  </div>
+                  <p className="text-center text-base font-bold uppercase tracking-wide text-brand-orange">
+                    Scan &amp; Pay
+                  </p>
+                  <p className="text-center text-xs text-brand-muted">
+                    Demo QR (Will be replaced with organisation QR)
+                  </p>
+                </div>
+                <div className="flex items-start gap-2.5 border-t border-brand-border/60 bg-brand-cream/40 px-5 py-4">
+                  <Smartphone
+                    size={16}
+                    className="mt-0.5 shrink-0 text-brand-orange"
+                    aria-hidden="true"
+                  />
+                  <span className="text-sm text-brand-dark">
+                    Scan this QR code using any UPI app to make the payment.
+                  </span>
+                </div>
+              </div>
+
+              {/* Bank Details Card */}
+              <div className="rounded-2xl border border-brand-border bg-white p-5 shadow-sm sm:p-6">
+                <dl className="divide-y divide-brand-border/60">
+                  {[
+                    { label: "Account Holder", value: "SpaceECE Foundation", icon: User },
+                    { label: "Bank Name", value: "State Bank of India", icon: Landmark },
+                    { label: "Account Number", value: "1234567890123456", icon: Hash },
+                    { label: "IFSC", value: "SBIN0001234", icon: KeyRound },
+                    { label: "UPI ID", value: "spaceece@sbi", icon: Smartphone },
+                  ].map((row) => (
+                    <div
+                      key={row.label}
+                      className="flex items-center justify-between gap-3 py-3.5 first:pt-0 last:pb-0"
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-orange/10 text-brand-orange">
+                          <row.icon size={15} aria-hidden="true" />
+                        </span>
+                        <div className="min-w-0">
+                          <dt className="text-xs text-brand-muted">{row.label}</dt>
+                          <dd className="truncate text-sm font-semibold text-brand-dark">
+                            {row.value}
+                          </dd>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="shrink-0 rounded-lg p-2 text-brand-muted transition-colors duration-200 hover:bg-brand-orange/10 hover:text-brand-orange"
+                        aria-label={`Copy ${row.label}`}
+                      >
+                        <Copy size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </div>
+
+            {/* Info banner */}
+            <div className="mt-5 flex items-start gap-3 rounded-xl border border-brand-orange/20 bg-brand-orange/5 px-4 py-3.5">
+              <Info
+                size={16}
+                className="mt-0.5 shrink-0 text-brand-orange"
+                aria-hidden="true"
+              />
+              <p className="text-sm text-brand-dark">
+                This is a temporary payment section for frontend development.
+                Actual organisation payment details and QR code will be
+                connected later.
+              </p>
+            </div>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
