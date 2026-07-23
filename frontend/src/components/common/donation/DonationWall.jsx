@@ -26,6 +26,7 @@ function formatINR(amount) {
 
 async function fetchDonations({ lastDays, page = 1, limit = 12 }) {
   const params = new URLSearchParams({ page, limit });
+  console.log(ENDPOINT)
   if (lastDays && lastDays !== "all") params.set("lastDays", lastDays);
 
   const res = await fetch(`${ENDPOINT}?${params.toString()}`, {
@@ -91,7 +92,7 @@ function RangeDropdown({ value, onChange }) {
   );
 }
 
-export default function DonationWall() {
+export default function DonationWall({ setStatistics }) {
   const [range, setRange] = useState("all");
   const [donations, setDonations] = useState([]);
   const [pagination, setPagination] = useState(null);
@@ -136,6 +137,9 @@ export default function DonationWall() {
         if (cancelled) return;
         setDonations(data.donations);
         setPagination(data.pagination);
+        if (setStatistics) {
+        setStatistics(data.statistics);
+    }
       })
       .catch((err) => {
         if (!cancelled) setError(err.message);
