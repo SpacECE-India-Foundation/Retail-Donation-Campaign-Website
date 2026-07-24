@@ -199,7 +199,7 @@ export const registerDonation = async (req,res) =>{
             campaignName: "Early Childhood Education",
             donationAmount,
             transactionId,
-            trackingLink: `${process.env.FRONTEND_URL}/track-donation/${newDonation._id}`
+            trackingLink: `${process.env.CLIENT_ADDRESS}/track-donations`
             }).catch(err => {
             console.error("Email sending failed:", err);
         });
