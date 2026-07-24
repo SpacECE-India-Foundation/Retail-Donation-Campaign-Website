@@ -2,26 +2,19 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Settings as SettingsIcon,
-  UserCircle,
-  Upload,
   Loader2,
   AlertTriangle,
   CheckCircle2,
   KeyRound,
-  Save,
   ShieldCheck,
-  Clock3,
   LogOut,
-  IdCard,
-  BadgeCheck,
-  BadgeX,
   SlidersHorizontal,
   PanelLeftClose,
   PanelLeft,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
-import { getCurrentAdmin, updateAdminProfile, changePassword, logout } from "../../services/authService";
+import { getCurrentAdmin, changePassword, logout } from "../../services/authService";
 
 /* ------------------------------------------------------------------ */
 /* Constants + utilities                                               */
@@ -32,13 +25,6 @@ const TOAST_DURATION_MS = 3000;
 
 const inputClass =
   "w-full rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white";
-
-function getInitials(name) {
-  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  const initials = parts.length === 1 ? parts[0].slice(0, 2) : `${parts[0][0]}${parts[parts.length - 1][0]}`;
-  return initials.toUpperCase();
-}
 
 function formatDateTime(value) {
   if (!value) return "—";
@@ -101,113 +87,6 @@ function Toast({ message }) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Profile section                                                     */
-/* ------------------------------------------------------------------ */
-
-function ProfileSection({ admin, onUpdated, showToast }) {
-  const [fullName, setFullName] = useState(admin.fullName ?? "");
-  const [phone, setPhone] = useState(admin.phone ?? "");
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(admin.profileImage ?? "");
-  const [error, setError] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError("");
-
-    if (fullName.trim().length < 3) {
-      setError("Full name should be at least 3 characters.");
-      return;
-    }
-    if (phone.trim() && !/^[6-9]\d{9}$/.test(phone.trim())) {
-      setError("Please enter a valid 10-digit phone number.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const payload = { fullName: fullName.trim(), phone: phone.trim() };
-      if (imageFile) payload.profileImage = imageFile;
-      const response = await updateAdminProfile(payload);
-      showToast("Profile updated successfully");
-      onUpdated(response.data?.data);
-    } catch (err) {
-      setError(err?.response?.data?.message || "Failed to update profile.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <Card className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-      <SectionHeader
-        icon={UserCircle}
-        iconBg="bg-brand-orange/10"
-        iconText="text-brand-orange"
-        title="Profile"
-        subtitle="Update your name, phone, and profile photo."
-      />
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {error && (
-          <div className="flex items-center gap-2 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-            <AlertTriangle size={15} aria-hidden="true" />
-            {error}
-          </div>
-        )}
-
-        <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-100">
-            {imagePreview ? (
-              <img src={imagePreview} alt="Profile" className="h-full w-full object-cover" />
-            ) : (
-              <span className="text-lg font-bold text-gray-400">{getInitials(fullName)}</span>
-            )}
-          </div>
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50">
-            <Upload size={15} aria-hidden="true" />
-            Change Photo
-            <input type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
-          </label>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Full Name">
-            <input className={inputClass} value={fullName} onChange={(e) => setFullName(e.target.value)} />
-          </FormField>
-          <FormField label="Email" hint="Email can't be changed here">
-            <input className={`${inputClass} cursor-not-allowed opacity-60`} value={admin.email ?? ""} disabled />
-          </FormField>
-        </div>
-
-        <FormField label="Phone" hint="10-digit mobile number, optional">
-          <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" />
-        </FormField>
-
-        <div className="flex justify-end border-t border-gray-100 pt-4">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSaving ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Save size={15} aria-hidden="true" />}
-            Save Changes
-          </button>
-        </div>
-      </form>
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------------------ */
 /* Security & Sessions section                                        */
 /* ------------------------------------------------------------------ */
 
@@ -255,43 +134,6 @@ function SecuritySection({ admin }) {
           {isLoggingOut ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <LogOut size={15} aria-hidden="true" />}
           Log Out From This Device
         </button>
-      </div>
-    </Card>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Account Overview section                                            */
-/* ------------------------------------------------------------------ */
-
-function AccountOverviewSection({ admin }) {
-  return (
-    <Card className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
-      <SectionHeader
-        icon={IdCard}
-        iconBg="bg-blue-50"
-        iconText="text-blue-600"
-        title="Account Overview"
-        subtitle="Basic details about this admin account."
-      />
-
-      <div>
-        <InfoRow label="Admin ID" value={admin._id ?? "—"} />
-        <InfoRow label="Account Created" value={formatDateTime(admin.createdAt)} />
-        <InfoRow
-          label="Verification Status"
-          value={
-            admin.isVerified ? (
-              <span className="flex items-center gap-1 text-emerald-600">
-                <BadgeCheck size={14} aria-hidden="true" /> Verified
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-amber-600">
-                <BadgeX size={14} aria-hidden="true" /> Not Verified
-              </span>
-            )
-          }
-        />
       </div>
     </Card>
   );
@@ -358,11 +200,29 @@ function PreferencesSection({ showToast }) {
 
 function PasswordSection({ showToast }) {
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  const resetFields = () => {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError("");
+  };
+
+  const startEditing = () => {
+    resetFields();
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    resetFields();
+    setIsEditing(false);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -398,6 +258,29 @@ function PasswordSection({ showToast }) {
       setIsSaving(false);
     }
   };
+
+  if (!isEditing) {
+    return (
+      <Card className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
+        <div className="flex items-start justify-between gap-4">
+          <SectionHeader
+            icon={KeyRound}
+            iconBg="bg-red-50"
+            iconText="text-red-600"
+            title="Change Password"
+            subtitle="Update the password used to sign in to this admin account."
+          />
+          <button
+            onClick={startEditing}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+          >
+            <KeyRound size={14} aria-hidden="true" />
+            Change Password
+          </button>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="rounded-3xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -448,7 +331,15 @@ function PasswordSection({ showToast }) {
           </FormField>
         </div>
 
-        <div className="flex justify-end border-t border-gray-100 pt-4">
+        <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
+          <button
+            type="button"
+            onClick={cancelEditing}
+            disabled={isSaving}
+            className="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
           <button
             type="submit"
             disabled={isSaving}
@@ -501,12 +392,6 @@ export default function SettingsPage() {
     loadAdmin();
   }, [loadAdmin]);
 
-  const handleProfileUpdated = useCallback((updated) => {
-    if (updated) {
-      setAdmin((prev) => ({ ...prev, ...updated }));
-    }
-  }, []);
-
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Toast message={toast} />
@@ -517,7 +402,7 @@ export default function SettingsPage() {
           Settings
         </p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-dark">Settings</h1>
-        <p className="mt-2 text-gray-500">Manage your admin profile, security, and preferences.</p>
+        <p className="mt-2 text-gray-500">Security, app preferences, and your password. Looking for your profile info? That moved to My Profile in the account menu.</p>
       </div>
 
       {isLoading && (
@@ -539,9 +424,7 @@ export default function SettingsPage() {
 
       {!isLoading && !fetchError && admin && (
         <>
-          <ProfileSection admin={admin} onUpdated={handleProfileUpdated} showToast={showToast} />
           <SecuritySection admin={admin} />
-          <AccountOverviewSection admin={admin} />
           <PreferencesSection showToast={showToast} />
           <PasswordSection showToast={showToast} />
         </>
