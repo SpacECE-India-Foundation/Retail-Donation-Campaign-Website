@@ -255,9 +255,10 @@ function ExpandedDetails({ donation, donorEmail, onUpdate, isUpdating }) {
   const hasChanges =
     transactionId.trim() !== donation.transactionId || screenshotFile !== null;
 
-  // Rejected donations can always resubmit; any other donation that simply
-  // never got a screenshot on file can still have one added.
-  const canAddScreenshot = isEditable || !donation.screenshotUrl;
+  // Screenshot upload/replace is only ever allowed once a donation has been
+  // rejected. Pending and Verified donations are always view-only, even if
+  // no screenshot exists yet.
+  const canAddScreenshot = isEditable;
 
   const applyFile = (file) => {
     if (!file) return;
