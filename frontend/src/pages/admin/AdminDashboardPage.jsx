@@ -10,10 +10,13 @@ import {
   Loader2,
   AlertTriangle,
   Bell,
+  CheckCircle2,
+  XCircle,
+  Trophy,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
-import { fetchAdminPendingDonations } from "../../services/donationService";
+import { fetchAdminPendingDonations, fetchRecentActivity } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
 
 const NOTIFICATION_POLL_MS = 60000;
@@ -21,10 +24,6 @@ const NOTIFICATION_POLL_MS = 60000;
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
 /* ------------------------------------------------------------------ */
-
-// No backend activity-log endpoint exists yet, so Recent Activity shows an
-// honest empty state instead of fabricated rows. Wire this up once a real
-// admin activity/audit endpoint exists.
 
 const STAT_ACCENTS = [
   { iconBg: "bg-brand-orange/10", iconText: "text-brand-orange", bar: "bg-brand-orange" },
@@ -54,6 +53,21 @@ function hashString(value) {
 function getSparkline(seed) {
   const base = hashString(seed);
   return Array.from({ length: 7 }, (_, i) => 30 + ((base >> (i * 3)) % 70));
+}
+
+function formatRelativeTime(value) {
+  if (!value) return "";
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffMs = Date.now() - then;
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,6 +181,59 @@ function NotificationBell({ items }) {
   );
 }
 
+// Renders one row of the merged donation-verification / milestone-completion
+// timeline. `type` drives the icon/accent; the rest of the fields come
+// straight from fetchRecentActivity's response.
+function ActivityRow({ item }) {
+  const config = {
+    donation_verified: {
+      icon: CheckCircle2,
+      iconBg: "bg-emerald-50",
+      iconText: "text-emerald-600",
+      text: (
+        <>
+          <span className="font-medium text-brand-dark">{item.donorName || "A donor"}</span>'s donation of{" "}
+          <span className="font-medium text-brand-dark">{formatINR(item.amount)}</span> to {item.campaignName} was verified
+        </>
+      ),
+    },
+    donation_rejected: {
+      icon: XCircle,
+      iconBg: "bg-red-50",
+      iconText: "text-red-600",
+      text: (
+        <>
+          <span className="font-medium text-brand-dark">{item.donorName || "A donor"}</span>'s donation of{" "}
+          <span className="font-medium text-brand-dark">{formatINR(item.amount)}</span> to {item.campaignName} was rejected
+        </>
+      ),
+    },
+    milestone_completed: {
+      icon: Trophy,
+      iconBg: "bg-amber-50",
+      iconText: "text-amber-600",
+      text: (
+        <>
+          {item.campaignName} reached the <span className="font-medium text-brand-dark">"{item.milestoneTitle}"</span> milestone
+        </>
+      ),
+    },
+  }[item.type];
+
+  if (!config) return null;
+  const Icon = config.icon;
+
+  return (
+    <li className="flex items-start gap-3 py-3">
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${config.iconBg} ${config.iconText}`}>
+        <Icon size={15} aria-hidden="true" />
+      </span>
+      <p className="flex-1 text-sm text-gray-600">{config.text}</p>
+      <span className="shrink-0 text-xs text-gray-400">{formatRelativeTime(item.timestamp)}</span>
+    </li>
+  );
+}
+
 const StatCard = React.memo(function StatCard({ title, value, change, isPositive, icon: Icon, accent }) {
   const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight;
   const sparkline = useMemo(() => getSparkline(title), [title]);
@@ -211,6 +278,7 @@ const StatCard = React.memo(function StatCard({ title, value, change, isPositive
 export default function AdminDashboardPage() {
   const [donations, setDonations] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
+  const [activity, setActivity] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
 
@@ -221,9 +289,10 @@ export default function AdminDashboardPage() {
     if (!silent) setIsLoading(true);
     setFetchError("");
     try {
-      const [donationsRes, campaignsRes] = await Promise.allSettled([
+      const [donationsRes, campaignsRes, activityRes] = await Promise.allSettled([
         fetchAdminPendingDonations(),
         fetchAdminCampaigns(),
+        fetchRecentActivity(),
       ]);
 
       setDonations(
@@ -231,6 +300,9 @@ export default function AdminDashboardPage() {
       );
       setCampaigns(
         campaignsRes.status === "fulfilled" ? campaignsRes.value.data?.data?.campaigns ?? [] : []
+      );
+      setActivity(
+        activityRes.status === "fulfilled" ? activityRes.value.data?.data?.activity ?? [] : []
       );
     } catch (error) {
       if (!silent) setFetchError("Failed to load dashboard overview.");
@@ -308,9 +380,17 @@ export default function AdminDashboardPage() {
               </div>
               <span className="text-sm text-gray-400">Updated just now</span>
             </div>
-            <p className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-6 text-center text-sm text-gray-500">
-              No recent activity data available yet.
-            </p>
+            {activity.length === 0 ? (
+              <p className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-6 text-center text-sm text-gray-500">
+                No recent activity yet — verified donations and completed milestones will show up here.
+              </p>
+            ) : (
+              <ul className="divide-y divide-gray-50">
+                {activity.map((item, index) => (
+                  <ActivityRow key={`${item.type}-${item.timestamp}-${index}`} item={item} />
+                ))}
+              </ul>
+            )}
           </Card>
         </>
       )}

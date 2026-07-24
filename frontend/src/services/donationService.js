@@ -69,3 +69,8 @@ export const updateDonation = async (donationId, { transactionId, screenshotFile
   );
   return response.data.data;
 };
+
+// merged timeline of recent donation verifications/rejections + milestone completions,
+// used by the admin dashboard's "Recent Activity" card
+export const fetchRecentActivity = (limit = 8) =>
+  api.get("/donations/recent-activity", { params: { limit } });
