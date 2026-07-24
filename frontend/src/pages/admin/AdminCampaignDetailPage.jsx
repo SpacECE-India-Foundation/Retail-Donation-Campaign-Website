@@ -774,7 +774,16 @@ export default function AdminCampaignDetailPage() {
       </div>
 
       {/* Everything below this line reuses Priya's public campaign-detail visual design as-is */}
-      <DonationHeroBanner campaign={displayCampaign} stats={stats} onDonateClick={() => navigate(`/donate/${displayCampaign.campaignId}`)} onShare={handleShare} />
+      <DonationHeroBanner
+        campaign={displayCampaign}
+        stats={stats}
+        onDonateClick={() => navigate(`/donate/${displayCampaign.campaignId}`)}
+        onShare={handleShare}
+        breadcrumbHomeHref="/admin"
+        breadcrumbHomeLabel="Dashboard"
+        breadcrumbListHref="/admin/campaigns"
+        breadcrumbListLabel="Campaigns"
+      />
 
       <div className="mx-auto max-w-7xl space-y-10 px-4 sm:space-y-12 sm:px-6 lg:px-8">
         <CampaignOverview stats={stats} />

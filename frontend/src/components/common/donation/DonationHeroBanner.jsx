@@ -10,6 +10,14 @@ export default function DonationHeroBanner({
   stats,
   onDonateClick,
   onShare,
+  // Optional breadcrumb overrides — default to the public site's own links so this
+  // component's behavior is byte-for-byte unchanged for existing (public) callers.
+  // The admin Campaign Detail page passes /admin + /admin/campaigns here instead,
+  // since sending an admin out to the public site via this breadcrumb was a real bug.
+  breadcrumbHomeHref = "/",
+  breadcrumbHomeLabel = "Home",
+  breadcrumbListHref = "/campaign",
+  breadcrumbListLabel = "Campaigns",
 }) {
   const title = campaign?.campaignName ?? defaultHero?.title ?? "Support a Campaign";
   const description =
@@ -26,12 +34,12 @@ export default function DonationHeroBanner({
         aria-label="Breadcrumb"
         className="mb-4 flex flex-wrap items-center gap-1 text-sm text-brand-muted"
       >
-        <Link to="/" className="transition-colors hover:text-brand-orange">
-          Home
+        <Link to={breadcrumbHomeHref} className="transition-colors hover:text-brand-orange">
+          {breadcrumbHomeLabel}
         </Link>
         <ChevronRight size={14} aria-hidden="true" />
-        <Link to="/campaign" className="transition-colors hover:text-brand-orange">
-          Campaigns
+        <Link to={breadcrumbListHref} className="transition-colors hover:text-brand-orange">
+          {breadcrumbListLabel}
         </Link>
         <ChevronRight size={14} aria-hidden="true" />
         <span className="font-medium text-brand-dark">
