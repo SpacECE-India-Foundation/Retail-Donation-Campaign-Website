@@ -21,6 +21,7 @@ import CampaignsPage from "./pages/admin/CampaignsPage";
 import AdminCampaignDetailPage from "./pages/admin/AdminCampaignDetailPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
+import MyProfilePage from "./pages/admin/MyProfilePage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -82,6 +83,10 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: <SettingsPage />,
+      },
+      {
+        path: "profile",
+        element: <MyProfilePage />,
       },
     ],
   },
