@@ -574,7 +574,7 @@ import fs from "fs";
 import path from "path";
 
 const logo = fs.readFileSync(
-    path.join(process.cwd(), "assets", "spaceecelogo.png")
+    path.join(process.cwd(), "assets", "spacecelogo.png")
 );
 
 const logoBase64 = `data:image/png;base64,${logo.toString("base64")}`;
