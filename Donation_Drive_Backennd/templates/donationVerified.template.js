@@ -80,30 +80,6 @@ Verified ✅
 
 </table>
 
-${
-certificateLink
-?
-`
-<div style="text-align:center;margin-top:35px;">
-
-<a href="${certificateLink}"
-style="
-background:#1F4E79;
-padding:14px 28px;
-color:white;
-text-decoration:none;
-border-radius:8px;
-display:inline-block;
-font-weight:bold;
-">
-Download Donation Certificate
-</a>
-
-</div>
-`
-:
-""
-}
 
 <p style="margin-top:35px;">
 Your contribution will directly help us create a meaningful impact.
