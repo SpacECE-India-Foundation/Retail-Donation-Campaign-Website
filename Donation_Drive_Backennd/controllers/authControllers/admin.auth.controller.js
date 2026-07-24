@@ -9,6 +9,40 @@ import { verifyOtpHandler } from "../../utils/otp.utils.js"
 import otpModel from "../../models/otp.modals.js"
 import bcrypt from "bcryptjs";
 
+// Used only at registration, where there's no crop/adjust step yet — a
+// square, subject-aware crop is still far better than the default 1200x675
+// landscape crop used for campaign banners.
+const AVATAR_TRANSFORMATION = [
+  {
+    width: 500,
+    height: 500,
+    crop: "fill",
+    gravity: "auto",
+  },
+  {
+    quality: "auto",
+  },
+  {
+    fetch_format: "auto",
+  },
+]
+
+// Used when an admin updates their own profile photo — by the time it gets
+// here, the frontend's Adjust tool has already composed it into an exact
+// 500x500 square (drag + zoom, with a circular preview guide so the admin
+// sees exactly what they're saving). Re-cropping it again here with
+// gravity:"auto" would silently re-guess a different framing than the one
+// the admin actually picked, which is exactly the "looked fine before Save,
+// zoomed in after Save" bug this replaces. Just optimize, don't crop.
+const AVATAR_PRECROPPED_TRANSFORMATION = [
+  {
+    quality: "auto",
+  },
+  {
+    fetch_format: "auto",
+  },
+]
+
 
 //---------------------------------------------------THE ADMIN REGISTRATION CONTROLLER---------------------------------------------------
 //STEP1 : WE WILL TAKE THE BASIC DETAILS FROM THE REQUEST BODY FOR THE ADMIN PROFILE
@@ -48,7 +82,7 @@ export const registerAdmin = async (req,res) =>{
 
         let profileImageUrl = ""
         if (req.file?.buffer) {
-          const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images")
+          const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images", "image", AVATAR_TRANSFORMATION)
           profileImageUrl = uploadResult.secure_url
           //just for debugging, remove later
           console.log("registerAdmin uploaded profile image", profileImageUrl)
@@ -408,7 +442,7 @@ export const updateAdminProfile = async (req,res) =>{
         //this is a protected route so we will get the adminId from the adminAuth middleware
         const adminId = req.admin.adminId
 
-        const { fullName, phone } = req.body
+        const { fullName, phone, removeProfileImage } = req.body
         //just for debugging, remove later
         console.log("updateAdminProfile called for adminId:", adminId)
 
@@ -431,9 +465,14 @@ export const updateAdminProfile = async (req,res) =>{
         }
 
         //if a new profile image file was uploaded, push it to cloudinary and update the url
+        //(already composed to an exact square by the frontend's Adjust tool —
+        //see AVATAR_PRECROPPED_TRANSFORMATION above, don't re-crop it here)
         if(req.file?.buffer){
-            const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images")
+            const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images", "image", AVATAR_PRECROPPED_TRANSFORMATION)
             admin.profileImage = uploadResult.secure_url
+        } else if(removeProfileImage === true || removeProfileImage === "true"){
+            //admin explicitly removed their photo — no new file was sent, just clear it
+            admin.profileImage = ""
         }
 
         await admin.save()
