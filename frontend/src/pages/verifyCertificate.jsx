@@ -1,369 +1,285 @@
 // import React, { useEffect, useState } from "react";
 // import axios from "axios";
 // import { useParams } from "react-router-dom";
-// import toast from "react-hot-toast";
-
+// import toast, { Toaster } from "react-hot-toast";
 // import {
-//     ShieldCheck,
-//     BadgeCheck,
-//     Calendar,
-//     IndianRupee,
-//     User,
-//     FileCheck,
-//     Download,
-//     Copy,
-//     Loader2,
-//     AlertTriangle,
-//     Award,
-//     HeartHandshake,
+//   ShieldCheck,
+//   BadgeCheck,
+//   Calendar,
+//   IndianRupee,
+//   User,
+//   FileCheck,
+//   Download,
+//   Copy,
+//   Check,
+//   Loader2,
+//   AlertTriangle,
+//   Award,
+//   HeartHandshake,
+//   ExternalLink,
+//   Sparkles,
 // } from "lucide-react";
 
 // const CertificateVerificationPage = () => {
+//   const { certificateId } = useParams();
 
-//     const { certificateId } = useParams();
+//   const [loading, setLoading] = useState(true);
+//   const [certificate, setCertificate] = useState(null);
+//   const [error, setError] = useState("");
+//   const [copied, setCopied] = useState(false);
 
-//     const [loading, setLoading] = useState(true);
-//     const [certificate, setCertificate] = useState(null);
-//     const [error, setError] = useState("");
-//     console.log(import.meta.env.VITE_BACKEND_URL);
-// console.log(certificateId);
-//     useEffect(() => {
-//         fetchCertificate();
-//     }, []);
+//   useEffect(() => {
+//     fetchCertificate();
+//   }, [certificateId]);
 
-//     const fetchCertificate = async () => {
-//         try {
+//   const fetchCertificate = async () => {
+//     try {
+//       setLoading(true);
+//       setError("");
 
-//             setLoading(true);
+//       const response = await axios.get(
+//         `${import.meta.env.VITE_API_URL}/public/certificate/verify/${certificateId}`
+//       );
 
-//             const response = await axios.get(
-//                 `${import.meta.env.VITE_API_URL}/public/certificate/verify/${certificateId}`
-//             );
-
-//             setCertificate(response.data.data.certificate);
-//             console.log(response.data);
-
-//         } catch (err) {
-
-//             setError(
-//                 err?.response?.data?.message ||
-//                 "Certificate could not be verified."
-//             );
-
-//         } finally {
-
-//             setLoading(false);
-
-//         }
-//     };
-
-//     const copyCertificateId = () => {
-
-//         navigator.clipboard.writeText(certificate.certificateId);
-
-//         toast.success("Certificate ID Copied");
-
-//     };
-
-//     if (loading) {
-//         return (
-//             <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
-
-//                 <div className="text-center">
-
-//                     <Loader2
-//                         size={55}
-//                         className="text-primary mb-3"
-//                         style={{
-//                             animation: "spin 1s linear infinite",
-//                         }}
-//                     />
-
-//                     <h5>Verifying Certificate...</h5>
-
-//                 </div>
-
-//                 <style>
-//                     {`
-//                         @keyframes spin{
-//                             from{
-//                                 transform:rotate(0deg);
-//                             }
-//                             to{
-//                                 transform:rotate(360deg);
-//                             }
-//                         }
-//                     `}
-//                 </style>
-
-//             </div>
-//         );
+//       setCertificate(response.data?.data?.certificate);
+//     } catch (err) {
+//       setError(
+//         err?.response?.data?.message ||
+//           "We could not verify this certificate. Please check the URL or ID and try again."
+//       );
+//     } finally {
+//       setLoading(false);
 //     }
+//   };
 
-//     if (error) {
-//         return (
-//             <div className="min-vh-100 d-flex justify-content-center align-items-center bg-light">
+//   const copyCertificateId = () => {
+//     if (!certificate?.certificateId) return;
+//     navigator.clipboard.writeText(certificate.certificateId);
+//     setCopied(true);
+//     toast.success("Certificate ID copied to clipboard!");
+//     setTimeout(() => setCopied(false), 2000);
+//   };
 
-//                 <div
-//                     className="card border-0 shadow-lg p-5 text-center"
-//                     style={{
-//                         maxWidth: "550px",
-//                         borderRadius: "25px",
-//                     }}
-//                 >
+//   const formatDate = (dateString) => {
+//     if (!dateString) return "N/A";
+//     const date = new Date(dateString);
+//     return isNaN(date.getTime())
+//       ? dateString
+//       : date.toLocaleDateString("en-IN", {
+//           day: "numeric",
+//           month: "short",
+//           year: "numeric",
+//         });
+//   };
 
-//                     <AlertTriangle
-//                         size={70}
-//                         className="text-danger mx-auto mb-3"
-//                     />
-
-//                     <h3 className="fw-bold text-danger">
-//                         Certificate Not Found
-//                     </h3>
-
-//                     <p className="text-muted mt-3">
-//                         {error}
-//                     </p>
-
-//                 </div>
-
-//             </div>
-//         );
-//     }
-
+//   // ---------------------------------------------------------------------------
+//   // LOADING STATE
+//   // ---------------------------------------------------------------------------
+//   if (loading) {
 //     return (
-//         <div
-//             className="min-vh-100 py-5"
-//             style={{
-//                 background:
-//                     "linear-gradient(135deg,#f8fbff,#eef6ff,#ffffff)",
-//             }}
-//         >
-
-//             <div className="container">
-
-//                 <div
-//                     className="card border-0 shadow-lg mx-auto"
-//                     style={{
-//                         maxWidth: "900px",
-//                         borderRadius: "30px",
-//                         overflow: "hidden",
-//                     }}
-//                 >
-
-//                     {/* Header */}
-
-//                     <div
-//                         className="text-center text-white p-5"
-//                         style={{
-//                             background:
-//                                 "linear-gradient(135deg,#0d6efd,#198754)",
-//                         }}
-//                     >
-
-//                         <ShieldCheck
-//                             size={75}
-//                             className="mb-3"
-//                         />
-
-//                         <h2 className="fw-bold">
-//                             Certificate Verified
-//                         </h2>
-
-//                         <p className="mb-0 opacity-75">
-//                             This certificate has been successfully verified.
-//                         </p>
-
-//                     </div>
-
-//                     <div className="p-5">
-
-//                         <div className="text-center mb-5">
-
-//                             <BadgeCheck
-//                                 size={70}
-//                                 className="text-success mb-3"
-//                             />
-
-//                             <h3 className="fw-bold">
-//                                 Authentic Donation Certificate
-//                             </h3>
-
-//                         </div>
-
-//                         <div className="row g-4">
-
-//                             <div className="col-md-6">
-
-//                                 <div className="border rounded-4 p-4 h-100">
-
-//                                     <User className="mb-3 text-primary"/>
-
-//                                     <small className="text-muted">
-//                                         Donor Name
-//                                     </small>
-
-//                                     <h5>
-//                                         {certificate.donorName}
-//                                     </h5>
-
-//                                 </div>
-
-//                             </div>
-
-//                             <div className="col-md-6">
-
-//                                 <div className="border rounded-4 p-4 h-100">
-
-//                                     <HeartHandshake className="mb-3 text-danger"/>
-
-//                                     <small className="text-muted">
-//                                         Campaign
-//                                     </small>
-
-//                                     <h5>
-//                                         {certificate.campaignName}
-//                                     </h5>
-
-//                                 </div>
-
-//                             </div>
-
-//                             <div className="col-md-6">
-
-//                                 <div className="border rounded-4 p-4">
-
-//                                     <IndianRupee className="mb-3 text-success"/>
-
-//                                     <small className="text-muted">
-//                                         Donation Amount
-//                                     </small>
-
-//                                     <h5>
-//                                         ₹{certificate.amount.toLocaleString()}
-//                                     </h5>
-
-//                                 </div>
-
-//                             </div>
-
-//                             <div className="col-md-6">
-
-//                                 <div className="border rounded-4 p-4">
-
-//                                     <Award className="mb-3 text-warning"/>
-
-//                                     <small className="text-muted">
-//                                         Certificate Number
-//                                     </small>
-
-//                                     <h5>
-//                                         {certificate.displayCertificateNo}
-//                                     </h5>
-
-//                                 </div>
-
-//                             </div>
-
-//                             <div className="col-md-6">
-
-//                                 <div className="border rounded-4 p-4">
-
-//                                     <Calendar className="mb-3 text-primary"/>
-
-//                                     <small className="text-muted">
-//                                         Donation Date
-//                                     </small>
-
-//                                     <h5>
-//                                         {new Date(
-//                                             certificate.donationDate
-//                                         ).toLocaleDateString()}
-//                                     </h5>
-
-//                                 </div>
-
-//                             </div>
-
-//                             <div className="col-md-6">
-
-//                                 <div className="border rounded-4 p-4">
-
-//                                     <FileCheck className="mb-3 text-success"/>
-
-//                                     <small className="text-muted">
-//                                         Verified On
-//                                     </small>
-
-//                                     <h5>
-//                                         {new Date(
-//                                             certificate.verifiedAt
-//                                         ).toLocaleDateString()}
-//                                     </h5>
-
-//                                 </div>
-
-//                             </div>
-
-//                         </div>
-
-//                         <hr className="my-5"/>
-
-//                         <div className="text-center">
-
-//                             <small className="text-muted">
-//                                 Certificate ID
-//                             </small>
-
-//                             <div className="d-flex justify-content-center align-items-center gap-2 mt-2">
-
-//                                 <code
-//                                     style={{
-//                                         fontSize: 14,
-//                                     }}
-//                                 >
-//                                     {certificate.certificateId}
-//                                 </code>
-
-//                                 <button
-//                                     className="btn btn-sm btn-outline-secondary"
-//                                     onClick={copyCertificateId}
-//                                 >
-//                                     <Copy size={15}/>
-//                                 </button>
-
-//                             </div>
-
-//                         </div>
-
-//                         <div className="d-flex justify-content-center mt-5">
-
-//                             <a
-//                                 href={certificate.certificateUrl}
-//                                 target="_blank"
-//                                 rel="noreferrer"
-//                                 className="btn btn-success btn-lg px-5"
-//                             >
-
-//                                 <Download
-//                                     size={18}
-//                                     className="me-2"
-//                                 />
-
-//                                 Download Certificate
-
-//                             </a>
-
-//                         </div>
-
-//                     </div>
-
+//       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
+//         <div className="flex flex-col items-center p-8 bg-white rounded-3xl shadow-xl border border-slate-100 max-w-sm w-full text-center">
+//           <div className="relative flex items-center justify-center mb-4">
+//             <div className="absolute inset-0 rounded-full bg-emerald-100 animate-ping opacity-75"></div>
+//             <div className="relative p-4 bg-emerald-50 text-emerald-600 rounded-full">
+//               <Loader2 className="w-10 h-10 animate-spin" />
+//             </div>
+//           </div>
+//           <h3 className="text-xl font-bold text-slate-800">Verifying Record</h3>
+//           <p className="text-sm text-slate-500 mt-1">
+//             Checking authenticity with SpaceECE registry...
+//           </p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // ---------------------------------------------------------------------------
+//   // ERROR STATE
+//   // ---------------------------------------------------------------------------
+//   if (error) {
+//     return (
+//       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+//         <Toaster position="top-center" />
+//         <div className="max-w-md w-full bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden text-center p-8">
+//           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+//             <AlertTriangle className="w-8 h-8" />
+//           </div>
+//           <h2 className="text-2xl font-bold text-slate-900">Verification Failed</h2>
+//           <p className="text-slate-600 mt-2 text-sm leading-relaxed">{error}</p>
+          
+//           <button
+//             onClick={() => window.location.reload()}
+//             className="mt-6 w-full py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-xl transition duration-200 shadow-sm"
+//           >
+//             Try Again
+//           </button>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // ---------------------------------------------------------------------------
+//   // SUCCESS STATE
+//   // ---------------------------------------------------------------------------
+//   return (
+//     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/20 to-emerald-50/30 py-10 px-4 sm:px-6 lg:px-8">
+//       <Toaster position="top-center" />
+
+//       <div className="max-w-3xl mx-auto">
+//         {/* Main Card */}
+//         <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+          
+//           {/* Header Banner */}
+//           <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-slate-800 p-6 sm:p-8 text-white relative overflow-hidden">
+//             <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+            
+//             <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
+//               <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
+//                 <ShieldCheck className="w-10 h-10 text-emerald-300" />
+//               </div>
+
+//               <div>
+//                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-semibold mb-2 backdrop-blur-sm border border-emerald-400/30">
+//                   <Sparkles className="w-3.5 h-3.5" /> SpaceECE Official Verification
 //                 </div>
+//                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+//                   Certificate Verified
+//                 </h1>
+//                 <p className="text-emerald-100/90 text-sm mt-1 max-w-lg">
+//                   This donor recognition certificate is authentic and recorded in the SpaceECE Early Childhood Education Foundation database.
+//                 </p>
+//               </div>
+//             </div>
+//           </div>
 
+//           {/* Sub Header / Authentic Badge */}
+//           <div className="px-6 py-4 bg-emerald-50/60 border-b border-emerald-100/60 flex items-center justify-between gap-4">
+//             <div className="flex items-center gap-2">
+//               <BadgeCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+//               <span className="text-sm font-semibold text-emerald-900">
+//                 Official Donation Record
+//               </span>
+//             </div>
+//             <span className="text-xs font-medium text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full">
+//               Valid & Active
+//             </span>
+//           </div>
+
+//           {/* Details Section */}
+//           <div className="p-6 sm:p-8 space-y-6">
+            
+//             {/* Grid Items */}
+//             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+//               {/* Donor Name */}
+//               <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+//                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
+//                   <User className="w-4 h-4 text-emerald-600" /> Donor Name
+//                 </div>
+//                 <p className="text-lg font-bold text-slate-900 truncate">
+//                   {certificate?.donorName || "N/A"}
+//                 </p>
+//               </div>
+
+//               {/* Campaign */}
+//               <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+//                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
+//                   <HeartHandshake className="w-4 h-4 text-rose-500" /> Campaign
+//                 </div>
+//                 <p className="text-lg font-bold text-slate-900 truncate">
+//                   {certificate?.campaignName || "General Donation"}
+//                 </p>
+//               </div>
+
+//               {/* Amount */}
+//               <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+//                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
+//                   <IndianRupee className="w-4 h-4 text-amber-500" /> Donation Amount
+//                 </div>
+//                 <p className="text-lg font-bold text-slate-900">
+//                   ₹{certificate?.amount ? certificate.amount.toLocaleString("en-IN") : "0"}
+//                 </p>
+//               </div>
+
+//               {/* Certificate Number */}
+//               <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+//                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
+//                   <Award className="w-4 h-4 text-amber-600" /> Certificate No.
+//                 </div>
+//                 <p className="text-lg font-bold text-slate-900 font-mono tracking-tight">
+//                   {certificate?.displayCertificateNo || "N/A"}
+//                 </p>
+//               </div>
+
+//               {/* Donation Date */}
+//               <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+//                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
+//                   <Calendar className="w-4 h-4 text-sky-600" /> Donation Date
+//                 </div>
+//                 <p className="text-base font-bold text-slate-800">
+//                   {formatDate(certificate?.donationDate)}
+//                 </p>
+//               </div>
+
+//               {/* Verified On */}
+//               <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+//                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
+//                   <FileCheck className="w-4 h-4 text-teal-600" /> System Verification
+//                 </div>
+//                 <p className="text-base font-bold text-slate-800">
+//                   {formatDate(certificate?.verifiedAt || new Date())}
+//                 </p>
+//               </div>
 //             </div>
 
+//             {/* Certificate Hash / ID Section */}
+//             <div className="pt-4 border-t border-slate-100 flex flex-col items-center justify-center">
+//               <span className="text-xs text-slate-400 font-medium">
+//                 Internal Verification ID
+//               </span>
+//               <div className="mt-1.5 flex items-center gap-2 bg-slate-100/80 px-3.5 py-1.5 rounded-xl border border-slate-200/60">
+//                 <code className="text-xs font-mono text-slate-700">
+//                   {certificate?.certificateId}
+//                 </code>
+//                 <button
+//                   onClick={copyCertificateId}
+//                   className="p-1 text-slate-400 hover:text-slate-700 transition duration-150 rounded-md focus:outline-none"
+//                   title="Copy Certificate ID"
+//                 >
+//                   {copied ? (
+//                     <Check className="w-4 h-4 text-emerald-600" />
+//                   ) : (
+//                     <Copy className="w-4 h-4" />
+//                   )}
+//                 </button>
+//               </div>
+//             </div>
+
+//             {/* Actions */}
+//             {certificate?.certificateUrl && (
+//               <div className="pt-2 flex flex-col sm:flex-row gap-3">
+//                 <a
+//                   href={certificate.certificateUrl}
+//                   target="_blank"
+//                   rel="noreferrer"
+//                   className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+//                 >
+//                   <Download className="w-5 h-5" />
+//                   Download Certificate PDF
+//                 </a>
+//               </div>
+//             )}
+//           </div>
 //         </div>
-//     );
+
+//         {/* Footer info */}
+//         <p className="text-center text-xs text-slate-400 mt-6">
+//           Need help? Contact SpaceECE Support if you suspect any discrepancies with this certificate.
+//         </p>
+//       </div>
+//     </div>
+//   );
 // };
 
 // export default CertificateVerificationPage;
@@ -385,7 +301,6 @@ import {
   AlertTriangle,
   Award,
   HeartHandshake,
-  ExternalLink,
   Sparkles,
 } from "lucide-react";
 
@@ -449,8 +364,8 @@ const CertificateVerificationPage = () => {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
         <div className="flex flex-col items-center p-8 bg-white rounded-3xl shadow-xl border border-slate-100 max-w-sm w-full text-center">
           <div className="relative flex items-center justify-center mb-4">
-            <div className="absolute inset-0 rounded-full bg-emerald-100 animate-ping opacity-75"></div>
-            <div className="relative p-4 bg-emerald-50 text-emerald-600 rounded-full">
+            <div className="absolute inset-0 rounded-full bg-amber-100 animate-ping opacity-75"></div>
+            <div className="relative p-4 bg-amber-50 text-amber-600 rounded-full">
               <Loader2 className="w-10 h-10 animate-spin" />
             </div>
           </div>
@@ -489,33 +404,33 @@ const CertificateVerificationPage = () => {
   }
 
   // ---------------------------------------------------------------------------
-  // SUCCESS STATE
+  // SUCCESS STATE (Warm Amber / Orange Brand Contrast)
   // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/20 to-emerald-50/30 py-10 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/40 to-orange-50/30 py-10 px-4 sm:px-6 lg:px-8">
       <Toaster position="top-center" />
 
       <div className="max-w-3xl mx-auto">
         {/* Main Card */}
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
           
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-slate-800 p-6 sm:p-8 text-white relative overflow-hidden">
+          {/* Header Banner - Signature Amber to Warm Orange Gradient */}
+          <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 p-6 sm:p-8 text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
             
             <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-              <div className="p-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
-                <ShieldCheck className="w-10 h-10 text-emerald-300" />
+              <div className="p-3 bg-white/15 backdrop-blur-md rounded-2xl border border-white/20 shadow-inner">
+                <ShieldCheck className="w-10 h-10 text-amber-100" />
               </div>
 
               <div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-200 text-xs font-semibold mb-2 backdrop-blur-sm border border-emerald-400/30">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/10 text-amber-100 text-xs font-semibold mb-2 backdrop-blur-sm border border-white/20">
                   <Sparkles className="w-3.5 h-3.5" /> SpaceECE Official Verification
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                   Certificate Verified
                 </h1>
-                <p className="text-emerald-100/90 text-sm mt-1 max-w-lg">
+                <p className="text-amber-100/90 text-sm mt-1 max-w-lg">
                   This donor recognition certificate is authentic and recorded in the SpaceECE Early Childhood Education Foundation database.
                 </p>
               </div>
@@ -523,14 +438,14 @@ const CertificateVerificationPage = () => {
           </div>
 
           {/* Sub Header / Authentic Badge */}
-          <div className="px-6 py-4 bg-emerald-50/60 border-b border-emerald-100/60 flex items-center justify-between gap-4">
+          <div className="px-6 py-4 bg-amber-50/60 border-b border-amber-100 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <BadgeCheck className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span className="text-sm font-semibold text-emerald-900">
+              <BadgeCheck className="w-5 h-5 text-amber-600 shrink-0" />
+              <span className="text-sm font-semibold text-amber-950">
                 Official Donation Record
               </span>
             </div>
-            <span className="text-xs font-medium text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full">
+            <span className="text-xs font-semibold text-amber-800 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-200/60">
               Valid & Active
             </span>
           </div>
@@ -542,9 +457,9 @@ const CertificateVerificationPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               
               {/* Donor Name */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-all duration-200">
                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
-                  <User className="w-4 h-4 text-emerald-600" /> Donor Name
+                  <User className="w-4 h-4 text-amber-600" /> Donor Name
                 </div>
                 <p className="text-lg font-bold text-slate-900 truncate">
                   {certificate?.donorName || "N/A"}
@@ -552,9 +467,9 @@ const CertificateVerificationPage = () => {
               </div>
 
               {/* Campaign */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-all duration-200">
                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
-                  <HeartHandshake className="w-4 h-4 text-rose-500" /> Campaign
+                  <HeartHandshake className="w-4 h-4 text-orange-500" /> Campaign
                 </div>
                 <p className="text-lg font-bold text-slate-900 truncate">
                   {certificate?.campaignName || "General Donation"}
@@ -562,17 +477,17 @@ const CertificateVerificationPage = () => {
               </div>
 
               {/* Amount */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-all duration-200">
                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
-                  <IndianRupee className="w-4 h-4 text-amber-500" /> Donation Amount
+                  <IndianRupee className="w-4 h-4 text-amber-600" /> Donation Amount
                 </div>
-                <p className="text-lg font-bold text-slate-900">
+                <p className="text-lg font-bold text-amber-600">
                   ₹{certificate?.amount ? certificate.amount.toLocaleString("en-IN") : "0"}
                 </p>
               </div>
 
               {/* Certificate Number */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-all duration-200">
                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
                   <Award className="w-4 h-4 text-amber-600" /> Certificate No.
                 </div>
@@ -582,9 +497,9 @@ const CertificateVerificationPage = () => {
               </div>
 
               {/* Donation Date */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-all duration-200">
                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
-                  <Calendar className="w-4 h-4 text-sky-600" /> Donation Date
+                  <Calendar className="w-4 h-4 text-amber-600" /> Donation Date
                 </div>
                 <p className="text-base font-bold text-slate-800">
                   {formatDate(certificate?.donationDate)}
@@ -592,9 +507,9 @@ const CertificateVerificationPage = () => {
               </div>
 
               {/* Verified On */}
-              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-slate-200 transition-all duration-200">
+              <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-100 hover:border-amber-200 transition-all duration-200">
                 <div className="flex items-center gap-2 text-slate-500 text-xs font-semibold uppercase tracking-wider mb-1">
-                  <FileCheck className="w-4 h-4 text-teal-600" /> System Verification
+                  <FileCheck className="w-4 h-4 text-amber-600" /> System Verification
                 </div>
                 <p className="text-base font-bold text-slate-800">
                   {formatDate(certificate?.verifiedAt || new Date())}
@@ -617,7 +532,7 @@ const CertificateVerificationPage = () => {
                   title="Copy Certificate ID"
                 >
                   {copied ? (
-                    <Check className="w-4 h-4 text-emerald-600" />
+                    <Check className="w-4 h-4 text-amber-600" />
                   ) : (
                     <Copy className="w-4 h-4" />
                   )}
@@ -632,7 +547,7 @@ const CertificateVerificationPage = () => {
                   href={certificate.certificateUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                  className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-lg shadow-amber-500/25 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <Download className="w-5 h-5" />
                   Download Certificate PDF
