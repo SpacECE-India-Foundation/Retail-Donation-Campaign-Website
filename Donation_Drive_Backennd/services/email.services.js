@@ -17,13 +17,14 @@ class EmailService {
         });
     }
 
-    async sendEmail({to, subject, html, text}) {
+    async sendEmail({to, subject, html, text, attachments = []}) {
         return await this.transporter.sendMail({
             from: process.env.SMTP_FROM,
             to,
             subject,
             text,
-            html
+            html,
+            attachments
         });
     }
 
@@ -44,11 +45,20 @@ class EmailService {
         certificateLink
     });
 
+    const attachments = certificateLink
+        ? [{
+            filename: "SpaceECE-Donation-Certificate.pdf",
+            path: certificateLink,
+            contentType: "application/pdf",
+        }]
+        : [];
+
     return await this.sendEmail({
         to: donorEmail,
         subject: `Donation Verified - ${campaignName}`,
         html,
-        text: `Your donation has been verified successfully.`
+        text: `Your donation has been verified successfully. Your donation certificate is attached to this email.`,
+        attachments,
     });
 
 }

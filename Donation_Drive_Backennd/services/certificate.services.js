@@ -78,11 +78,18 @@ class CertificateService {
       fs.writeFileSync(tempFilePath, pdfBuffer);
 
       // Step 7: Upload to Cloudinary as raw file
-      const cloudinaryResult = await uploadBufferToCloudinary(
-        pdfBuffer,
-        `certificates/${certificateId}`,
-        "raw"
-      );
+      let cloudinaryResult;
+      try {
+        cloudinaryResult = await uploadBufferToCloudinary(
+          pdfBuffer,
+          `certificates/${certificateId}`,
+          "raw"
+        );
+      } catch (uploadError) {
+        throw new Error(
+          `Certificate PDF upload to Cloudinary failed: ${uploadError.message}`
+        );
+      }
 
       if (!cloudinaryResult.secure_url) {
         throw new Error("Failed to get certificate URL from Cloudinary");

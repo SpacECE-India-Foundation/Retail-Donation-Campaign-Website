@@ -36,11 +36,16 @@ export const uploadBufferToCloudinary = async (
   resourceType = "image",
   transformationOverride
 ) => {
-  return new Promise((resolve, reject) => {
+  const maxAttempts = 3;
+
+  const uploadOnce = () => new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder,
         resource_type: resourceType,
+        // PDF uploads can take longer than image uploads, especially on a cold
+        // server or a slow connection to Cloudinary.
+        timeout: 120000,
         transformation:
           resourceType === "image"
             ? transformationOverride ?? DEFAULT_BANNER_TRANSFORMATION
@@ -64,7 +69,28 @@ export const uploadBufferToCloudinary = async (
     } else {
       reject(new Error("uploadBufferToCloudinary expects a Buffer or local file path"))
     }
-  })
+  });
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await uploadOnce();
+    } catch (error) {
+      const isTransient =
+        error?.http_code === 408 ||
+        ["ETIMEDOUT", "ECONNRESET", "EAI_AGAIN"].includes(error?.code) ||
+        /request timeout|timed out/i.test(error?.message || "");
+
+      if (!isTransient || attempt === maxAttempts) {
+        throw error;
+      }
+
+      const retryDelayMs = attempt * 1000;
+      console.warn(
+        `Cloudinary upload attempt ${attempt} failed; retrying in ${retryDelayMs}ms: ${error.message}`
+      );
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+  }
 }
 
 //---------------------------------FUNCTION TO DELETE THE CLOUDINARY IMAGE DIRECTLY FROM THE CLOUD SERVER-----------------------------
