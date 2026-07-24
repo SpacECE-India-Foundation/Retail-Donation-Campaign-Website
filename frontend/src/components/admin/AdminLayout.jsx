@@ -17,13 +17,14 @@ import {
 
 import { logout, getCurrentAdmin } from "../../services/authService";
 
+// Settings is deliberately not in here anymore — it's reached via the profile menu
+// (bottom of the sidebar) instead of a top-level nav item.
 const NAV_ITEMS = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/verification-queue", label: "Verification Queue", icon: ClipboardCheck },
   { to: "/admin/donation-history", label: "Donation History", icon: History },
   { to: "/admin/campaigns", label: "Campaigns", icon: FolderKanban },
   { to: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 /** Calls onOutside when a pointer event occurs outside the given ref, while active. */
@@ -124,6 +125,10 @@ function ProfileMenu({ adminName, adminEmail, collapsed }) {
         >
           <button
             role="menuitem"
+            onClick={() => {
+              close();
+              navigate("/admin/profile");
+            }}
             className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-600 transition hover:bg-orange-50"
           >
             <UserCircle size={16} aria-hidden="true" />
@@ -131,6 +136,10 @@ function ProfileMenu({ adminName, adminEmail, collapsed }) {
           </button>
           <button
             role="menuitem"
+            onClick={() => {
+              close();
+              navigate("/admin/settings");
+            }}
             className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-gray-600 transition hover:bg-orange-50"
           >
             <Settings size={16} aria-hidden="true" />
@@ -228,12 +237,16 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Toggle tab — sits on the sidebar/content border, slides with it */}
+      {/* Toggle tab — sits on the sidebar/content border, slides with it.
+          Hover uses gray-100, NOT orange-50 — orange-50 is nearly identical to the
+          brand-cream page background sitting right next to this button, so the white
+          strip visually "disappeared" into the page on hover instead of staying a
+          clearly distinct control. */}
       <button
         type="button"
         onClick={() => setSidebarOpen((o) => !o)}
         aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-        className={`fixed top-0 z-30 flex h-screen w-6 items-center justify-center border-r border-gray-100 bg-white text-brand-dark transition-all duration-300 ease-in-out hover:bg-orange-50 ${
+        className={`fixed top-0 z-30 flex h-screen w-6 items-center justify-center border-r border-gray-100 bg-white text-brand-dark transition-all duration-300 ease-in-out hover:bg-gray-100 ${
           sidebarOpen ? "left-64" : "left-20"
         }`}
       >
