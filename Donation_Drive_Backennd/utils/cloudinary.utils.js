@@ -9,10 +9,32 @@ cloudinary.config({
   secure: true,
 })
 
+// Default transformation — tuned for wide campaign banner/hero images (16:9).
+// Callers that need a different shape (e.g. square avatars) can pass their own
+// `transformationOverride` instead of getting this one.
+const DEFAULT_BANNER_TRANSFORMATION = [
+  {
+    width: 1200,
+    height: 675,
+    crop: "fill",
+    gravity: "auto",
+  },
+  {
+    quality: "auto",
+  },
+  {
+    fetch_format: "auto",
+  },
+  {
+    flags: "progressive",
+  },
+]
+
 export const uploadBufferToCloudinary = async (
   bufferOrPath,
   folder = "donation_drive",
-  resourceType = "image"
+  resourceType = "image",
+  transformationOverride
 ) => {
   const maxAttempts = 3;
 
@@ -26,23 +48,7 @@ export const uploadBufferToCloudinary = async (
         timeout: 120000,
         transformation:
           resourceType === "image"
-            ? [
-                {
-                  width: 1200,
-                  height: 675,
-                  crop: "fill",
-                  gravity: "auto",
-                },
-                {
-                  quality: "auto",
-                },
-                {
-                  fetch_format: "auto",
-                },
-                {
-                  flags: "progressive",
-                },
-              ]
+            ? transformationOverride ?? DEFAULT_BANNER_TRANSFORMATION
             : undefined,
       },
       (error, result) => {
