@@ -11,10 +11,13 @@ import {
   RotateCcw,
   Filter,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { Card } from "../../components/common/Card";
 import { fetchDonations } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
+import spacEceLogo from "../../assets/logo3.png";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -31,12 +34,155 @@ const PAYMENT_MODE_COLORS = {
 
 const DEFAULT_FILTERS = { campaign: "All", fromDate: "", toDate: "" };
 
+// Minimal, white-page palette with a single orange/gold accent from the SpacECE logo —
+// no black fills, and just the one accent color everywhere (no varying shades) plus
+// warm dark-gray text for readability.
+const REPORT_GOLD = [232, 152, 21];
+const TEXT_DARK = [66, 61, 53];
+const TEXT_MUTED = [140, 133, 120];
+const BRAND_DARK = TEXT_DARK;
+const BRAND_ROW_TINT = [253, 240, 220];
+const PAGE_BG = [255, 255, 255];
+
+/* ------------------------------------------------------------------ */
+/* PDF drawing helpers                                                  */
+/* ------------------------------------------------------------------ */
+
+function paintPageBackground(doc, pageWidth, pageHeight) {
+  doc.setFillColor(...PAGE_BG);
+  doc.rect(0, 0, pageWidth, pageHeight, "F");
+}
+
+// Loads a bundler-imported image (same-origin) into a canvas so jsPDF can embed it as a
+// data URL. Resolves to null on failure so the header can fall back gracefully instead of
+// throwing and losing the whole export.
+function loadImageAsDataUrl(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve({ dataUrl: canvas.toDataURL("image/png"), width: img.naturalWidth, height: img.naturalHeight });
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+function drawBrandHeader(doc, pageWidth, title, subtitle, logo) {
+  const marginX = 40;
+  const logoBoxSize = 62;
+  const logoTop = 24;
+
+  // The logo's own white sticker outline sits directly on the white page — no plate or
+  // color block needed behind it, keeping the masthead minimal.
+  if (logo?.dataUrl) {
+    const scale = Math.min(logoBoxSize / logo.width, logoBoxSize / logo.height);
+    const drawW = logo.width * scale;
+    const drawH = logo.height * scale;
+    const drawY = logoTop + (logoBoxSize - drawH) / 2;
+    doc.addImage(logo.dataUrl, "PNG", marginX, drawY, drawW, drawH);
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(15);
+    doc.setTextColor(...REPORT_GOLD);
+    doc.text("SE", marginX, logoTop + logoBoxSize / 2 + 5);
+  }
+
+  const textX = marginX + logoBoxSize + 18;
+  doc.setTextColor(...TEXT_DARK);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("SpacECE India Foundation", textX, logoTop + 22);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10.5);
+  doc.setTextColor(...TEXT_MUTED);
+  doc.text(title, textX, logoTop + 39);
+  doc.setFontSize(9);
+  doc.text(subtitle, textX, logoTop + 53);
+
+  // A single thin gold rule closes off the masthead — the only color accent, on an
+  // otherwise plain white page.
+  doc.setDrawColor(...REPORT_GOLD);
+  doc.setLineWidth(1.5);
+  doc.line(marginX, logoTop + logoBoxSize + 14, pageWidth - marginX, logoTop + logoBoxSize + 14);
+}
+
+function drawSectionTitle(doc, marginX, y, text) {
+  doc.setFillColor(...REPORT_GOLD);
+  doc.roundedRect(marginX, y - 9, 4, 12, 1, 1, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(...BRAND_DARK);
+  doc.text(text, marginX + 10, y);
+}
+
+function fitSingleLineFontSize(doc, text, maxWidth, startSize, minSize = 9) {
+  let size = startSize;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(size);
+  while (doc.getTextWidth(text) > maxWidth && size > minSize) {
+    size -= 1;
+    doc.setFontSize(size);
+  }
+  return size;
+}
+
+// Single unified band instead of four separate boxed cards — one light tint background,
+// one thin gold rule on top, metrics laid out as plain columns divided by hairlines. This
+// reads as one cohesive strip (closer to how a printed summary line looks) rather than a
+// row of small boxes, which kept feeling like a mismatched, "boxy" add-on in a PDF.
+function drawKeyMetricsBand(doc, x, y, w, h, metrics) {
+  doc.setFillColor(...BRAND_ROW_TINT);
+  doc.roundedRect(x, y, w, h, 8, 8, "F");
+  doc.setFillColor(...REPORT_GOLD);
+  doc.rect(x + 8, y, w - 16, 2.5, "F");
+
+  const colWidth = w / metrics.length;
+  metrics.forEach((m, i) => {
+    const colX = x + i * colWidth;
+    const centerX = colX + colWidth / 2;
+    const innerWidth = colWidth - 20;
+
+    fitSingleLineFontSize(doc, m.value, innerWidth, 15);
+    doc.setTextColor(...BRAND_DARK);
+    doc.text(m.value, centerX, y + h / 2 - 2, { align: "center" });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...TEXT_MUTED);
+    const lines = doc.splitTextToSize(m.label, innerWidth).slice(0, 2);
+    lines.forEach((line, li) => {
+      doc.text(line, centerX, y + h / 2 + 13 + li * 9, { align: "center" });
+    });
+
+    if (i < metrics.length - 1) {
+      doc.setDrawColor(225, 216, 198);
+      doc.setLineWidth(0.75);
+      doc.line(colX + colWidth, y + 14, colX + colWidth, y + h - 14);
+    }
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /* Utilities                                                           */
 /* ------------------------------------------------------------------ */
 
 function formatINR(amount) {
   return `₹${Number(amount ?? 0).toLocaleString("en-IN")}`;
+}
+
+// jsPDF's built-in fonts don't render the ₹ glyph reliably across viewers, so PDF text
+// uses "Rs." instead. The on-screen UI keeps the ₹ symbol via formatINR above.
+function formatINRForPdf(amount) {
+  return `Rs. ${Number(amount ?? 0).toLocaleString("en-IN")}`;
 }
 
 function monthKey(value) {
@@ -50,25 +196,6 @@ function monthLabel(key) {
   const [year, month] = key.split("-");
   const date = new Date(Number(year), Number(month) - 1, 1);
   return date.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-}
-
-function csvEscape(value) {
-  const str = String(value ?? "");
-  if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`;
-  return str;
-}
-
-function downloadCsv(rows, filename) {
-  const csvContent = rows.map((row) => row.map(csvEscape).join(",")).join("\r\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
 }
 
 /* ------------------------------------------------------------------ */
@@ -231,31 +358,177 @@ export default function ReportsPage() {
     }));
   }, [donations]);
 
-  const handleExport = useCallback(() => {
+  // ------------------------------------------------------------------
+  // PDF export — replaces the old CSV/"Excel" export. Built with jsPDF +
+  // jspdf-autotable so the tables get real styling (colored headers,
+  // alternating row tints) instead of a raw data dump, using the actual
+  // SpacECE logo's black + gold palette. All the filtering and computed
+  // data above (stats, paymentModeBreakdown, monthlyTrend, filteredCampaigns)
+  // is untouched — only how it gets exported changes.
+  // ------------------------------------------------------------------
+  const handleExportPdf = useCallback(async () => {
     setIsExporting(true);
     try {
-      const rows = [["Campaign Report"], []];
-      rows.push(["Campaign Name", "Goal", "Raised", "Progress %", "Contributors", "Status"]);
-      filteredCampaigns.forEach((c) => {
-        const goal = Number(c.campaignGoalAmt ?? 0);
-        const raised = Number(c.campaignRaisedAmt ?? 0);
-        const progress = goal > 0 ? Math.round((raised / goal) * 100) : 0;
-        rows.push([c.campaignName, goal, raised, `${progress}%`, c.contributors ?? 0, c.campaignStatus]);
+      const logo = await loadImageAsDataUrl(spacEceLogo);
+
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 40;
+      const contentWidth = pageWidth - marginX * 2;
+      const pageBreakThreshold = pageHeight - 110;
+      let cursorY;
+
+      const generatedOn = new Date().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+      const campaignLabel =
+        filters.campaign === "All"
+          ? "All Campaigns"
+          : campaigns.find((c) => c._id === filters.campaign)?.campaignName ?? "Selected Campaign";
+
+      const goToNextPageIfNeeded = (neededSpace = 0) => {
+        if (cursorY + neededSpace > pageBreakThreshold) {
+          doc.addPage();
+          paintPageBackground(doc, pageWidth, pageHeight);
+          cursorY = 50;
+        }
+      };
+
+      paintPageBackground(doc, pageWidth, pageHeight);
+      drawBrandHeader(doc, pageWidth, "Donation & Campaign Report", `Generated on ${generatedOn}`, logo);
+
+      cursorY = 128;
+
+      // Filters summary, on a soft card so it doesn't read as a stray line of text
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(232, 228, 222);
+      doc.roundedRect(marginX, cursorY - 16, contentWidth, 30, 6, 6, "FD");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...REPORT_GOLD);
+      doc.text("FILTERS", marginX + 12, cursorY - 3);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...BRAND_DARK);
+      doc.text(
+        `Campaign: ${campaignLabel}      From: ${filters.fromDate || "—"}      To: ${filters.toDate || "—"}`,
+        marginX + 12,
+        cursorY + 9
+      );
+
+      cursorY += 46;
+
+      // Key metrics — one unified band with plain columns, rather than four separate cards
+      drawSectionTitle(doc, marginX, cursorY, "Key Metrics");
+      cursorY += 16;
+
+      const keyMetrics = [
+        { label: "Total Raised (all-time)", value: formatINRForPdf(stats.totalRaisedAllTime) },
+        { label: `Verified · ${formatINRForPdf(stats.verifiedAmount)}`, value: String(stats.verifiedCount) },
+        { label: "Total Contributors (all-time)", value: String(stats.totalContributors) },
+        {
+          label: `${stats.pendingCount} pending / ${stats.rejectedCount} rejected`,
+          value: `${filteredCampaigns.length} Campaigns`,
+        },
+      ];
+      const metricsBandHeight = 66;
+      drawKeyMetricsBand(doc, marginX, cursorY, contentWidth, metricsBandHeight, keyMetrics);
+
+      cursorY += metricsBandHeight + 30;
+
+      // Campaign-wise breakdown, with an actual progress bar drawn per row
+      drawSectionTitle(doc, marginX, cursorY, "Campaign-wise Breakdown");
+      cursorY += 10;
+
+      autoTable(doc, {
+        startY: cursorY,
+        margin: { left: marginX, right: marginX },
+        styles: { fontSize: 9, cellPadding: 7, lineColor: [240, 236, 230], lineWidth: 0.5, textColor: TEXT_DARK },
+        head: [["Campaign", "Goal", "Raised", "Progress", "Contributors", "Status"]],
+        body: filteredCampaigns.map((c) => [
+          c.campaignName,
+          formatINRForPdf(Number(c.campaignGoalAmt ?? 0)),
+          formatINRForPdf(Number(c.campaignRaisedAmt ?? 0)),
+          "",
+          String(c.contributors ?? 0),
+          c.campaignStatus,
+        ]),
+        headStyles: { fillColor: REPORT_GOLD, textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: BRAND_ROW_TINT },
+        didDrawCell: (data) => {
+          if (data.section !== "body" || data.column.index !== 3) return;
+          const campaign = filteredCampaigns[data.row.index];
+          if (!campaign) return;
+          const goal = Number(campaign.campaignGoalAmt ?? 0);
+          const raised = Number(campaign.campaignRaisedAmt ?? 0);
+          const percent = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
+          const { x, y, width, height } = data.cell;
+          const barHeight = 5;
+          const barWidth = width - 30;
+          const barX = x + 4;
+          const barY = y + height / 2 - barHeight / 2;
+          doc.setFillColor(230, 226, 220);
+          doc.roundedRect(barX, barY, barWidth, barHeight, 2, 2, "F");
+          doc.setFillColor(...REPORT_GOLD);
+          doc.roundedRect(barX, barY, Math.max(2, (barWidth * percent) / 100), barHeight, 2, 2, "F");
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(...BRAND_DARK);
+          doc.text(`${percent}%`, barX + barWidth + 5, y + height / 2 + 2.5);
+        },
       });
 
-      rows.push([], ["Payment Mode Breakdown (Verified Donations)"], []);
-      rows.push(["Payment Mode", "Count", "Amount"]);
-      paymentModeBreakdown.forEach((m) => rows.push([m.mode, m.count, m.amount]));
+      cursorY = doc.lastAutoTable.finalY + 34;
+      goToNextPageIfNeeded(160);
 
-      rows.push([], ["Monthly Trend (Verified Donations)"], []);
-      rows.push(["Month", "Amount"]);
-      monthlyTrend.forEach((m) => rows.push([m.label, m.amount]));
+      // Payment mode breakdown
+      drawSectionTitle(doc, marginX, cursorY, "Payment Mode Breakdown (Verified Donations)");
+      cursorY += 10;
 
-      downloadCsv(rows, `donation-report-${new Date().toISOString().slice(0, 10)}.csv`);
+      autoTable(doc, {
+        startY: cursorY,
+        margin: { left: marginX, right: marginX },
+        styles: { fontSize: 9, cellPadding: 7, lineColor: [240, 236, 230], lineWidth: 0.5, textColor: TEXT_DARK },
+        head: [["Payment Mode", "Count", "Amount"]],
+        body: paymentModeBreakdown.map((m) => [m.mode, String(m.count), formatINRForPdf(m.amount)]),
+        headStyles: { fillColor: REPORT_GOLD, textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: BRAND_ROW_TINT },
+      });
+
+      cursorY = doc.lastAutoTable.finalY + 34;
+      goToNextPageIfNeeded(160);
+
+      // Monthly trend
+      drawSectionTitle(doc, marginX, cursorY, "Monthly Trend (Verified Donations)");
+      cursorY += 10;
+
+      autoTable(doc, {
+        startY: cursorY,
+        margin: { left: marginX, right: marginX },
+        styles: { fontSize: 9, cellPadding: 7, lineColor: [240, 236, 230], lineWidth: 0.5, textColor: TEXT_DARK },
+        head: [["Month", "Amount"]],
+        body: monthlyTrend.map((m) => [m.label, formatINRForPdf(m.amount)]),
+        headStyles: { fillColor: REPORT_GOLD, textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: BRAND_ROW_TINT },
+      });
+
+      // Footer on every page
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i += 1) {
+        doc.setPage(i);
+        doc.setDrawColor(230, 226, 220);
+        doc.line(marginX, pageHeight - 32, pageWidth - marginX, pageHeight - 32);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text("SpacECE India Foundation — Confidential admin report", marginX, pageHeight - 18);
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth - marginX - 60, pageHeight - 18);
+      }
+
+      doc.save(`donation-report-${new Date().toISOString().slice(0, 10)}.pdf`);
     } finally {
       setIsExporting(false);
     }
-  }, [filteredCampaigns, paymentModeBreakdown, monthlyTrend]);
+  }, [filteredCampaigns, paymentModeBreakdown, monthlyTrend, stats, filters, campaigns]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -270,12 +543,12 @@ export default function ReportsPage() {
         </div>
 
         <button
-          onClick={handleExport}
+          onClick={handleExportPdf}
           disabled={isExporting || isLoading}
           className="flex items-center justify-center gap-2 self-start rounded-xl bg-brand-dark px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isExporting ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}
-          Export Report
+          Download PDF Report
         </button>
       </div>
 
