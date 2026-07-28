@@ -3,6 +3,7 @@
 import jwt from "jsonwebtoken"
 import { ApiError } from "../utils/apiError.utils.js"
 import { ApiResponse } from "../utils/apiResponse.utils.js"
+import Admin from "../models/admin.modals.js"
 
 export const adminAuth = async (req,res, next)=>{
     try {
@@ -15,8 +16,14 @@ export const adminAuth = async (req,res, next)=>{
             process.env.ACCESS_TOKEN_SECRET_KEY
         )
 
+        // Fetch latest admin
+        const admin = await Admin.findById(decodedToken.adminId)
+            .select("-password -refreshToken -resetPasswordOtp")
+            .lean();
+
         req.admin = {
-            adminId : tokenDecode.adminId
+            adminId : tokenDecode.adminId,
+            ...admin
         }
 
         //just for debugging, remove later

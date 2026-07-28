@@ -17,6 +17,7 @@ import donationPublicRoutes from "./routes/publicOperationRoutes/donations.route
 import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.routes.js"
 import certificatePublicRoutes from "./routes/publicOperationRoutes/certificate.routes.js"
 import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
+import superAdminOperations from "./routes/superAdminOperations.routes.js/accounts.superAdmin.js"
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
 //falls back to 5000 (matching frontend/.env.example's VITE_API_URL) if PORT isn't set in .env,
@@ -91,6 +92,7 @@ app.use('/api/public/donation',donationPublicRoutes)
 app.use('/api/campaigns', publicCampaignRoutes)
 app.use('/api/public/donation',donationWallRoute)
 app.use('/api/public/certificate',certificatePublicRoutes)
+app.use('/api/super-admin',superAdminOperations)
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler
