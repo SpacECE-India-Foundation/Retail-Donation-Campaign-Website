@@ -3,6 +3,7 @@ import { donationConfirmationTemplate } from "../templates/successfullDonationRe
 import { donationVerifiedTemplate } from "../templates/donationVerified.template.js";
 import { donationRejectedTemplate } from "../templates/donationRejectionTemplate.js";
 import { resendDonationRequestTemplate } from "../templates/resendDonationRequest.template.js";
+import { adminAccountCreatedTemplate } from "../templates/adminCreation.templates.js";
 
 class EmailService {
     constructor() {
@@ -27,6 +28,37 @@ class EmailService {
             attachments
         });
     }
+
+    async sendAdminAccountCreatedEmail({
+    adminName,
+    adminEmail,
+    temporaryPassword,
+    loginUrl
+}) {
+
+    const html = adminAccountCreatedTemplate({
+        adminName,
+        adminEmail,
+        temporaryPassword,
+        loginUrl
+    });
+
+    return this.sendEmail({
+        to: adminEmail,
+        subject: "Welcome to SpaceECE Admin Portal",
+        html,
+        text: `
+Your administrator account has been created successfully.
+
+Email: ${adminEmail}
+Temporary Password: ${temporaryPassword}
+
+Please login and change your password immediately.
+
+Login: ${loginUrl}
+        `
+    });
+}
 
     async sendDonationVerifiedEmail({
     donorName,
