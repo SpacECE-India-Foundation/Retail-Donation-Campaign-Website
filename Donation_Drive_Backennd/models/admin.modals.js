@@ -38,6 +38,24 @@ const adminSchema = new mongoose.Schema(
       default: "",
     },
 
+    role: {
+        type: String,
+        enum: ["SUPER_ADMIN", "ADMIN"],
+        default: "ADMIN",
+        required: true,
+    },
+
+    createdBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Admin",
+        default: null,
+    },
+
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
+
     isVerified: {
       type: Boolean,
       default: false,
