@@ -7,6 +7,7 @@ import { ApiResponse } from "../../utils/apiResponse.utils.js";
 import Campaign from "../../models/campaign.modals.js";
 import mongoose from "mongoose";
 
+
 //-----------------------------------------------------------THIS IS THE FUNCTIONALITY TO ADD NEW ADMIN FROM THE SUPER ADMIN SECTION--------------------------------------------------------------------
 export const addNewAdmin = async (req,res)=>{
     try {
@@ -158,3 +159,139 @@ export const deleteAdminAccount = async (req,res) =>{
        await session.endSession();
     }
 } 
+
+//-----------------------------------------------------THIS CONTROLLER IS FOR THE TRANSFERING OF THE CAMPAIGN MANAGEMENT TO OTHER SUB ADMINS----------------------------------------------------------------
+export const transferCampaignManagement = async (req,res) =>{
+    //here, our intention and requirement is that super Admin can manually transfer the management of campaigns to any other sub ADmin
+    //first we will take the list/array of the campaign ids we want to transfer
+    //now we want the admin id to whom we wanted to transfer the management of the campaigns 
+    //in last we will map them together 
+    //we will make it more modular we can transfer anyone's created campaigns to anyother by the authority of super admin
+    try {
+        const superAdminId = req.admin._id
+        const {
+            campaignIds,
+            adminId
+        }=req.body
+
+        //now we will perform the valdiations
+        ApiError.assert(
+            Array.isArray(campaignIds) && campaignIds.length > 0,
+            400,
+            "At least one campaign ID is required."
+        );
+
+        ApiError.assert(adminId && mongoose.Types.ObjectId.isValid(adminId),"adminId is required for this Functionality")
+
+        ApiError.assert(
+            campaignIds.every(id => mongoose.Types.ObjectId.isValid(id)),
+            400,
+            "One or more campaign IDs are invalid."
+        );
+
+        
+        //now we want to update the campaigns with the selected adminId
+        //but also we wanted to notify the previous manager of those campaigns regarding the ownership changes 
+        //for that we also need the both new and old admin email
+
+        //firstly lets check weather the provided admin id and campaignId exist or not 
+        const [admin,campaigns] = await Promise.all([
+            Admin.findById(adminId).select("fullName email"),
+            
+            Campaign.find({
+                _id: { $in: campaignIds }
+            })
+            .populate("createdBy", "fullName email")
+        ])
+
+        console.log("Campaign IDs:", campaignIds);
+console.log("Campaigns Found:", campaigns);
+console.log("Campaign Count:", campaigns.length);
+
+        ApiError.notFound(admin,"Admin Didn't found!!")
+        ApiError.assert(campaignIds.length===campaigns.length,"Some Campaign Ids are invalid")
+        const alreadyOwned = campaigns.every(
+            campaign => campaign.createdBy._id.toString() === adminId
+        );
+        ApiError.assert(
+            !alreadyOwned,
+            400,
+            "Selected campaigns are already assigned to this admin."
+        );
+
+
+        const ownerCampaignMap = {};
+
+for (const campaign of campaigns) {
+
+    const ownerId = campaign.createdBy._id.toString();
+
+    if (!ownerCampaignMap[ownerId]) {
+
+        ownerCampaignMap[ownerId] = {
+            owner: campaign.createdBy,
+            campaigns: []
+        };
+
+    }
+
+    ownerCampaignMap[ownerId].campaigns.push(campaign);
+
+}
+
+        //now we have every information regarding the old manager of campaign and the new we can simply update this now
+        await Campaign.updateMany(
+            {
+            //filter
+            _id: {
+            $in: campaignIds
+                }
+            },
+        
+            {
+                //update 
+                $set:{
+                    createdBy:adminId
+                }
+            }
+        )
+
+        //now we will send response to the frontend 
+        //sending the response 
+        res.status(200).json(
+            new ApiResponse(
+                200,
+                null,
+                "Campaign Management Transferred Successfully"
+            )
+        );
+
+        for (const key in ownerCampaignMap) {
+            const { owner, campaigns } = ownerCampaignMap[key];
+            await emailService.sendCampaignOwnershipTransferEmail({
+                adminName: owner.fullName,
+                adminEmail: owner.email,
+                transferredCampaigns: campaigns,
+                transferType: "REMOVED"
+            });
+        }
+
+        await emailService.sendCampaignOwnershipTransferEmail({
+    adminName: admin.fullName,
+    adminEmail: admin.email,
+    transferredCampaigns: campaigns,
+    transferType: "ASSIGNED"
+});
+
+        //and here we will send email to the dedicated involvers in this transaction
+    } catch (error) {
+         return res.status(error.statusCode || 500).json(
+            
+    new ApiError(
+        console.log(error),
+        error.statusCode || 500,
+        error.message
+    )
+)
+    }
+}

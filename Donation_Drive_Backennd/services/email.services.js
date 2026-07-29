@@ -17,7 +17,84 @@ class EmailService {
             }
         });
     }
+    async sendCampaignOwnershipTransferEmail({
+    adminName,
+    adminEmail,
+    transferredCampaigns,
+    transferType // "ASSIGNED" | "REMOVED"
+}) {
 
+    const campaignList = transferredCampaigns
+        .map((campaign, index) => `${index + 1}. ${campaign.campaignName}`)
+        .join("\n");
+
+    const isAssigned = transferType === "ASSIGNED";
+
+    const subject = isAssigned
+        ? "New Campaign Management Assigned"
+        : "Campaign Management Transferred";
+
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width:700px; margin:auto; line-height:1.7;">
+            <h2>${isAssigned ? "Campaigns Assigned Successfully" : "Campaign Ownership Updated"}</h2>
+
+            <p>Hello <strong>${adminName}</strong>,</p>
+
+            <p>
+                ${
+                    isAssigned
+                        ? "The following campaign(s) have been assigned to your account by the Super Admin. You are now responsible for managing them."
+                        : "The management of the following campaign(s) has been transferred to another administrator by the Super Admin."
+                }
+            </p>
+
+            <div style="background:#f8f9fa;padding:15px;border-radius:8px;">
+                <h3>Campaigns</h3>
+
+                <ul>
+                    ${transferredCampaigns
+                        .map(c => `<li>${c.campaignName}</li>`)
+                        .join("")}
+                </ul>
+            </div>
+
+            <p>
+                ${
+                    isAssigned
+                        ? "You can now access these campaigns from your Admin Dashboard."
+                        : "You will no longer be able to manage these campaigns from your account."
+                }
+            </p>
+
+            <br>
+
+            <p>Regards,<br><strong>SpaceECE Administration Team</strong></p>
+
+        </div>
+    `;
+
+    const text = `
+Hello ${adminName},
+
+${
+    isAssigned
+        ? "The following campaigns have been assigned to you:"
+        : "The following campaigns have been transferred from your account:"
+}
+
+${campaignList}
+
+Regards,
+SpaceECE Team
+`;
+
+    return this.sendEmail({
+        to: adminEmail,
+        subject,
+        html,
+        text
+    });
+}
     async sendEmail({to, subject, html, text, attachments = []}) {
         return await this.transporter.sendMail({
             from: process.env.SMTP_FROM,

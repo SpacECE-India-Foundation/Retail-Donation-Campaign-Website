@@ -3,10 +3,12 @@ import { addNewAdmin } from "../../controllers/superAdminOperations/manageAdmins
 import { adminAuth } from "../../middelwares/adminAuth.middelware.js"
 import { authorize } from "../../middelwares/RBAC.middelware.js"
 import { deleteAdminAccount } from "../../controllers/superAdminOperations/manageAdmins.superAdminOperations.controller.js"
+import { transferCampaignManagement } from "../../controllers/superAdminOperations/manageAdmins.superAdminOperations.controller.js"
 
 const superAdminOperations = express.Router()
 
 superAdminOperations.post('/add-admin',adminAuth,authorize("SUPER_ADMIN"),addNewAdmin)
 superAdminOperations.post('/delete/:adminId',adminAuth,authorize("SUPER_ADMIN"),deleteAdminAccount)
+superAdminOperations.post('/transfer-management',adminAuth,authorize("SUPER_ADMIN"),transferCampaignManagement)
 
 export default superAdminOperations
