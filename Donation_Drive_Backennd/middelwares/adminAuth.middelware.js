@@ -17,7 +17,7 @@ export const adminAuth = async (req,res, next)=>{
         )
 
         // Fetch latest admin
-        const admin = await Admin.findById(decodedToken.adminId)
+        const admin = await Admin.findById(tokenDecode.adminId)
             .select("-password -refreshToken -resetPasswordOtp")
             .lean();
 
