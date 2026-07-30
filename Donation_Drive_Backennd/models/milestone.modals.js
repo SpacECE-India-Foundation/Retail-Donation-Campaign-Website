@@ -60,6 +60,10 @@ const milestoneSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+milestoneSchema.index({
+    campaign: 1,
+    displayOrder: 1
+});
 
 const Milestone = mongoose.model("Milestone", milestoneSchema);
 

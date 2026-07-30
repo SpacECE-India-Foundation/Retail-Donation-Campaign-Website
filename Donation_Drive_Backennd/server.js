@@ -69,6 +69,13 @@ app.get('/',(req,res)=>res.send(
     "Retail Donation Drive Server!!"
 ))
 
+app.get("/health",(req,res)=>{
+    res.json({
+        status:"OK",
+        time:new Date()
+    })
+})
+
 //-------------------------------------------------------DATABASE CONNECTION ESTABLISHMENT----------------------------------------------
 //lets establish the connection with the database and if the connection is established then only listen the server
 const startServer = async () =>{

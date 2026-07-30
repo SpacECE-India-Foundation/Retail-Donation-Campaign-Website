@@ -295,3 +295,82 @@ for (const campaign of campaigns) {
 )
     }
 }
+
+
+//-----------------------------------------------------FUNCTION CONTROLLER TO FETCH ALL THE SUB ADMINS-------------------------------------------------------
+export const fetchAllAdmins = async (req, res) => {
+    try {
+
+        const superAdminId = req.admin._id;
+
+        const admins = await Admin.aggregate([
+    {
+        $match: {
+            _id: { $ne: req.admin._id }
+        }
+    },
+    {
+        $lookup: {
+            from: "campaigns",
+            localField: "_id",
+            foreignField: "createdBy",
+            as: "campaigns"
+        }
+    },
+    {
+        $project: {
+            fullName: 1,
+            email: 1,
+            phone: 1,
+            role: 1,
+            isActive: 1,
+            createdAt: 1,
+
+            totalCampaigns: {
+                $size: "$campaigns"
+            },
+
+            managedCampaigns: {
+                $map: {
+                    input: "$campaigns",
+                    as: "campaign",
+                    in: {
+                        _id: "$$campaign._id",
+                        campaignName: "$$campaign.campaignName"
+                    }
+                }
+            }
+        }
+    },
+    {
+        $sort: {
+            createdAt: -1
+        }
+    }
+]);
+
+        ApiError.assert(
+            admins.length > 0,
+            404,
+            "No admins found."
+        );
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                admins,
+                "Admins fetched successfully."
+            )
+        );
+
+    } catch (error) {
+
+        return res.status(error.statusCode || 500).json(
+            new ApiError(
+                error.statusCode || 500,
+                error.message
+            )
+        );
+
+    }
+};

@@ -10,7 +10,17 @@ export const fetchPublicCampaigns = async (req, res) => {
     console.log("fetchPublicCampaigns called")
     const query = {}
     console.log("fetchPublicCampaigns query:", query)
-    const campaigns = await Campaign.find(query).sort({ createdAt: -1 })
+    const campaigns = await Campaign.find(query)
+    .select(`
+campaignName
+campaignBanner
+campaignGoalAmt
+campaignRaisedAmt
+contributors
+campaignStatus
+startDate
+endDate
+`).sort({ createdAt: -1 }).lean()
     //just for debugging, remove later
     console.log("fetchPublicCampaigns result count:", campaigns.length)
 
@@ -52,8 +62,8 @@ export const fetchPublicCampaignDetail = async (req, res) => {
     console.log("fetchPublicCampaignDetail milestoneQuery:", milestoneQuery)
 
     const [campaign, milestones] = await Promise.all([
-      Campaign.findById(id),
-      Milestone.find(milestoneQuery).sort({ displayOrder: 1 }),
+      Campaign.findById(id).lean(),
+      Milestone.find(milestoneQuery).sort({ displayOrder: 1 }).lean(),
     ])
     //just for debugging, remove later
     console.log("fetchPublicCampaignDetail campaign result:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
