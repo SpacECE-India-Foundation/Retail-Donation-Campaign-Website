@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HandHeart,
+  ShieldCheck,
 } from "lucide-react";
 
 import { logout, getCurrentAdmin } from "../../services/authService";
@@ -181,6 +182,12 @@ export default function AdminLayout() {
     };
   }, []);
 
+  // Super Admins get an extra "Manage Admins" entry at the bottom of the nav.
+  const navItems =
+    adminProfile?.role === "SUPER_ADMIN"
+      ? [...NAV_ITEMS, { to: "/admin/manage-admins", label: "Manage Admins", icon: ShieldCheck }]
+      : NAV_ITEMS;
+
   return (
     <div className="flex h-screen overflow-hidden bg-brand-cream">
       {/* Sidebar — fixed in place, never scrolls with the page. Collapses to an icon-only rail. */}
@@ -206,7 +213,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+          {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}

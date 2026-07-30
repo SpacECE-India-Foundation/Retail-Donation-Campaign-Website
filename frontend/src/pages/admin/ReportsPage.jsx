@@ -17,6 +17,8 @@ import autoTable from "jspdf-autotable";
 import { Card } from "../../components/common/Card";
 import { fetchDonations } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
+import { getCurrentAdmin } from "../../services/authService";
+import { getAllCampaignsForTransfer, getAllAdmins } from "../../services/superAdminService";
 import spacEceLogo from "../../assets/logo3.png";
 
 /* ------------------------------------------------------------------ */
@@ -261,19 +263,89 @@ export default function ReportsPage() {
   const [fetchError, setFetchError] = useState("");
   const [isExporting, setIsExporting] = useState(false);
 
+  // Role check — used to widen the campaign dropdown's option list for Super Admin,
+  // and now also to power the Admin filter dropdown. Regular admin default view and
+  // stats still come from `campaigns` (this admin's own), exactly as before.
+  const [adminProfile, setAdminProfile] = useState(null);
+  const isSuperAdmin = adminProfile?.role === "SUPER_ADMIN";
+  const [allCampaigns, setAllCampaigns] = useState([]);
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [selectedAdminId, setSelectedAdminId] = useState("All");
+
+  const dropdownCampaigns = useMemo(() => {
+    if (!isSuperAdmin) return campaigns;
+    if (selectedAdminId === "All") return allCampaigns;
+    return allCampaigns.filter((c) => String(c.createdBy?._id ?? c.createdBy) === String(selectedAdminId));
+  }, [isSuperAdmin, allCampaigns, campaigns, selectedAdminId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAdmin()
+      .then((response) => {
+        if (!cancelled) setAdminProfile(response.data?.data?.admin ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    let cancelled = false;
+    getAllCampaignsForTransfer()
+      .then((response) => {
+        if (!cancelled) setAllCampaigns(response.data?.data?.campaigns ?? []);
+      })
+      .catch(() => {});
+    getAllAdmins()
+      .then((response) => {
+        if (!cancelled) setAllAdmins(response.data?.data?.admins ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
   const updateFilter = useCallback((key, value) => setFilters((prev) => ({ ...prev, [key]: value })), []);
-  const resetFilters = useCallback(() => setFilters(DEFAULT_FILTERS), []);
-  const hasActiveFilters = filters.campaign !== "All" || filters.fromDate !== "" || filters.toDate !== "";
+
+  // Picking an admin narrows the campaign dropdown — clear a previously-picked
+  // campaign if it doesn't belong to the newly-picked admin, same as Donation History.
+  const handleAdminFilterChange = useCallback(
+    (adminId) => {
+      setSelectedAdminId(adminId);
+      setFilters((prev) => {
+        if (prev.campaign === "All") return prev;
+        const stillValid = allCampaigns.some(
+          (c) => c._id === prev.campaign && String(c.createdBy?._id ?? c.createdBy) === String(adminId)
+        );
+        return adminId === "All" || stillValid ? prev : { ...prev, campaign: "All" };
+      });
+    },
+    [allCampaigns]
+  );
+
+  const resetFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setSelectedAdminId("All");
+  }, []);
+  const hasActiveFilters =
+    filters.campaign !== "All" || filters.fromDate !== "" || filters.toDate !== "" || selectedAdminId !== "All";
 
   const buildParams = useCallback(() => {
     const params = { page: 1, limit: REPORT_FETCH_LIMIT };
-    if (filters.campaign !== "All") params.campaign = filters.campaign;
+    if (filters.campaign !== "All") {
+      params.campaign = filters.campaign;
+    } else if (isSuperAdmin && selectedAdminId !== "All") {
+      params.admin = selectedAdminId;
+    }
     if (filters.fromDate) params.fromDate = filters.fromDate;
     if (filters.toDate) params.toDate = filters.toDate;
     return params;
-  }, [filters]);
+  }, [filters, isSuperAdmin, selectedAdminId]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -306,9 +378,17 @@ export default function ReportsPage() {
   }, [loadData]);
 
   const filteredCampaigns = useMemo(() => {
-    if (filters.campaign === "All") return campaigns;
-    return campaigns.filter((c) => c._id === filters.campaign);
-  }, [campaigns, filters.campaign]);
+    if (filters.campaign !== "All") {
+      // look up from dropdownCampaigns (not just `campaigns`) since a Super Admin can
+      // pick a campaign that isn't their own — it wouldn't be found in `campaigns` alone
+      const match = dropdownCampaigns.find((c) => c._id === filters.campaign);
+      return match ? [match] : [];
+    }
+    if (isSuperAdmin && selectedAdminId !== "All") {
+      return dropdownCampaigns;
+    }
+    return campaigns;
+  }, [campaigns, dropdownCampaigns, filters.campaign, isSuperAdmin, selectedAdminId]);
 
   const stats = useMemo(() => {
     const verified = donations.filter((d) => d.status === "Verified");
@@ -383,7 +463,7 @@ export default function ReportsPage() {
       const campaignLabel =
         filters.campaign === "All"
           ? "All Campaigns"
-          : campaigns.find((c) => c._id === filters.campaign)?.campaignName ?? "Selected Campaign";
+          : dropdownCampaigns.find((c) => c._id === filters.campaign)?.campaignName ?? "Selected Campaign";
 
       const goToNextPageIfNeeded = (neededSpace = 0) => {
         if (cursorY + neededSpace > pageBreakThreshold) {
@@ -528,7 +608,7 @@ export default function ReportsPage() {
     } finally {
       setIsExporting(false);
     }
-  }, [filteredCampaigns, paymentModeBreakdown, monthlyTrend, stats, filters, campaigns]);
+  }, [filteredCampaigns, paymentModeBreakdown, monthlyTrend, stats, filters, campaigns, dropdownCampaigns, selectedAdminId]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -558,15 +638,30 @@ export default function ReportsPage() {
             <Filter size={13} aria-hidden="true" />
             Filters
           </span>
+          {isSuperAdmin && (
+            <select
+              value={selectedAdminId}
+              onChange={(e) => handleAdminFilterChange(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
+            >
+              <option value="All">All Admins</option>
+              {allAdmins.map((admin) => (
+                <option key={admin._id} value={admin._id}>
+                  {admin.fullName}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={filters.campaign}
             onChange={(e) => updateFilter("campaign", e.target.value)}
             className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
           >
             <option value="All">All Campaigns</option>
-            {campaigns.map((c) => (
+            {dropdownCampaigns.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.campaignName}
+                {isSuperAdmin && c.createdBy?.fullName ? ` — ${c.createdBy.fullName}` : ""}
               </option>
             ))}
           </select>

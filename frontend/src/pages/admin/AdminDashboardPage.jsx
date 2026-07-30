@@ -13,11 +13,14 @@ import {
   CheckCircle2,
   XCircle,
   Trophy,
+  Filter,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
 import { fetchAdminPendingDonations, fetchRecentActivity } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
+import { getCurrentAdmin } from "../../services/authService";
+import { getAllAdmins, getAllCampaignsForTransfer } from "../../services/superAdminService";
 
 const NOTIFICATION_POLL_MS = 60000;
 
@@ -282,6 +285,40 @@ export default function AdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
 
+  // Role check — regular admins never see the dropdown below, and this dashboard keeps
+  // loading exactly as it always has (own campaigns/donations/activity, no params).
+  const [adminProfile, setAdminProfile] = useState(null);
+  const isSuperAdmin = adminProfile?.role === "SUPER_ADMIN";
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [viewedAdminId, setViewedAdminId] = useState("self");
+  const viewingOther = isSuperAdmin && viewedAdminId !== "self";
+  const viewedAdminName = allAdmins.find((a) => a._id === viewedAdminId)?.fullName;
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAdmin()
+      .then((response) => {
+        if (!cancelled) setAdminProfile(response.data?.data?.admin ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    let cancelled = false;
+    getAllAdmins()
+      .then((response) => {
+        if (!cancelled) setAllAdmins(response.data?.data?.admins ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
   // silent=true skips the full-page loading spinner — used for the background poll so
   // the notification bell's count refreshes without the whole dashboard flashing back
   // to a loading state every 60 seconds.
@@ -290,17 +327,24 @@ export default function AdminDashboardPage() {
     setFetchError("");
     try {
       const [donationsRes, campaignsRes, activityRes] = await Promise.allSettled([
-        fetchAdminPendingDonations(),
-        fetchAdminCampaigns(),
-        fetchRecentActivity(),
+        fetchAdminPendingDonations(viewingOther ? { admin: viewedAdminId } : undefined),
+        viewingOther ? getAllCampaignsForTransfer() : fetchAdminCampaigns(),
+        fetchRecentActivity(8, viewingOther ? { admin: viewedAdminId } : {}),
       ]);
 
       setDonations(
         donationsRes.status === "fulfilled" ? donationsRes.value.data?.data?.newPendingDonations ?? [] : []
       );
-      setCampaigns(
-        campaignsRes.status === "fulfilled" ? campaignsRes.value.data?.data?.campaigns ?? [] : []
-      );
+
+      let campaignsList =
+        campaignsRes.status === "fulfilled" ? campaignsRes.value.data?.data?.campaigns ?? [] : [];
+      if (viewingOther) {
+        campaignsList = campaignsList.filter(
+          (c) => String(c.createdBy?._id ?? c.createdBy) === String(viewedAdminId)
+        );
+      }
+      setCampaigns(campaignsList);
+
       setActivity(
         activityRes.status === "fulfilled" ? activityRes.value.data?.data?.activity ?? [] : []
       );
@@ -309,7 +353,7 @@ export default function AdminDashboardPage() {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, []);
+  }, [viewingOther, viewedAdminId]);
 
   useEffect(() => {
     loadOverview();
@@ -326,23 +370,53 @@ export default function AdminDashboardPage() {
     const totalContributors = campaigns.reduce((sum, c) => sum + (c.contributors || 0), 0);
     const activeCampaignsCount = campaigns.filter((c) => c.campaignStatus === "Active").length;
 
+    const campaignScopeLabel = viewingOther ? "Across their campaigns" : "Across all your campaigns";
+
     return [
-      { title: "Total Raised", value: formatINR(totalRaised), change: "Across all your campaigns", isPositive: true, icon: IndianRupee, accent: STAT_ACCENTS[0] },
+      { title: "Total Raised", value: formatINR(totalRaised), change: campaignScopeLabel, isPositive: true, icon: IndianRupee, accent: STAT_ACCENTS[0] },
       { title: "Active Campaigns", value: String(activeCampaignsCount), change: `${campaigns.length} total`, isPositive: true, icon: FolderKanban, accent: STAT_ACCENTS[1] },
       { title: "Total Contributors", value: String(totalContributors), change: "Verified donors", isPositive: true, icon: Users, accent: STAT_ACCENTS[2] },
       { title: "Pending Requests", value: String(pendingCount), change: "Awaiting review", isPositive: pendingCount === 0, icon: BarChart3, accent: STAT_ACCENTS[3] },
     ];
-  }, [donations, campaigns]);
+  }, [donations, campaigns, viewingOther]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-orange">Overview</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-dark sm:text-4xl">Admin Dashboard</h1>
-          <p className="mt-2 text-gray-500">Welcome back! Monitor donations, campaigns and platform activity.</p>
+          <p className="mt-2 text-gray-500">
+            {viewingOther
+              ? `Viewing ${viewedAdminName ?? "another admin"}'s dashboard.`
+              : "Welcome back! Monitor donations, campaigns and platform activity."}
+          </p>
         </div>
-        <NotificationBell items={donations} />
+        <div className="flex items-center gap-3">
+          {isSuperAdmin && (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                <Filter size={13} aria-hidden="true" />
+                Admin
+              </span>
+              <select
+                value={viewedAdminId}
+                onChange={(e) => setViewedAdminId(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
+              >
+                <option value="self">Super Admin</option>
+                {allAdmins
+                  .filter((admin) => admin._id !== adminProfile?._id)
+                  .map((admin) => (
+                    <option key={admin._id} value={admin._id}>
+                      {admin.fullName}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+          <NotificationBell items={donations} />
+        </div>
       </div>
 
       <div className="h-1 w-full rounded-full bg-gradient-to-r from-brand-orange via-orange-300 to-transparent" aria-hidden="true" />

@@ -17,6 +17,8 @@ import {
   Loader2,
   CheckCircle2,
   Info,
+  ShieldCheck,
+  Globe,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
@@ -25,6 +27,8 @@ import {
   verifyDonationRequest,
   rejectDonationRequest,
 } from "../../services/donationService";
+import { getCurrentAdmin } from "../../services/authService";
+import { getAllAdmins } from "../../services/superAdminService";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -229,7 +233,7 @@ function SortableHeader({ label, sortKey, sortConfig, onSort }) {
   );
 }
 
-const DonationRow = React.memo(function DonationRow({ donation, index, onReview }) {
+const DonationRow = React.memo(function DonationRow({ donation, index, onReview, showOwner }) {
   const avatarStyle = useMemo(() => getAvatarStyle(donation.donorName), [donation.donorName]);
 
   return (
@@ -248,7 +252,14 @@ const DonationRow = React.memo(function DonationRow({ donation, index, onReview 
           </div>
         </div>
       </td>
-      <td className="text-gray-600">{donation.campaign?.campaignName ?? "—"}</td>
+      <td className="text-gray-600">
+        {donation.campaign?.campaignName ?? "—"}
+        {showOwner && donation.campaign?.createdBy?.fullName && (
+          <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+            {donation.campaign.createdBy.fullName}
+          </span>
+        )}
+      </td>
       <td className="font-semibold text-brand-dark">{formatINR(donation.amount)}</td>
       <td className="text-gray-500">{donation.transactionId}</td>
       <td className="text-gray-500">{donation.paymentMode}</td>
@@ -549,6 +560,43 @@ export default function VerificationQueuePage() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Role check — regular admins never see this toggle, and their queue keeps loading
+  // exactly as it always has (fetchAdminPendingDonations with no params).
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [selectedAdminId, setSelectedAdminId] = useState("All");
+  const isSuperAdmin = adminProfile?.role === "SUPER_ADMIN";
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAdmin()
+      .then((response) => {
+        if (!cancelled) setAdminProfile(response.data?.data?.admin ?? null);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setProfileLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    let cancelled = false;
+    getAllAdmins()
+      .then((response) => {
+        if (!cancelled) setAllAdmins(response.data?.data?.admins ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
   const [activeDonationId, setActiveDonationId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast] = useState("");
@@ -570,18 +618,26 @@ export default function VerificationQueuePage() {
     setIsLoading(true);
     setFetchError("");
     try {
-      const response = await fetchAdminPendingDonations();
+      let params;
+      if (isSuperAdmin && selectedAdminId !== "All") {
+        params = { admin: selectedAdminId };
+      } else if (isSuperAdmin && viewAll) {
+        params = { viewAll: "true" };
+      }
+      const response = await fetchAdminPendingDonations(params);
       setDonations(response.data?.data?.newPendingDonations ?? []);
     } catch (error) {
       setFetchError(error?.response?.data?.message || "Failed to load the verification queue.");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isSuperAdmin, viewAll, selectedAdminId]);
 
+  // Wait for the role check before the first load, same reasoning as CampaignsPage —
+  // avoids a flash from "own queue" to "everyone's queue" a moment later.
   useEffect(() => {
-    loadDonations();
-  }, [loadDonations]);
+    if (profileLoaded) loadDonations();
+  }, [profileLoaded, loadDonations]);
 
   const pendingDonations = useMemo(() => donations.filter((d) => d.status === "Pending"), [donations]);
   const rejectedDonations = useMemo(() => donations.filter((d) => d.status === "Rejected"), [donations]);
@@ -707,18 +763,51 @@ export default function VerificationQueuePage() {
             </button>
           </div>
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} aria-hidden="true" />
-            <label htmlFor="queue-search" className="sr-only">
-              Search donor, email, transaction ID or campaign
-            </label>
-            <input
-              id="queue-search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search donor, email, transaction ID, campaign..."
-              className="w-72 rounded-xl border border-gray-200 bg-gray-50/60 py-3 pl-11 pr-4 outline-none transition focus:border-brand-orange focus:bg-white focus:shadow-sm"
-            />
+          <div className="flex items-center gap-3">
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setViewAll((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                  viewAll
+                    ? "border-brand-orange bg-brand-orange/10 text-brand-orange"
+                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+                title={viewAll ? "Showing every admin's queue" : "Showing only your campaigns"}
+              >
+                {viewAll ? <Globe size={13} aria-hidden="true" /> : <ShieldCheck size={13} aria-hidden="true" />}
+                {viewAll ? "All Admins" : "My Campaigns Only"}
+              </button>
+            )}
+
+            {isSuperAdmin && (
+              <select
+                value={selectedAdminId}
+                onChange={(event) => setSelectedAdminId(event.target.value)}
+                className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
+              >
+                <option value="All">All Admins</option>
+                {allAdmins.map((admin) => (
+                  <option key={admin._id} value={admin._id}>
+                    {admin.fullName}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} aria-hidden="true" />
+              <label htmlFor="queue-search" className="sr-only">
+                Search donor, email, transaction ID or campaign
+              </label>
+              <input
+                id="queue-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search donor, email, transaction ID, campaign..."
+                className="w-72 rounded-xl border border-gray-200 bg-gray-50/60 py-3 pl-11 pr-4 outline-none transition focus:border-brand-orange focus:bg-white focus:shadow-sm"
+              />
+            </div>
           </div>
         </div>
 
@@ -772,7 +861,13 @@ export default function VerificationQueuePage() {
                     </tr>
                   )}
                   {paginatedDonations.map((donation, index) => (
-                    <DonationRow key={donation._id} donation={donation} index={index} onReview={openReview} />
+                    <DonationRow
+                      key={donation._id}
+                      donation={donation}
+                      index={index}
+                      onReview={openReview}
+                      showOwner={isSuperAdmin && (viewAll || selectedAdminId !== "All")}
+                    />
                   ))}
                 </tbody>
               </table>

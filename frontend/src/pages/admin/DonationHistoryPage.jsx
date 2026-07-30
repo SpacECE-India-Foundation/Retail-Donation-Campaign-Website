@@ -13,11 +13,15 @@ import {
   Download,
   Filter,
   RotateCcw,
+  ShieldCheck,
+  Globe,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
 import { fetchDonations } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
+import { getCurrentAdmin } from "../../services/authService";
+import { getAllCampaignsForTransfer, getAllAdmins } from "../../services/superAdminService";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -196,7 +200,7 @@ function StatusBadge({ status }) {
   );
 }
 
-const DonationRow = React.memo(function DonationRow({ donation, index, onView }) {
+const DonationRow = React.memo(function DonationRow({ donation, index, onView, showOwner }) {
   const avatarStyle = useMemo(() => getAvatarStyle(donation.donorName), [donation.donorName]);
 
   return (
@@ -215,7 +219,14 @@ const DonationRow = React.memo(function DonationRow({ donation, index, onView })
           </div>
         </div>
       </td>
-      <td className="text-gray-600">{donation.campaign?.campaignName ?? "—"}</td>
+      <td className="text-gray-600">
+        {donation.campaign?.campaignName ?? "—"}
+        {showOwner && donation.campaign?.createdBy?.fullName && (
+          <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+            {donation.campaign.createdBy.fullName}
+          </span>
+        )}
+      </td>
       <td className="font-semibold text-brand-dark">{formatINR(donation.amount)}</td>
       <td className="text-gray-500">{donation.transactionId}</td>
       <td className="text-gray-500">{donation.paymentMode}</td>
@@ -492,12 +503,52 @@ export default function DonationHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [activeDonationId, setActiveDonationId] = useState(null);
 
-  const debouncedSearch = useDebouncedValue(filters.search, SEARCH_DEBOUNCE_MS);
+  // Role check — regular admins keep exactly today's behavior: their own campaigns in
+  // the dropdown, their own donations by default, no toggle/admin filter visible at all.
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [selectedAdminId, setSelectedAdminId] = useState("All");
+  const isSuperAdmin = adminProfile?.role === "SUPER_ADMIN";
 
-  // load the admin's own campaigns once, for the campaign filter dropdown
   useEffect(() => {
     let cancelled = false;
-    fetchAdminCampaigns()
+    getCurrentAdmin()
+      .then((response) => {
+        if (!cancelled) setAdminProfile(response.data?.data?.admin ?? null);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setProfileLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    let cancelled = false;
+    getAllAdmins()
+      .then((response) => {
+        if (!cancelled) setAllAdmins(response.data?.data?.admins ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
+  const debouncedSearch = useDebouncedValue(filters.search, SEARCH_DEBOUNCE_MS);
+
+  // Campaign dropdown source: Super Admin gets every campaign (with owner labels
+  // available via createdBy), regular admin keeps the own-campaigns-only call.
+  useEffect(() => {
+    if (!profileLoaded) return undefined;
+    let cancelled = false;
+    const request = isSuperAdmin ? getAllCampaignsForTransfer() : fetchAdminCampaigns();
+    request
       .then((response) => {
         if (!cancelled) setCampaigns(response.data?.data?.campaigns ?? []);
       })
@@ -505,20 +556,33 @@ export default function DonationHistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profileLoaded, isSuperAdmin]);
+
+  // Narrows the Campaign dropdown's options to the selected admin's campaigns —
+  // picking an admin first, then optionally a specific one of their campaigns.
+  const campaignDropdownOptions = useMemo(() => {
+    if (!isSuperAdmin || selectedAdminId === "All") return campaigns;
+    return campaigns.filter((c) => String(c.createdBy?._id ?? c.createdBy) === String(selectedAdminId));
+  }, [campaigns, isSuperAdmin, selectedAdminId]);
 
   const buildParams = useCallback(
     (page) => {
       const params = { page, limit: PAGE_SIZE };
       if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
-      if (filters.campaign !== "All") params.campaign = filters.campaign;
+      if (filters.campaign !== "All") {
+        params.campaign = filters.campaign;
+      } else if (isSuperAdmin && selectedAdminId !== "All") {
+        params.admin = selectedAdminId;
+      } else if (isSuperAdmin && viewAll) {
+        params.viewAll = "true";
+      }
       if (filters.status !== "All") params.status = filters.status;
       if (filters.paymentMode !== "All") params.paymentMode = filters.paymentMode;
       if (filters.fromDate) params.fromDate = filters.fromDate;
       if (filters.toDate) params.toDate = filters.toDate;
       return params;
     },
-    [debouncedSearch, filters.campaign, filters.status, filters.paymentMode, filters.fromDate, filters.toDate]
+    [debouncedSearch, filters.campaign, filters.status, filters.paymentMode, filters.fromDate, filters.toDate, isSuperAdmin, viewAll, selectedAdminId]
   );
 
   const loadDonations = useCallback(async () => {
@@ -539,19 +603,40 @@ export default function DonationHistoryPage() {
   }, [buildParams, currentPage]);
 
   useEffect(() => {
-    loadDonations();
-  }, [loadDonations]);
+    if (profileLoaded) loadDonations();
+  }, [profileLoaded, loadDonations]);
 
   // reset to page 1 whenever a filter (other than the page itself) changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, filters.campaign, filters.status, filters.paymentMode, filters.fromDate, filters.toDate]);
+  }, [debouncedSearch, filters.campaign, filters.status, filters.paymentMode, filters.fromDate, filters.toDate, viewAll, selectedAdminId]);
 
   const updateFilter = useCallback((key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const resetFilters = useCallback(() => setFilters(DEFAULT_FILTERS), []);
+  // Picking an admin narrows the campaign list — if the previously-selected campaign
+  // doesn't belong to the newly-picked admin, clear it back to "All" so the filters
+  // don't end up contradicting each other.
+  const handleAdminFilterChange = useCallback(
+    (adminId) => {
+      setSelectedAdminId(adminId);
+      setFilters((prev) => {
+        if (prev.campaign === "All") return prev;
+        const stillValid = campaigns.some(
+          (c) => c._id === prev.campaign && String(c.createdBy?._id ?? c.createdBy) === String(adminId)
+        );
+        return adminId === "All" || stillValid ? prev : { ...prev, campaign: "All" };
+      });
+    },
+    [campaigns]
+  );
+
+  const resetFilters = useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+    setViewAll(false);
+    setSelectedAdminId("All");
+  }, []);
 
   const hasActiveFilters =
     filters.search.trim() !== "" ||
@@ -559,7 +644,9 @@ export default function DonationHistoryPage() {
     filters.status !== "All" ||
     filters.paymentMode !== "All" ||
     filters.fromDate !== "" ||
-    filters.toDate !== "";
+    filters.toDate !== "" ||
+    viewAll ||
+    selectedAdminId !== "All";
 
   const totalPages = Math.max(1, pagination.totalPages ?? 1);
   const safePage = Math.min(currentPage, totalPages);
@@ -670,15 +757,47 @@ export default function DonationHistoryPage() {
               Filters
             </span>
 
+            {isSuperAdmin && (
+              <button
+                type="button"
+                onClick={() => setViewAll((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                  viewAll
+                    ? "border-brand-orange bg-brand-orange/10 text-brand-orange"
+                    : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+                title={viewAll ? "Showing every admin's donations" : "Showing only your campaigns"}
+              >
+                {viewAll ? <Globe size={13} aria-hidden="true" /> : <ShieldCheck size={13} aria-hidden="true" />}
+                {viewAll ? "All Admins" : "My Campaigns Only"}
+              </button>
+            )}
+
+            {isSuperAdmin && (
+              <select
+                value={selectedAdminId}
+                onChange={(event) => handleAdminFilterChange(event.target.value)}
+                className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
+              >
+                <option value="All">All Admins</option>
+                {allAdmins.map((admin) => (
+                  <option key={admin._id} value={admin._id}>
+                    {admin.fullName}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <select
               value={filters.campaign}
               onChange={(event) => updateFilter("campaign", event.target.value)}
               className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
             >
               <option value="All">All Campaigns</option>
-              {campaigns.map((c) => (
+              {campaignDropdownOptions.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.campaignName}
+                  {isSuperAdmin && c.createdBy?.fullName ? ` — ${c.createdBy.fullName}` : ""}
                 </option>
               ))}
             </select>
@@ -786,7 +905,13 @@ export default function DonationHistoryPage() {
                     </tr>
                   )}
                   {donations.map((donation, index) => (
-                    <DonationRow key={donation._id} donation={donation} index={index} onView={openView} />
+                    <DonationRow
+                      key={donation._id}
+                      donation={donation}
+                      index={index}
+                      onView={openView}
+                      showOwner={isSuperAdmin && (viewAll || selectedAdminId !== "All" || filters.campaign !== "All")}
+                    />
                   ))}
                 </tbody>
               </table>

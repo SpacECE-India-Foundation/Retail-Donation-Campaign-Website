@@ -33,8 +33,11 @@ function buildDonationFormData(frontendPayload) {
 export const submitPublicDonation = (frontendPayload) =>
   api.post(SUBMIT_DONATION_ENDPOINT, buildDonationFormData(frontendPayload));
 
-export const fetchAdminPendingDonations = () =>
-  api.get("/donations/pending-donation");
+// params: optional { campaign, viewAll } — only meaningful for a Super Admin (viewAll=true
+// to see every campaign's queue, or campaign=<id> to see one specific other admin's queue).
+// Regular admins should keep calling this with no args, same as always.
+export const fetchAdminPendingDonations = (params) =>
+  api.get("/donations/pending-donation", { params });
 
 export const verifyDonationRequest = (donationId) =>
   api.post(`/donations/verify-donation/${donationId}`);
@@ -71,5 +74,5 @@ export const updateDonation = async (donationId, { transactionId, screenshotFile
 
 // merged timeline of recent donation verifications/rejections + milestone completions,
 // used by the admin dashboard's "Recent Activity" card
-export const fetchRecentActivity = (limit = 8) =>
-  api.get("/donations/recent-activity", { params: { limit } });
+export const fetchRecentActivity = (limit = 8, extraParams = {}) =>
+  api.get("/donations/recent-activity", { params: { limit, ...extraParams } });

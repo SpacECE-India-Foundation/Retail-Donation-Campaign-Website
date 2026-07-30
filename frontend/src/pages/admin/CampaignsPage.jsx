@@ -14,6 +14,8 @@ import {
   Info,
   FolderKanban,
   CheckCircle2,
+  UserCircle,
+  Filter,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
@@ -22,6 +24,8 @@ import {
   createCampaign,
   updateCampaign,
 } from "../../services/campaignService";
+import { getCurrentAdmin } from "../../services/authService";
+import { getAllCampaignsForTransfer, getAllAdmins } from "../../services/superAdminService";
 
 /* ------------------------------------------------------------------ */
 /* Constants                                                           */
@@ -218,10 +222,15 @@ const inputClass =
 /* Campaign card                                                       */
 /* ------------------------------------------------------------------ */
 
-const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView }) {
+const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView, isSuperAdmin, currentAdminId }) {
   const goal = Number(campaign.campaignGoalAmt ?? 0);
   const raised = Number(campaign.campaignRaisedAmt ?? 0);
   const progress = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
+
+  // Only meaningful in the Super Admin's all-campaigns view — regular admins only
+  // ever see their own campaigns here, so there's nothing to label.
+  const ownerId = campaign.createdBy?._id ?? campaign.createdBy;
+  const isMine = !isSuperAdmin || String(ownerId) === String(currentAdminId);
 
   return (
     <Card className="overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -242,6 +251,12 @@ const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView
         <div>
           <h3 className="text-lg font-semibold text-brand-dark">{campaign.campaignName}</h3>
           <p className="mt-1 line-clamp-2 text-sm text-gray-500">{campaign.campaignDescription}</p>
+          {isSuperAdmin && (
+            <p className="mt-1.5 flex items-center gap-1 text-xs font-medium text-gray-400">
+              <UserCircle size={12} aria-hidden="true" />
+              Managed by {campaign.createdBy?.fullName ?? "—"}
+            </p>
+          )}
         </div>
 
         <div>
@@ -273,13 +288,15 @@ const CampaignCard = React.memo(function CampaignCard({ campaign, onEdit, onView
             <Eye size={15} aria-hidden="true" />
             View
           </button>
-          <button
-            onClick={() => onEdit(campaign)}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-orange/10 px-3 py-2 text-sm font-medium text-brand-orange transition hover:bg-brand-orange/20"
-          >
-            <Pencil size={15} aria-hidden="true" />
-            Edit
-          </button>
+          {(isMine || isSuperAdmin) && (
+            <button
+              onClick={() => onEdit(campaign)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-orange/10 px-3 py-2 text-sm font-medium text-brand-orange transition hover:bg-brand-orange/20"
+            >
+              <Pencil size={15} aria-hidden="true" />
+              Edit
+            </button>
+          )}
         </div>
       </div>
     </Card>
@@ -607,6 +624,47 @@ export default function CampaignsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState(null);
 
+  // Role check — everything below is purely additive for Super Admin. Regular
+  // admins keep calling fetchAdminCampaigns() exactly as before, untouched.
+  const [adminProfile, setAdminProfile] = useState(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const isSuperAdmin = adminProfile?.role === "SUPER_ADMIN";
+  const currentAdminId = adminProfile?._id;
+
+  // Admin filter — Super Admin only, narrows the (already-loaded) full campaigns
+  // list down to one admin's campaigns. Purely a client-side filter since
+  // getAllCampaignsForTransfer already returns everything in one shot.
+  const [allAdmins, setAllAdmins] = useState([]);
+  const [selectedAdminId, setSelectedAdminId] = useState("All");
+
+  useEffect(() => {
+    let cancelled = false;
+    getCurrentAdmin()
+      .then((response) => {
+        if (!cancelled) setAdminProfile(response.data?.data?.admin ?? null);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setProfileLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    let cancelled = false;
+    getAllAdmins()
+      .then((response) => {
+        if (!cancelled) setAllAdmins(response.data?.data?.admins ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
   const showToast = useCallback((message) => {
     setToast(message);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
@@ -621,8 +679,24 @@ export default function CampaignsPage() {
     setIsLoading(true);
     setFetchError("");
     try {
-      const response = await fetchAdminCampaigns();
-      setCampaigns(response.data?.data?.campaigns ?? []);
+      if (isSuperAdmin) {
+        // Super Admin: every campaign, own ones pinned first, everything else
+        // labeled with its actual owner. Array.sort is stable in modern JS
+        // engines, so campaigns keep their original relative order within
+        // each of the two groups.
+        const response = await getAllCampaignsForTransfer();
+        const all = response.data?.data?.campaigns ?? [];
+        const sorted = [...all].sort((a, b) => {
+          const aMine = String(a.createdBy?._id ?? a.createdBy) === String(currentAdminId);
+          const bMine = String(b.createdBy?._id ?? b.createdBy) === String(currentAdminId);
+          if (aMine === bMine) return 0;
+          return aMine ? -1 : 1;
+        });
+        setCampaigns(sorted);
+      } else {
+        const response = await fetchAdminCampaigns();
+        setCampaigns(response.data?.data?.campaigns ?? []);
+      }
     } catch (error) {
       // backend returns an error when the admin simply has zero campaigns yet —
       // treat that as an empty state instead of a real failure
@@ -635,11 +709,19 @@ export default function CampaignsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isSuperAdmin, currentAdminId]);
 
+  // Wait for the role check to resolve before the first load, so Super Admin
+  // doesn't briefly fetch the "own campaigns only" list and then flash to the
+  // full list a moment later.
   useEffect(() => {
-    loadCampaigns();
-  }, [loadCampaigns]);
+    if (profileLoaded) loadCampaigns();
+  }, [profileLoaded, loadCampaigns]);
+
+  const visibleCampaigns = useMemo(() => {
+    if (!isSuperAdmin || selectedAdminId === "All") return campaigns;
+    return campaigns.filter((c) => String(c.createdBy?._id ?? c.createdBy) === String(selectedAdminId));
+  }, [campaigns, isSuperAdmin, selectedAdminId]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -658,7 +740,11 @@ export default function CampaignsPage() {
             Campaigns
           </p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-brand-dark">Campaigns</h1>
-          <p className="mt-2 text-gray-500">Manage the fundraising campaigns you've created.</p>
+          <p className="mt-2 text-gray-500">
+            {isSuperAdmin
+              ? "Every campaign across all admins — yours are pinned first."
+              : "Manage the fundraising campaigns you've created."}
+          </p>
         </div>
 
         <button
@@ -669,6 +755,27 @@ export default function CampaignsPage() {
           New Campaign
         </button>
       </div>
+
+      {isSuperAdmin && (
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            <Filter size={13} aria-hidden="true" />
+            Admin
+          </span>
+          <select
+            value={selectedAdminId}
+            onChange={(e) => setSelectedAdminId(e.target.value)}
+            className="rounded-xl border border-gray-200 bg-gray-50/60 px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-orange focus:bg-white"
+          >
+            <option value="All">All Admins</option>
+            {allAdmins.map((admin) => (
+              <option key={admin._id} value={admin._id}>
+                {admin.fullName}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {isLoading && (
         <div className="flex items-center justify-center gap-2 py-16 text-gray-400">
@@ -687,10 +794,16 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {!isLoading && !fetchError && campaigns.length === 0 && (
+      {!isLoading && !fetchError && visibleCampaigns.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-3xl border border-dashed border-gray-200 py-20 text-center">
           <FolderKanban size={32} className="text-gray-300" aria-hidden="true" />
-          <p className="font-medium text-gray-500">You haven't created any campaigns yet.</p>
+          <p className="font-medium text-gray-500">
+            {isSuperAdmin && selectedAdminId !== "All"
+              ? "This admin hasn't created any campaigns yet."
+              : isSuperAdmin
+                ? "No campaigns exist yet."
+                : "You haven't created any campaigns yet."}
+          </p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="mt-2 flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
@@ -701,14 +814,16 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {!isLoading && !fetchError && campaigns.length > 0 && (
+      {!isLoading && !fetchError && visibleCampaigns.length > 0 && (
         <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-          {campaigns.map((campaign) => (
+          {visibleCampaigns.map((campaign) => (
             <CampaignCard
               key={campaign._id}
               campaign={campaign}
               onEdit={setEditingCampaign}
               onView={(c) => navigate(`/admin/campaigns/${c._id}`)}
+              isSuperAdmin={isSuperAdmin}
+              currentAdminId={currentAdminId}
             />
           ))}
         </div>
