@@ -1,6 +1,5 @@
 export const MAX_DONATION_AMOUNT = 10000000;
-export const AMOUNT_PRESETS = [500, 1000, 2500, 5000];
-export const PAYMENT_MODES = ["UPI", "Bank Transfer"];
+export const AMOUNT_PRESETS = [100, 500, 1000, 2500];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^[6-9]\d{9}$/;
@@ -14,7 +13,6 @@ export const INITIAL_FORM_STATE = {
   phone: "",
   address: "",
   amount: "",
-  paymentMode: "",
   transactionId: "",
   paymentScreenshot: null,
   message: "",
@@ -78,21 +76,11 @@ export function validateForm(formData, campaigns = []) {
     errors.amount = `Amount cannot exceed ${formatINR(MAX_DONATION_AMOUNT)}.`;
   }
 
-  if (!formData.paymentMode) {
-    errors.paymentMode = "Select a payment mode.";
-  } else if (!PAYMENT_MODES.includes(formData.paymentMode)) {
-    errors.paymentMode = "Select a valid payment mode.";
-  }
-
   if (!trimmedTransactionId) {
     errors.transactionId = "Transaction ID is required.";
   } else if (!TRANSACTION_ID_REGEX.test(trimmedTransactionId)) {
     errors.transactionId =
       "Transaction ID must be 6–50 characters (letters, numbers, - or _).";
-  }
-
-  if (!formData.paymentScreenshot) {
-    errors.paymentScreenshot = "Payment screenshot is required.";
   }
 
   return errors;
@@ -107,7 +95,6 @@ export function preparePayload(formData) {
     phone: formData.phone.trim().replace(/\s/g, ""),
     address: formData.address.trim(),
     amount: Number(formData.amount),
-    paymentMode: formData.paymentMode,
     transactionId: formData.transactionId.trim(),
     paymentScreenshot: formData.paymentScreenshot,
     message: formData.message.trim(),
@@ -125,7 +112,6 @@ export function toApiPayload(payload) {
     address: payload.address,
     donorMessage: payload.message,
     amount: payload.amount,
-    paymentMode: payload.paymentMode,
     transactionId: payload.transactionId,
     paymentDate: new Date().toISOString(),
     campaign: payload.campaignId,

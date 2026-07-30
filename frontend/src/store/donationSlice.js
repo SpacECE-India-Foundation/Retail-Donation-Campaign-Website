@@ -4,7 +4,6 @@ const donationSlice = createSlice({
   name: "donation",
   initialState: {
     amount: null,
-    paymentMode: null,
     transactionId: "",
   },
   reducers: {
@@ -13,7 +12,6 @@ const donationSlice = createSlice({
     },
     resetDonationDraft: (state) => {
       state.amount = null;
-      state.paymentMode = null;
       state.transactionId = "";
     },
   },

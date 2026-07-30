@@ -26,3 +26,19 @@ body {
   font-family: "DM Sans", sans-serif;
   background: var(--color-brand-bg);
 }
+
+@keyframes solutionTimelinePulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.02);
+  }
+}
+
+.solution-timeline-line {
+  animation: solutionTimelinePulse 3s ease-in-out infinite;
+  transform-origin: top center;
+}

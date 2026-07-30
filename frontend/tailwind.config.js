@@ -32,10 +32,15 @@ export default {
         progressFill: {
           from: { width: "0%" },
         },
+        glowDrift: {
+          "0%, 100%": { transform: "translate(0px, 0px) scale(1)", opacity: "1" },
+          "50%": { transform: "translate(22px, -18px) scale(1.08)", opacity: "0.85" },
+        },
       },
       animation: {
         "fade-in-up": "fadeInUp 0.5s ease-out forwards",
         "progress-fill": "progressFill 1s ease-out forwards",
+        "glow-drift": "glowDrift 11s ease-in-out infinite",
       },
     },
   },

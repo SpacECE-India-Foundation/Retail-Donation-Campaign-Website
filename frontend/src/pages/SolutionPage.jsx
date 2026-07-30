@@ -1,11 +1,13 @@
-﻿ import {
+﻿import { useState } from "react";
+import {
   Users,
   IndianRupee,
   GraduationCap,
   Heart,
- } from "lucide-react";
+} from "lucide-react";
 import DonationWall from "../components/common/donation/DonationWall";
-import { useState } from "react";
+import SolutionImpactTimeline from "../components/solutions/SolutionImpactTimeline";
+import SolutionTrustSection from "../components/solutions/SolutionTrustSection";
 
 export default function SolutionPage() {
   const [statistics, setStatistics] = useState({
@@ -15,9 +17,9 @@ export default function SolutionPage() {
   });
 
   return (
-    <div className="bg-[#FFF8F1] pb-40">
+    <div className="bg-[#FFFDF8] pb-20">
 
-      {/* ================= HERO ================= */}
+      {/* ================= HERO (unchanged) ================= */}
 
      <div className="relative w-full overflow-visible" style={{ aspectRatio: "2109 / 745" }}>
 
@@ -113,15 +115,12 @@ export default function SolutionPage() {
         </div>
       </div>
 
-      {/* ================= REST OF PAGE ================= */}
+      {/* ================= EDITORIAL SECTIONS ================= */}
 
-      <div
-      className="min-h-screen bg-cover bg-center bg-no-repeat pt-24"
-      style={{
-      backgroundImage: "url('/donation_wall_background.png')",
-    }}
-    >
-        <DonationWall setStatistics={setStatistics} /> 
+      <div className="relative pt-24">
+        <DonationWall setStatistics={setStatistics} variant="grid" />
+        <SolutionImpactTimeline />
+        <SolutionTrustSection statistics={statistics} />
       </div>
 
     </div>

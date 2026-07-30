@@ -20,7 +20,6 @@ function buildDonationFormData(frontendPayload) {
   }
   formData.append("donorMessage", frontendPayload.message || "");
   formData.append("amount", String(frontendPayload.amount));
-  formData.append("paymentMode", frontendPayload.paymentMode);
   formData.append("transactionId", frontendPayload.transactionId);
   formData.append("campaign", frontendPayload.campaignId);
 

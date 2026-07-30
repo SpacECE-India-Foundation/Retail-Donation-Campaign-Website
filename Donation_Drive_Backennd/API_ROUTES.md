@@ -458,7 +458,6 @@ This document describes all backend endpoints available in the Donation Drive ba
 - `donorName` (string, required)
 - `donorEmail` (string, required)
 - `amount` (number, required)
-- `paymentMode` (string, required; `UPI` or `Bank Transfer`)
 - `donorPhone` (string, optional)
 - `address` (string, optional)
 - `donorMessage` (string, optional)

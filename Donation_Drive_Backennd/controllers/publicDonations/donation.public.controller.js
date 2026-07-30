@@ -25,12 +25,9 @@ export const registerDonation = async (req,res) =>{
             address, //optional
             donorMessage, //optional
             amount,
-            paymentMode, 
             transactionId,
-            campaign  //need campaign id from the frontend not the name, you can show the camapign name on the frontend but we need id as a response 
+            campaign  //need campaign id from the frontend not the name, you can show the camapign name on the frontend but we need id as a response
         } = req.body
-
-        const paymentMethods = ["UPI", "Bank Transfer"]
 
         //first of all we have to find that weather the selected campaign id exists or not and aslo we will check the duplicacy here 
 
@@ -83,10 +80,7 @@ export const registerDonation = async (req,res) =>{
         console.log(donationAmount)
         ApiError.assert(Number.isFinite(donationAmount) && donationAmount>0, "Invalid donation amount")
 
-        //validation for the payment mode
-        ApiError.assert(paymentMode && paymentMethods.includes(paymentMode),"Please select a valid and allowed payment mode")
-
-        //validation fr the transaction id, this is one of the most major primary key 
+        //validation fr the transaction id, this is one of the most major primary key
         if (transactionId !== undefined) {
             transactionId = transactionId.trim();
             ApiError.assert(
@@ -137,29 +131,32 @@ export const registerDonation = async (req,res) =>{
         ApiError.assert(campaignExists,"Campaign Associated with this donation is Invalid")
         ApiError.assert(!donorValid,"We have already received your donation request. Please wait a few minutes before trying again.")
         ApiError.assert(!isTransactionIdExist,"Transaction Id Already exist")
-        //till here validation are completed now we will just do the screenshot upload task
-        ApiError.assert(req.file?.buffer,"Donation Payment screenshot is required");
-
+        //till here validation are completed. Screenshot is now optional — the
+        //V2 UPI flow has the donor self-report their UTR/transaction ID
+        //instead of uploading proof, so only attempt the upload if a file
+        //actually came through.
         let uploadResult;
-        
-        try {
-            uploadResult = await uploadBufferToCloudinary(
-            req.file.buffer,
-            "donation-screenshots"
-            );
-            //just for debugging, remove later
-            console.log("registerDonation uploadResult:", {
-              secure_url: uploadResult?.secure_url,
-              public_id: uploadResult?.public_id,
-              status: uploadResult ? "ok" : "missing"
-            })
-        } catch (error) {
-            //just for debugging, remove later
-            console.log("Cloudinary Error:", error)
-            throw new ApiError(500, "Failed to upload campaign banner");
+
+        if (req.file?.buffer) {
+            try {
+                uploadResult = await uploadBufferToCloudinary(
+                req.file.buffer,
+                "donation-screenshots"
+                );
+                //just for debugging, remove later
+                console.log("registerDonation uploadResult:", {
+                  secure_url: uploadResult?.secure_url,
+                  public_id: uploadResult?.public_id,
+                  status: uploadResult ? "ok" : "missing"
+                })
+            } catch (error) {
+                //just for debugging, remove later
+                console.log("Cloudinary Error:", error)
+                throw new ApiError(500, "Failed to upload campaign banner");
+            }
         }
 
-        //now we will save this to the collection 
+        //now we will save this to the collection
         const newDonation = new Donation({
             donorName,
             donorEmail,
@@ -167,13 +164,14 @@ export const registerDonation = async (req,res) =>{
             transactionId,
             address,
             donorMessage,
-            paymentMode,
             amount:donationAmount,
             campaign,
-            screenshot: {
-                url: uploadResult.secure_url,
-                publicId: uploadResult.public_id,
-            },
+            ...(uploadResult && {
+                screenshot: {
+                    url: uploadResult.secure_url,
+                    publicId: uploadResult.public_id,
+                },
+            }),
             paymentDate : new Date()
         })
 

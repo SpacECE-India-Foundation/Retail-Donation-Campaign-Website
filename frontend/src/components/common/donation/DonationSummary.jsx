@@ -1,4 +1,4 @@
-import { Shield, Receipt, Lock, User, Mail, Phone, MapPin, Hash, Image } from "lucide-react";
+import { Shield, Receipt, Lock, User } from "lucide-react";
 import { formatINR } from "../../../utils/donationForm";
 import { cn } from "../../../utils/cn";
 
@@ -31,30 +31,15 @@ export default function DonationSummary({ formData, campaign, stats, className }
   const {
     campaignName = "",
     name = "",
-    email = "",
-    phone = "",
-    address = "",
     amount = "",
-    paymentMode = "",
-    transactionId = "",
-    paymentScreenshot = null,
-    message = "",
   } = formData ?? {};
 
   const displayAmount =
     amount && Number(amount) > 0 ? formatINR(Number(amount)) : "—";
 
-  const filledFields = [
-    campaignName,
-    name,
-    email,
-    amount,
-    paymentMode,
-    transactionId,
-    paymentScreenshot,
-  ].filter(Boolean).length;
+  const filledFields = [campaignName, name, amount].filter(Boolean).length;
 
-  const progressPercent = Math.round((filledFields / 7) * 100);
+  const progressPercent = Math.round((filledFields / 3) * 100);
 
   return (
     <aside
@@ -132,45 +117,12 @@ export default function DonationSummary({ formData, campaign, stats, className }
           filled={Boolean(name)}
         />
         <SummaryRow
-          icon={Mail}
-          label="Email"
-          value={email || "—"}
-          filled={Boolean(email)}
-        />
-        {phone && (
-          <SummaryRow icon={Phone} label="Phone" value={phone} filled />
-        )}
-        {address && (
-          <SummaryRow icon={MapPin} label="Address" value={address} filled />
-        )}
-        <SummaryRow
           icon={null}
           label="Amount"
           value={displayAmount}
           highlight
           filled={Boolean(amount && Number(amount) > 0)}
         />
-        <SummaryRow
-          icon={null}
-          label="Payment Mode"
-          value={paymentMode || "Not selected"}
-          filled={Boolean(paymentMode)}
-        />
-        <SummaryRow
-          icon={Hash}
-          label="Transaction ID"
-          value={transactionId || "—"}
-          filled={Boolean(transactionId)}
-        />
-        <SummaryRow
-          icon={Image}
-          label="Screenshot"
-          value={paymentScreenshot ? "Uploaded" : "Pending"}
-          filled={Boolean(paymentScreenshot)}
-        />
-        {message && (
-          <SummaryRow icon={null} label="Message" value={message} filled />
-        )}
       </dl>
 
       <div className="mt-6 space-y-3">
