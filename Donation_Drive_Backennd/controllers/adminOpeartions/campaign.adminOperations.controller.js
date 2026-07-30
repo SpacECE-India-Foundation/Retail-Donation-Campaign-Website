@@ -1,4 +1,4 @@
-//THIS CONTROLLER CONTAINS THE ALL THE FUNCTIONAITY REGARDING THE NEW DONATION CAMPAIGN CREATION, UPDATION AND MANAGEMENT 
+//THIS CONTROLLER CONTAINS THE ALL THE FUNCTIONAITY REGARDING THE NEW DONATION CAMPAIGN CREATION, UPDATION AND MANAGEMENT
 
 import Campaign from "../../models/campaign.modals.js";
 import { ApiError } from "../../utils/apiError.utils.js";
@@ -19,7 +19,7 @@ export const newCampaign = async (req,res) =>{
             campaignGoalAmount
         } = req.body
         //lets get the admin id who is creating the campaign
-        const adminId = req.admin.adminId //geeting this from the token/ the middelware we created 
+        const adminId = req.admin.adminId //geeting this from the token/ the middelware we created
         //just for debugging, remove later
         console.log("newCampaign called by adminId:", adminId)
 
@@ -87,13 +87,13 @@ export const newCampaign = async (req,res) =>{
                     )
                 );
 
-        //HERE, IF WE WANTS TO SEND MAIL TO THE OFFICIAL BODY REGARDING NEW CREATION WE CAN SEND 
+        //HERE, IF WE WANTS TO SEND MAIL TO THE OFFICIAL BODY REGARDING NEW CREATION WE CAN SEND
         //------------------------------MAIL CODE GOES HERE ------------------------------------
 
 
     } catch (error) {
         console.error(error);
-        
+
             return res.status(error.statusCode || 500).json(
                 new ApiError(
                     error.statusCode || 500,
@@ -109,6 +109,8 @@ export const updateCampaignDetails = async (req,res) =>{
     try {
         //let first get the admin Id, we are intended to allow those admins to make changes in the campaign they have created
         const adminId = req.admin.adminId
+        //Super Admin is allowed to edit campaigns created by any admin, not just their own
+        const isSuperAdmin = req.admin.role === "SUPER_ADMIN"
 
          const allowedStatus = [
         "Active",
@@ -123,11 +125,13 @@ export const updateCampaignDetails = async (req,res) =>{
 
         ApiError.assert(campaignId,"Campaign Id is required!")
 
-        //lets check weather the campaign exist or not 
-        const isCampaignExist = await Campaign.findOne({
-            _id:campaignId,
-            createdBy:adminId
-        })
+        //lets check weather the campaign exist or not
+        //Super Admin bypasses the createdBy restriction so they can edit any admin's campaign
+        const isCampaignExist = await Campaign.findOne(
+            isSuperAdmin
+                ? { _id: campaignId }
+                : { _id: campaignId, createdBy: adminId }
+        )
 
         //if not found
         ApiError.notFound(isCampaignExist,"No Such Campaign Exist!!")
@@ -142,12 +146,14 @@ export const updateCampaignDetails = async (req,res) =>{
             campaignStatus,
         } = req.body
         const start = isCampaignExist.startDate
-        
+
         //lets check weather the entered name is now duplicate or not, not including the selected campaign
         if(campaignName){
+            //duplicate check should be scoped to the campaign's actual owner, not the requesting admin
+            //(these are the same value for a regular admin editing their own campaign, but differ when Super Admin edits someone else's)
             const duplicateCampaign = await Campaign.findOne({
                 campaignName,
-                createdBy:adminId,
+                createdBy:isCampaignExist.createdBy,
                 _id:{$ne:campaignId}
             })
 
@@ -224,7 +230,7 @@ export const updateCampaignDetails = async (req,res) =>{
                     )
                 );
 
-        //HERE, IF WE WANTS TO SEND MAIL TO THE OFFICIAL BODY REGARDING NEW CREATION WE CAN SEND 
+        //HERE, IF WE WANTS TO SEND MAIL TO THE OFFICIAL BODY REGARDING NEW CREATION WE CAN SEND
         //------------------------------MAIL CODE GOES HERE ------------------------------------
     } catch (error) {
         return res.status(error.statusCode || 500).json(
@@ -247,7 +253,7 @@ export const updateCampaignDetails = async (req,res) =>{
 //         const {campaignId} = req.params
 //         ApiError.assert(campaignId,"CampaignId Missing!")
 
-//         //lets find the campaign 
+//         //lets find the campaign
 //         const campaign = await Campaign.findOne({
 //             createdBy:adminId,
 //             _id:campaignId
@@ -288,24 +294,28 @@ export const updateCampaignDetails = async (req,res) =>{
 
 export const updateCoverImage = async (req,res) =>{
     try {
-        //The approach we will follow for this functionality 
-        //1. Upload the new image on the cloudinary server 
-        //2. update the public id and url in the collection 
+        //The approach we will follow for this functionality
+        //1. Upload the new image on the cloudinary server
+        //2. update the public id and url in the collection
         //3. then we will destroy the existing image from the server.
 
         //first find the required id's
         const adminId = req.admin.adminId
+        //Super Admin is allowed to update the banner of campaigns created by any admin, not just their own
+        const isSuperAdmin = req.admin.role === "SUPER_ADMIN"
         const {campaignId} = req.params
         //just for debugging, remove later
         console.log("updateCoverImage called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id not found")
 
-        //lets get the campaign from the campaign id 
-        const campaign = await Campaign.findOne({
-            _id:campaignId,
-            createdBy:adminId
-        })
+        //lets get the campaign from the campaign id
+        //Super Admin bypasses the createdBy restriction so they can update any admin's campaign banner
+        const campaign = await Campaign.findOne(
+            isSuperAdmin
+                ? { _id: campaignId }
+                : { _id: campaignId, createdBy: adminId }
+        )
 
         ApiError.notFound(campaign,"Campaign Didnt exist!!")
 
@@ -317,7 +327,7 @@ export const updateCoverImage = async (req,res) =>{
         ApiError.assert(req.file?.buffer,"Campaign banner image is required");
 
         let uploadResult;
-        
+
 
         try {
                 uploadResult = await uploadBufferToCloudinary(
@@ -329,7 +339,7 @@ export const updateCoverImage = async (req,res) =>{
                 console.log("updateCoverImage Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
-        
+
         //lets upload the new results in the collection
         campaign.campaignBanner.url = uploadResult.secure_url
         campaign.campaignBanner.publicId = uploadResult.public_id
@@ -365,7 +375,7 @@ export const updateCoverImage = async (req,res) =>{
 //HERE WE CAN APPLY THE CONCEPT OF PAGINATION AND ALL BUT THE AMOUNT OF THE CMPAIGNS CAN BE LESSER SO NO NECESSAY NEED FOR THE PAGINATION OR DEBOUNCING CONCEPT
 export const fetchAdminCampaigns = async (req,res) =>{
     try {
-        //first we will get the admin id from the token 
+        //first we will get the admin id from the token
         const adminId = req.admin.adminId
 
         //just for debugging, remove later
@@ -373,7 +383,7 @@ export const fetchAdminCampaigns = async (req,res) =>{
         const campaignQuery = { createdBy: adminId }
         console.log("fetchAdminCampaigns query:", campaignQuery)
 
-        //now fe will simply find the campaign created by this admin id 
+        //now fe will simply find the campaign created by this admin id
         const adminCampaigns = await Campaign.find(campaignQuery)
 
         //just for debugging, remove later
@@ -413,14 +423,17 @@ export const fetchAdminCampaigns = async (req,res) =>{
 export const getCampaignDetail = async (req,res) =>{
     try {
         const admin = req.admin.adminId
+        //Super Admin can view details of any admin's campaign, not just their own
+        const isSuperAdmin = req.admin.role === "SUPER_ADMIN"
         const {campaignId} = req.params
 
         //we will be sending both campaign and milestones with the response
         const [campaign, milestones] = await Promise.all([
-            Campaign.findOne({
-                _id: campaignId,
-                createdBy: admin
-            }),
+            Campaign.findOne(
+                isSuperAdmin
+                    ? { _id: campaignId }
+                    : { _id: campaignId, createdBy: admin }
+            ),
 
             Milestone.find({
              campaign: campaignId
