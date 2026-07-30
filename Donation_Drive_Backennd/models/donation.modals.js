@@ -46,9 +46,13 @@ const donationSchema = new mongoose.Schema(
       min: 1,
     },
 
+    // No longer collected on the public donation form — the payment method
+    // will be determined by the upcoming Cashfree/UPI/bank-statement
+    // integration instead. Field kept (optional) because it's still read,
+    // filtered, and exported by the admin Reports/History/Verification
+    // pages and existing historical donations.
     paymentMode: {
       type: String,
-      required: true,
       enum: ["UPI", "Bank Transfer", "Cash", "Cheque"],
     },
 
@@ -64,14 +68,16 @@ const donationSchema = new mongoose.Schema(
       required: true,
     },
 
+    // No longer required at submission — the V2 UPI flow has the donor
+    // self-report their UTR/transaction ID instead of uploading proof.
+    // Kept optional (not deleted) because it's still displayed/exported by
+    // the admin Reports/History/Verification pages when it does exist.
     screenshot: {
       url: {
         type: String,
-        required: true,
     },
     publicId: {
         type: String,
-        required: true,
     },
     },
 
