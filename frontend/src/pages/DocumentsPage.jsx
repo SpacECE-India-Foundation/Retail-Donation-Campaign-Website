@@ -107,7 +107,7 @@ export default function DocumentsPage() {
   {documents.map((doc, index) => (
     <div
       key={index}
-      className={index === documents.length - 1 ? "lg:col-start-2" : ""}
+      className={index === documents.length - 1 ? "md:col-start-1 lg:col-start-2" : ""}
     >
       <DocumentCard
         category={doc.category}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -16,30 +16,6 @@ import FormField, { inputClass } from "./FormField";
 import FormSection from "./FormSection";
 import { AMOUNT_PRESETS } from "../../../utils/donationForm";
 import { cn } from "../../../utils/cn";
-
-/**
- * DonationForm — V2 self-service UPI flow.
- *
- * There's still no payment gateway integration. Instead: the donor pays the
- * organisation's UPI ID directly (via a real `upi://pay` deep link on
- * mobile, or by scanning/copying on desktop), then self-reports the UTR/
- * transaction ID their UPI app gave them. That UTR is what the admin
- * verification queue checks against the bank statement later — the same
- * manual-verification workflow this app already had, just without an
- * uploaded screenshot as proof.
- *
- * This DOES call the real `onSubmit` prop / `submitPublicDonation` API —
- * submitting here creates a real donation record. `VITE_UPI_ID` /
- * `VITE_UPI_NAME` are temporary demo values (see .env.example) swapped for
- * the organisation's real account before launch.
- *
- * Flow (per Aditya's final review): Amount selection and the payment CTA
- * live on the SAME screen — there's no "Continue" click gating the payment
- * step. Tapping "Donate Now" validates the amount/campaign inline and
- * immediately reveals the payment panel: on desktop that's QR + UPI ID +
- * bank details, on mobile it's a direct handoff to the installed UPI app.
- * Only "I Have Completed the Payment" advances to the donor Details step.
- */
 
 const STEPS = [
   { key: "amount", label: "Amount" },
@@ -74,19 +50,19 @@ function StepIndicator({ current }) {
             <div className="flex shrink-0 flex-col items-center gap-1.5">
               <span
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-all duration-300 sm:h-9 sm:w-9",
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-all duration-300 sm:h-10 sm:w-10",
                   isDone
-                    ? "bg-brand-orange text-white"
+                    ? "bg-brand-orange text-white shadow-md shadow-brand-orange/30"
                     : isActive
-                      ? "bg-brand-orange text-white ring-4 ring-brand-orange/20"
-                      : "border border-brand-border bg-white text-brand-muted",
+                      ? "bg-brand-orange text-white ring-4 ring-brand-orange/25 shadow-md shadow-brand-orange/30"
+                      : "border-2 border-brand-border bg-white text-brand-muted",
                 )}
               >
-                {isDone ? <Check size={14} aria-hidden="true" /> : stepNum}
+                {isDone ? <Check size={16} aria-hidden="true" /> : stepNum}
               </span>
               <span
                 className={cn(
-                  "hidden text-[11px] font-semibold uppercase tracking-wide sm:block",
+                  "hidden text-xs font-bold uppercase tracking-wide sm:block",
                   isActive ? "text-brand-orange" : isDone ? "text-brand-dark" : "text-brand-muted",
                 )}
               >
@@ -96,7 +72,7 @@ function StepIndicator({ current }) {
             {stepNum < STEPS.length && (
               <span
                 className={cn(
-                  "mx-2 h-0.5 flex-1 rounded-full transition-colors duration-500 sm:mx-3",
+                  "mx-2 h-1 flex-1 rounded-full transition-colors duration-500 sm:mx-3",
                   isDone ? "bg-brand-orange" : "bg-brand-border",
                 )}
                 aria-hidden="true"
@@ -122,9 +98,12 @@ export default function DonationForm({
 }) {
   const [step, setStep] = useState(1);
   const [stepErrors, setStepErrors] = useState({});
-  const [paymentPhase, setPaymentPhase] = useState("idle"); // 'idle' | 'active'
+  const [paymentPhase, setPaymentPhase] = useState("idle");
   const [copied, setCopied] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
+
+  const campaignFieldRef = useRef(null);
+  const amountFieldRef = useRef(null);
 
   const fieldError = (name) => errors[name] || stepErrors[name];
 
@@ -143,8 +122,22 @@ export default function DonationForm({
     formRef?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  // Fix #2: scroll to the first invalid field instead of leaving the
+  // error silently above/below the fold.
+  const scrollToFirstError = (nextErrors) => {
+    if (nextErrors.campaignId && campaignFieldRef.current) {
+      campaignFieldRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    if (nextErrors.amount && amountFieldRef.current) {
+      amountFieldRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   const isCustomAmount =
     formData.amount !== "" && !AMOUNT_PRESETS.map(String).includes(String(formData.amount));
+
+  const isAmountStepValid = Boolean(formData.campaignId) && Number(formData.amount) > 0;
 
   const validateAmountStep = () => {
     const nextErrors = {};
@@ -180,14 +173,11 @@ export default function DonationForm({
     return nextErrors;
   };
 
-  // Single entry point for Step 1: validates amount/campaign inline (no
-  // separate "Continue" click) and, once valid, immediately reveals the
-  // payment panel — direct UPI intent handoff on mobile, QR + bank details
-  // card on desktop.
   const handleDonateNow = () => {
     const nextErrors = validateAmountStep();
     if (Object.keys(nextErrors).length > 0) {
       setStepErrors(nextErrors);
+      scrollToFirstError(nextErrors); // Fix #2
       return;
     }
     setStepErrors({});
@@ -204,13 +194,10 @@ export default function DonationForm({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      /* clipboard unavailable — silently ignore, the UPI ID is still visible to copy manually */
+      /* clipboard unavailable */
     }
   };
 
-  // "Only after clicking [I Have Completed Payment] should the donor
-  // information form appear" — that's this transition, from the merged
-  // Amount+Payment step into Details.
   const confirmPaymentDone = () => {
     setStep(2);
     scrollToTop();
@@ -269,106 +256,109 @@ export default function DonationForm({
       )}
 
       <form onSubmit={onSubmit} noValidate className="space-y-6 sm:space-y-8">
-        {/* ============ Step 1 — Amount + Payment (single screen) ============ */}
         {step === 1 && (
           <div className="animate-fade-in-up space-y-6 sm:space-y-8">
-            <FormSection title="Campaign" description="Choose the campaign you want to support.">
-              <FormField id="campaign" label="Campaign" required error={fieldError("campaignId")}>
-                {({ id, errorId, hasError }) => (
-                  <select
-                    id={id}
-                    value={formData.campaignId}
-                    onChange={handleCampaignChange}
-                    disabled={lockCampaign}
-                    aria-invalid={hasError}
-                    aria-describedby={errorId}
-                    className={cn(inputClass(hasError), lockCampaign && "opacity-70")}
-                  >
-                    <option value="">Select a campaign</option>
-                    {campaigns.map((campaign) => (
-                      <option key={campaign.campaignId} value={campaign.campaignId}>
-                        {campaign.campaignName}
-                      </option>
-                    ))}
-                  </select>
+            <div ref={campaignFieldRef}>
+              <FormSection title="Campaign" description="Choose the campaign you want to support.">
+                <FormField id="campaign" label="Campaign" required error={fieldError("campaignId")}>
+                  {({ id, errorId, hasError }) => (
+                    <select
+                      id={id}
+                      value={formData.campaignId}
+                      onChange={handleCampaignChange}
+                      disabled={lockCampaign}
+                      aria-invalid={hasError}
+                      aria-describedby={errorId}
+                      className={cn(inputClass(hasError), lockCampaign && "opacity-70")}
+                    >
+                      <option value="">Select a campaign</option>
+                      {campaigns.map((campaign) => (
+                        <option key={campaign.campaignId} value={campaign.campaignId}>
+                          {campaign.campaignName}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </FormField>
+                {lockCampaign && formData.campaignName && (
+                  <p className="-mt-2 rounded-lg bg-brand-teal/5 px-3 py-2 text-xs text-brand-teal">
+                    Campaign pre-selected from your link.
+                  </p>
                 )}
-              </FormField>
-              {lockCampaign && formData.campaignName && (
-                <p className="-mt-2 rounded-lg bg-brand-teal/5 px-3 py-2 text-xs text-brand-teal">
-                  Campaign pre-selected from your link.
-                </p>
-              )}
-            </FormSection>
+              </FormSection>
+            </div>
 
-            <FormSection title="Donation Amount" description="Pick a suggested amount or enter your own.">
-              <FormField id="amount" label="Amount (INR)" required error={fieldError("amount")}>
-                {({ id, errorId, hasError }) => (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      {AMOUNT_PRESETS.map((preset) => {
-                        const isSelected = String(formData.amount) === String(preset);
-                        return (
-                          <button
-                            key={preset}
-                            type="button"
-                            onClick={() => selectAmount(preset)}
-                            className={cn(
-                              "rounded-2xl border-2 py-4 text-center text-base font-extrabold transition-all duration-300",
-                              "hover:-translate-y-0.5 hover:border-brand-orange hover:bg-brand-orange/5 hover:shadow-md",
-                              "active:scale-[0.98]",
-                              isSelected
-                                ? "border-brand-orange bg-brand-orange text-white shadow-lg shadow-brand-orange/25 ring-2 ring-brand-orange/20"
-                                : "border-brand-border bg-white text-brand-dark",
-                            )}
-                          >
-                            ₹{preset.toLocaleString("en-IN")}
-                          </button>
-                        );
-                      })}
+            <div ref={amountFieldRef}>
+              <FormSection title="Donation Amount" description="Pick a suggested amount or enter your own.">
+                <FormField id="amount" label="Amount (INR)" required error={fieldError("amount")}>
+                  {({ id, errorId, hasError }) => (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {AMOUNT_PRESETS.map((preset) => {
+                          const isSelected = String(formData.amount) === String(preset);
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => selectAmount(preset)}
+                              className={cn(
+                                "rounded-2xl border-2 py-4 text-center text-base font-extrabold transition-all duration-300",
+                                "hover:-translate-y-0.5 hover:border-brand-orange hover:bg-brand-orange/5 hover:shadow-md",
+                                "active:scale-[0.98]",
+                                isSelected
+                                  ? "border-brand-orange bg-brand-orange text-white shadow-lg shadow-brand-orange/25 ring-2 ring-brand-orange/20"
+                                  : "border-brand-border bg-white text-brand-dark",
+                              )}
+                            >
+                              ₹{preset.toLocaleString("en-IN")}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex items-center gap-3" aria-hidden="true">
+                        <span className="h-px flex-1 bg-brand-border" />
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-brand-muted">
+                          Or enter a custom amount
+                        </span>
+                        <span className="h-px flex-1 bg-brand-border" />
+                      </div>
+
+                      <div className="relative">
+                        <IndianRupee
+                          size={16}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted"
+                          aria-hidden="true"
+                        />
+                        <input
+                          id={id}
+                          type="number"
+                          min="1"
+                          value={formData.amount}
+                          onChange={(e) => onFieldChange("amount", e.target.value)}
+                          placeholder="Enter amount"
+                          aria-invalid={hasError}
+                          aria-describedby={errorId}
+                          className={cn(
+                            inputClass(hasError),
+                            "pl-10",
+                            isCustomAmount && "border-brand-orange ring-2 ring-brand-orange/20",
+                          )}
+                        />
+                      </div>
                     </div>
+                  )}
+                </FormField>
+              </FormSection>
+            </div>
 
-                    <div className="flex items-center gap-3" aria-hidden="true">
-                      <span className="h-px flex-1 bg-brand-border" />
-                      <span className="text-[11px] font-semibold uppercase tracking-wide text-brand-muted">
-                        Or enter a custom amount
-                      </span>
-                      <span className="h-px flex-1 bg-brand-border" />
-                    </div>
-
-                    <div className="relative">
-                      <IndianRupee
-                        size={16}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-brand-muted"
-                        aria-hidden="true"
-                      />
-                      <input
-                        id={id}
-                        type="number"
-                        min="1"
-                        value={formData.amount}
-                        onChange={(e) => onFieldChange("amount", e.target.value)}
-                        placeholder="Enter amount"
-                        aria-invalid={hasError}
-                        aria-describedby={errorId}
-                        className={cn(
-                          inputClass(hasError),
-                          "pl-10",
-                          isCustomAmount && "border-brand-orange ring-2 ring-brand-orange/20",
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-              </FormField>
-            </FormSection>
-
-            {/* ---------------- Payment (same screen — no Continue gate) ---------------- */}
-            <div className="overflow-hidden rounded-2xl border border-brand-border/60 bg-brand-cream/40 p-6 sm:p-8">
+            {/* Fix #5: Amount to Pay card now visually highlighted */}
+            <div className="overflow-hidden rounded-2xl border-2 border-brand-orange/25 bg-gradient-to-br from-brand-orange/[0.06] via-brand-cream/40 to-brand-orange/[0.03] p-6 shadow-sm sm:p-8">
               <div className="flex flex-col items-center text-center">
-                <p className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
+                <p className="text-xs font-semibold uppercase tracking-widest text-brand-orange/80">
                   Amount to pay
                 </p>
-                <p className="mt-1 font-display text-3xl font-extrabold text-brand-dark">
+                <p className="mt-1 font-display text-4xl font-extrabold text-brand-dark">
                   ₹{formData.amount ? Number(formData.amount).toLocaleString("en-IN") : "0"}
                 </p>
               </div>
@@ -379,7 +369,13 @@ export default function DonationForm({
                     type="button"
                     size="lg"
                     onClick={handleDonateNow}
-                    className="w-full gap-2 rounded-xl shadow-md shadow-brand-orange/20 sm:w-auto sm:px-12"
+                    disabled={!isAmountStepValid}
+                    className={cn(
+                      "w-full gap-2 rounded-xl shadow-md sm:w-auto sm:px-12",
+                      isAmountStepValid
+                        ? "shadow-brand-orange/20"
+                        : "cursor-not-allowed bg-gray-300 text-gray-500 opacity-70 shadow-none hover:translate-y-0 hover:shadow-none",
+                    )}
                   >
                     Donate Now
                   </Button>
@@ -417,8 +413,6 @@ export default function DonationForm({
                 </div>
               )}
 
-              {/* Desktop-only branch — QR + UPI ID + bank details, revealed
-                  directly on "Donate Now", no intermediate step. */}
               {paymentPhase === "active" && !isMobile && (
                 <div className="animate-fade-in-up mt-6 flex flex-col items-center">
                   <div className="overflow-hidden rounded-xl border border-brand-border bg-white p-3">
@@ -456,6 +450,20 @@ export default function DonationForm({
                     </button>
                   </div>
 
+                  {/* Fix #3 placeholder: bank transfer fallback for donors
+                      without UPI access. Replace with real account details
+                      before launch. */}
+                  <details className="mt-4 w-full max-w-xs rounded-xl border border-brand-border bg-white px-4 py-3 text-left">
+                    <summary className="cursor-pointer text-xs font-semibold text-brand-dark">
+                      Prefer a bank transfer instead?
+                    </summary>
+                    <div className="mt-3 space-y-1 text-xs text-brand-muted">
+                      <p>Account Name: {UPI_NAME}</p>
+                      <p>Account Number: XXXXXXXXXX (add real value)</p>
+                      <p>IFSC: XXXXXXXX (add real value)</p>
+                    </div>
+                  </details>
+
                   <Button
                     type="button"
                     size="lg"
@@ -470,7 +478,6 @@ export default function DonationForm({
           </div>
         )}
 
-        {/* ============ Step 2 — Donor Details ============ */}
         {step === 2 && (
           <div className="animate-fade-in-up">
             <FormSection title="Your Details" description="Tell us who is making this contribution.">
@@ -621,7 +628,6 @@ export default function DonationForm({
           </div>
         )}
 
-        {/* ============ Step 3 — Submit ============ */}
         {step === 3 && (
           <div className="animate-fade-in-up space-y-6">
             <div className="rounded-2xl border border-brand-border/70 bg-brand-cream/30 p-5 sm:p-6">
