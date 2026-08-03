@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, ShieldCheck, CalendarDays, Users, Sparkles, HandHeart, TrendingUp } from "lucide-react";
-import heroImg from "../../assets/logo2.png";
+import heroImg from "../../assets/logo3.png";
 
 export const HeroSection = () => {
   return (
