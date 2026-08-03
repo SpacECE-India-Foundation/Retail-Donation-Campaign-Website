@@ -27,6 +27,7 @@ import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import CertificateVerificationPage from "./pages/verifyCertificate";
+import BankStatementUploadPage from "./pages/admin/BankStatementUploadPage";
 
 const router = createBrowserRouter([
   {
@@ -93,6 +94,10 @@ const router = createBrowserRouter([
         path: "manage-admins",
         element: <ManageAdminsPage />,
       },
+      {
+       path: "bank-statements",
+       element: <BankStatementUploadPage />,
+    },
     ],
   },
 ]);

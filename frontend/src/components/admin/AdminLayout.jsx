@@ -14,6 +14,7 @@ import {
   ChevronRight,
   HandHeart,
   ShieldCheck,
+  Landmark,
 } from "lucide-react";
 
 import { logout, getCurrentAdmin } from "../../services/authService";
@@ -182,10 +183,14 @@ export default function AdminLayout() {
     };
   }, []);
 
-  // Super Admins get an extra "Manage Admins" entry at the bottom of the nav.
+  /// Super Admins get two extra entries at the bottom of the nav.
   const navItems =
     adminProfile?.role === "SUPER_ADMIN"
-      ? [...NAV_ITEMS, { to: "/admin/manage-admins", label: "Manage Admins", icon: ShieldCheck }]
+      ? [
+          ...NAV_ITEMS,
+          { to: "/admin/bank-statements", label: "Bank Statements", icon: Landmark },
+          { to: "/admin/manage-admins", label: "Manage Admins", icon: ShieldCheck },
+        ]
       : NAV_ITEMS;
 
   return (
