@@ -10,10 +10,24 @@ const bankTransactionSchema = new Schema(
             unique: true,
         },
 
+        transactionIdNormalized: {
+            type: String,
+            required: true,
+            trim: true,
+            uppercase: true,
+        },
+
         amount: {
             type: Number,
             required: true,
             min: 0,
+        },
+
+        // Integer paise avoids floating-point equality bugs during matching.
+        amountInPaise: {
+            type: Number,
+            required: true,
+            min: 1,
         },
 
         transactionDate: {
@@ -45,6 +59,53 @@ const bankTransactionSchema = new Schema(
             trim: true,
         },
 
+        uploadBatchId: {
+            type: String,
+            required: true,
+            index: true,
+        },
+
+        reconciliationStatus: {
+            type: String,
+            enum: ["UNMATCHED", "PROCESSING", "MATCHED", "FAILED"],
+            default: "UNMATCHED",
+            index: true,
+        },
+
+        reconciliationAttempts: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
+        reconciliationLastAttemptedAt: {
+            type: Date,
+            default: null,
+        },
+
+        reconciliationError: {
+            type: String,
+            default: "",
+            maxlength: 1000,
+        },
+
+        emailStatus: {
+            type: String,
+            enum: ["NOT_SENT", "PROCESSING", "SENT", "FAILED"],
+            default: "NOT_SENT",
+        },
+
+        emailLastAttemptedAt: {
+            type: Date,
+            default: null,
+        },
+
+        emailError: {
+            type: String,
+            default: "",
+            maxlength: 1000,
+        },
+
         isMatched: {
             type: Boolean,
             default: false,
@@ -66,6 +127,15 @@ const bankTransactionSchema = new Schema(
     }
 );
 
+bankTransactionSchema.index({ reconciliationStatus: 1, createdAt: 1 });
+bankTransactionSchema.index(
+    { transactionIdNormalized: 1 },
+    {
+        unique: true,
+        partialFilterExpression: { transactionIdNormalized: { $exists: true } },
+    }
+);
+bankTransactionSchema.index({ transactionIdNormalized: 1, amountInPaise: 1 });
 
 const BankTransaction = mongoose.model( "BankTransaction",bankTransactionSchema);
 export default BankTransaction;

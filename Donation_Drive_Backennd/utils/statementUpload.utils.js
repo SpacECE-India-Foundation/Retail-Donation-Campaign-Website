@@ -3,15 +3,16 @@ import multer from "multer";
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
+    const isXlsx = file.originalname.toLowerCase().endsWith(".xlsx");
     const allowedTypes = [
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
+        "application/octet-stream",
     ];
 
-    if (allowedTypes.includes(file.mimetype)) {
+    if (isXlsx && allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new Error("Only Excel (.xlsx/.xls) files are allowed"), false);
+        cb(new Error("Only Excel (.xlsx) files are allowed"), false);
     }
 };
 
