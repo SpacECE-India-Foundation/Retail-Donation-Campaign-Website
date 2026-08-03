@@ -191,6 +191,7 @@ export const registerDonation = async (req,res) =>{
 
         //now here, we will send mail message to the donor regardiing the successfully registration of donation 
 
+        console.log("Sending donation confirmation email to:", donorEmail)
         emailService.sendDonationConfirmationEmail({
             donorName,
             donorEmail,

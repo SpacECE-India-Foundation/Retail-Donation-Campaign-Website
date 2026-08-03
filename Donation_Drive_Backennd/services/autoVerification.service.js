@@ -114,39 +114,21 @@ class AutoVerificationService {
         return { attemptedCount: candidates.length, sentCount, failedCount };
     }
 
-    async findPendingDonation(transactionIdNormalized, amountInPaise) {
-        const amount = paiseToAmount(amountInPaise);
-        const candidates = await Donation.find({
-            status: "Pending",
-            amount: { $gte: amount - 0.005, $lte: amount + 0.005 },
-            transactionId: { $regex: new RegExp(`^${escapeRegex(transactionIdNormalized)}$`, "i") },
-        });
-
-        const donation = candidates.find(
-            (candidate) => normalizeTransactionId(candidate.transactionId) === transactionIdNormalized
-        );
-
-        if (!donation) {
-            const error = new ApiError(404, "No pending donation matches this bank transaction.");
-            error.code = "DONATION_NOT_FOUND";
-            throw error;
-        }
-
-        return donation;
-    }
-
-    async verifyDonation({ bankTransactionId, transactionIdNormalized, amountInPaise, superAdminId }) {
-        const pendingDonation = await this.findPendingDonation(transactionIdNormalized, amountInPaise);
-        const campaignForCertificate = await Campaign.findById(pendingDonation.campaign);
+    
+    async verifyDonation({donation,
+    bankTransaction,
+    superAdminId}) {
+        
+        const campaignForCertificate = await Campaign.findById(donation.campaign);
         ApiError.assert(campaignForCertificate, "Campaign not found.", 404);
 
         // External work is deliberately outside the database transaction. If the transaction
         // fails, the catch block below compensates by deleting the uploaded PDF.
         const certificateData = await certificateService.generateAndUploadCertificate({
-            donorName: pendingDonation.donorName,
+            donorName: donation.donorName,
             campaignName: campaignForCertificate.campaignName,
-            amount: pendingDonation.amount,
-            donationDate: pendingDonation.paymentDate,
+            amount: donation.amount,
+            donationDate: donation.paymentDate,
         });
 
         let session;
@@ -157,17 +139,17 @@ class AutoVerificationService {
         try {
             session = await mongoose.startSession();
             await session.withTransaction(async () => {
-                const donation = await Donation.findOne({
-                    _id: pendingDonation._id,
-                    status: "Pending",
+                const freshDonation = await Donation.findOne({
+                    _id: donation._id,
+                    status:"Pending"
                 }).session(session);
-                ApiError.assert(donation, "Donation has already been processed.", 409);
+                ApiError.assert(freshDonation, "Donation has already been processed.", 409);
 
-                campaign = await Campaign.findById(donation.campaign).session(session);
+                campaign = await Campaign.findById(freshDonation.campaign).session(session);
                 ApiError.assert(campaign, "Campaign not found.", 404);
 
                 verifiedDonation = await Donation.findOneAndUpdate(
-                    { _id: donation._id, status: "Pending" },
+                    { _id: freshDonation._id, status: "Pending" },
                     {
                         $set: {
                             status: "Verified",
@@ -176,6 +158,7 @@ class AutoVerificationService {
                             verifiedAt: new Date(),
                             certificateGenerated: true,
                             certificateUrl: certificateData.certificateUrl,
+                            automaticVerificationAttempted: true,
                         },
                     },
                     { returnDocument: "after", session }
@@ -184,7 +167,7 @@ class AutoVerificationService {
 
                 await Campaign.findByIdAndUpdate(
                     campaign._id,
-                    { $inc: { campaignRaisedAmt: donation.amount, contributors: 1 } },
+                    { $inc: { campaignRaisedAmt: freshDonation.amount, contributors: 1 } },
                     { session }
                 );
 
@@ -192,16 +175,16 @@ class AutoVerificationService {
 
                 // The donation is claimed atomically above; this check also makes recovery
                 // safe if a legacy partial certificate record exists.
-                const existingCertificate = await Certificate.findOne({ donation: donation._id }).session(session);
+                const existingCertificate = await Certificate.findOne({ donation: freshDonation._id }).session(session);
                 if (!existingCertificate) {
                     await Certificate.create([{
                         certificateId: certificateData.certificateId,
-                        donation: donation._id,
+                        donation: freshDonation._id,
                         displayCertificateNo: certificateData.displayCertificateNo,
-                        donorName: donation.donorName,
+                        donorName: freshDonation.donorName,
                         campaignName: campaign.campaignName,
-                        amount: donation.amount,
-                        donationDate: donation.paymentDate,
+                        amount: freshDonation.amount,
+                        donationDate: freshDonation.paymentDate,
                         certificateUrl: certificateData.certificateUrl,
                         publicId: certificateData.publicId,
                         verificationUrl: certificateData.verificationUrl,
@@ -211,11 +194,11 @@ class AutoVerificationService {
                 }
 
                 const matchedTransaction = await BankTransaction.findOneAndUpdate(
-                    { _id: bankTransactionId, reconciliationStatus: "PROCESSING", isMatched: false },
+                    { _id: bankTransaction._id, isMatched: false },
                     {
                         $set: {
                             isMatched: true,
-                            matchedDonation: donation._id,
+                            matchedDonation: freshDonation._id,
                             matchedAt: new Date(),
                             reconciliationStatus: "MATCHED",
                             reconciliationError: "",
@@ -248,13 +231,13 @@ class AutoVerificationService {
                 certificateLink: verifiedDonation.certificateUrl,
             });
             await BankTransaction.updateOne(
-                { _id: bankTransactionId },
+                {  _id: bankTransaction._id},
                 { $set: { emailStatus: "SENT", emailError: "" } }
             );
         } catch (error) {
             emailError = String(error?.message || "Email delivery failed.").slice(0, 1000);
             await BankTransaction.updateOne(
-                { _id: bankTransactionId },
+                { _id: bankTransaction._id },
                 { $set: { emailStatus: "FAILED", emailError } }
             );
         }
