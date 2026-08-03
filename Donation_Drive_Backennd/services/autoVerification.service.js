@@ -135,8 +135,18 @@ class AutoVerificationService {
         return donation;
     }
 
-    async verifyDonation({ bankTransactionId, transactionIdNormalized, amountInPaise, superAdminId }) {
-        const pendingDonation = await this.findPendingDonation(transactionIdNormalized, amountInPaise);
+    async verifyDonation({
+        bankTransactionId = null,
+        donationId = null,
+        transactionIdNormalized,
+        amountInPaise,
+        superAdminId = null,
+        verificationMethod = "BANK_STATEMENT",
+    }) {
+        const pendingDonation = donationId
+            ? await Donation.findOne({ _id: donationId, status: "Pending" })
+            : await this.findPendingDonation(transactionIdNormalized, amountInPaise);
+        ApiError.assert(pendingDonation, "Donation has already been processed.", 409);
         const campaignForCertificate = await Campaign.findById(pendingDonation.campaign);
         ApiError.assert(campaignForCertificate, "Campaign not found.", 404);
 
@@ -174,6 +184,7 @@ class AutoVerificationService {
                             verified: true,
                             verifiedBy: superAdminId,
                             verifiedAt: new Date(),
+                            verificationMethod,
                             certificateGenerated: true,
                             certificateUrl: certificateData.certificateUrl,
                         },
@@ -210,22 +221,24 @@ class AutoVerificationService {
                     }], { session });
                 }
 
-                const matchedTransaction = await BankTransaction.findOneAndUpdate(
-                    { _id: bankTransactionId, reconciliationStatus: "PROCESSING", isMatched: false },
-                    {
-                        $set: {
-                            isMatched: true,
-                            matchedDonation: donation._id,
-                            matchedAt: new Date(),
-                            reconciliationStatus: "MATCHED",
-                            reconciliationError: "",
-                            emailStatus: "PROCESSING",
-                            emailLastAttemptedAt: new Date(),
+                if (bankTransactionId) {
+                    const matchedTransaction = await BankTransaction.findOneAndUpdate(
+                        { _id: bankTransactionId, reconciliationStatus: "PROCESSING", isMatched: false },
+                        {
+                            $set: {
+                                isMatched: true,
+                                matchedDonation: donation._id,
+                                matchedAt: new Date(),
+                                reconciliationStatus: "MATCHED",
+                                reconciliationError: "",
+                                emailStatus: "PROCESSING",
+                                emailLastAttemptedAt: new Date(),
+                            },
                         },
-                    },
-                    { returnDocument: "after", session }
-                );
-                ApiError.assert(matchedTransaction, "Bank transaction is no longer available for reconciliation.", 409);
+                        { returnDocument: "after", session }
+                    );
+                    ApiError.assert(matchedTransaction, "Bank transaction is no longer available for reconciliation.", 409);
+                }
             });
             committed = true;
         } catch (error) {
@@ -247,16 +260,20 @@ class AutoVerificationService {
                 transactionId: verifiedDonation.transactionId,
                 certificateLink: verifiedDonation.certificateUrl,
             });
-            await BankTransaction.updateOne(
-                { _id: bankTransactionId },
-                { $set: { emailStatus: "SENT", emailError: "" } }
-            );
+            if (bankTransactionId) {
+                await BankTransaction.updateOne(
+                    { _id: bankTransactionId },
+                    { $set: { emailStatus: "SENT", emailError: "" } }
+                );
+            }
         } catch (error) {
             emailError = String(error?.message || "Email delivery failed.").slice(0, 1000);
-            await BankTransaction.updateOne(
-                { _id: bankTransactionId },
-                { $set: { emailStatus: "FAILED", emailError } }
-            );
+            if (bankTransactionId) {
+                await BankTransaction.updateOne(
+                    { _id: bankTransactionId },
+                    { $set: { emailStatus: "FAILED", emailError } }
+                );
+            }
         }
 
         return { donation: verifiedDonation, committed, emailError };
