@@ -115,6 +115,22 @@ const donationSchema = new mongoose.Schema(
       default: null,
     },
 
+    verificationMethod: {
+      type: String,
+      enum: ["MANUAL", "BANK_STATEMENT", "OCR"],
+      default: null,
+    },
+
+    ocrVerification: {
+      attempted: { type: Boolean, default: false },
+      verified: { type: Boolean, default: false },
+      confidence: { type: Number, default: null },
+      extractedTransactionId: { type: String, default: "" },
+      extractedAmount: { type: Number, default: null },
+      extractedPaymentDate: { type: Date, default: null },
+      reason: { type: String, default: "", maxlength: 500 },
+    },
+
     verificationRemarks: {
       type: String,
       trim: true,

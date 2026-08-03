@@ -7,6 +7,58 @@ import Campaign from "../../models/campaign.modals.js";
 import Donation from "../../models/donation.modals.js";
 import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js";
 import { deleteFromCloudinary } from "../../utils/cloudinary.utils.js";
+import paymentScreenshotOcrService from "../../services/paymentScreenshotOcr.service.js";
+import autoVerificationService from "../../services/autoVerification.service.js";
+
+const normalizePaymentMode = (value) => {
+    const normalized = String(value || "").trim().toUpperCase();
+    return {
+        UPI: "UPI",
+        "BANK TRANSFER": "Bank Transfer",
+        CASH: "Cash",
+        CHEQUE: "Cheque",
+    }[normalized] || "";
+};
+
+// Called by the form as soon as a UPI screenshot is selected. The client can use
+// `data.fields` to fill the visible transaction ID, amount, and payment date inputs.
+export const scanPaymentScreenshot = async (req, res) => {
+    try {
+        const paymentMode = normalizePaymentMode(req.body.paymentMode);
+        ApiError.assert(paymentMode === "UPI", "OCR scanning is available only for UPI payments.");
+        ApiError.assert(req.file?.buffer, "A payment screenshot is required for OCR scanning.");
+
+        const extraction = await paymentScreenshotOcrService.scan(req.file.buffer);
+        const fields = extraction.canAutoVerify
+            ? {
+                transactionId: extraction.transactionId,
+                amount: extraction.amount,
+                paymentDate: extraction.paymentDate,
+            }
+            : null;
+
+        return res.status(200).json(new ApiResponse(
+            200,
+            {
+                fields,
+                ocr: {
+                    attempted: extraction.performed,
+                    confidence: extraction.confidence,
+                    canAutoVerify: extraction.canAutoVerify,
+                    reason: extraction.reason,
+                },
+                requiresManualEntry: !fields,
+            },
+            fields
+                ? "Payment details were read from the screenshot. Please confirm and submit the donation."
+                : "We could not read the payment details reliably. Please enter them manually."
+        ));
+    } catch (error) {
+        return res.status(error.statusCode || 500).json(
+            new ApiError(error.statusCode || 500, error.message)
+        );
+    }
+};
 
 
 //----------------------------------------------------------THIS FUNCTION IS FOR THE DONATION FORM COLLECTION---------------------------------------------------------------------------
@@ -26,8 +78,47 @@ export const registerDonation = async (req,res) =>{
             donorMessage, //optional
             amount,
             transactionId,
+            paymentMode,
             campaign  //need campaign id from the frontend not the name, you can show the camapign name on the frontend but we need id as a response
         } = req.body
+
+        if (paymentMode !== undefined) {
+            paymentMode = normalizePaymentMode(paymentMode);
+            ApiError.assert(
+                paymentMode,
+                "Invalid payment mode."
+            );
+        }
+
+        const isUpiPayment = paymentMode === "UPI";
+        if (isUpiPayment) {
+            ApiError.assert(req.file?.buffer, "A payment screenshot is required for UPI donations.");
+        }
+
+        // OCR is intentionally best-effort: a failed or low-confidence scan must never block
+        // the existing pending/manual/bank-statement verification path.
+        let ocrExtraction = {
+            performed: false,
+            confidence: 0,
+            transactionId: "",
+            amount: null,
+            paymentDate: null,
+            canAutoVerify: false,
+            reason: "No payment screenshot was uploaded.",
+        };
+
+        if (isUpiPayment && req.file?.buffer) {
+            ocrExtraction = await paymentScreenshotOcrService.scan(req.file.buffer);
+
+            // A form can omit these values when OCR reads them successfully. Explicit form
+            // values are never overwritten; they are checked against the OCR result below.
+            if (!transactionId && ocrExtraction.transactionId) {
+                transactionId = ocrExtraction.transactionId;
+            }
+            if ((amount === undefined || amount === null || amount === "") && ocrExtraction.amount) {
+                amount = ocrExtraction.amount;
+            }
+        }
 
         //first of all we have to find that weather the selected campaign id exists or not and aslo we will check the duplicacy here 
 
@@ -81,20 +172,19 @@ export const registerDonation = async (req,res) =>{
         ApiError.assert(Number.isFinite(donationAmount) && donationAmount>0, "Invalid donation amount")
 
         //validation fr the transaction id, this is one of the most major primary key
-        if (transactionId !== undefined) {
-            transactionId = transactionId.trim();
-            ApiError.assert(
-                transactionId.length >= 6 && transactionId.length <= 50,
-                "Transaction ID must be between 6 and 50 characters."
-            );
+        ApiError.assert(transactionId, "Transaction ID is required unless it can be read from the payment screenshot.");
+        transactionId = transactionId.trim();
+        ApiError.assert(
+            transactionId.length >= 6 && transactionId.length <= 50,
+            "Transaction ID must be between 6 and 50 characters."
+        );
 
-            const transactionRegex = /^[A-Za-z0-9_-]+$/;
+        const transactionRegex = /^[A-Za-z0-9_-]+$/;
 
-            ApiError.assert(
-                transactionRegex.test(transactionId),
-                "Transaction ID contains invalid characters."
-            );
-        }
+        ApiError.assert(
+            transactionRegex.test(transactionId),
+            "Transaction ID contains invalid characters."
+        );
 
 
         //now we have to do validation alltogether first we have to check weather this campaign id exists or not then we have to check for duplication entries of same transaction id
@@ -157,6 +247,14 @@ export const registerDonation = async (req,res) =>{
         }
 
         //now we will save this to the collection
+        const ocrDecision = isUpiPayment
+            ? paymentScreenshotOcrService.evaluate({
+                extraction: ocrExtraction,
+                transactionId,
+                amount: donationAmount,
+            })
+            : { verified: false, reason: "OCR verification applies only to UPI payments." };
+
         const newDonation = new Donation({
             donorName,
             donorEmail,
@@ -165,6 +263,7 @@ export const registerDonation = async (req,res) =>{
             address,
             donorMessage,
             amount:donationAmount,
+            paymentMode,
             campaign,
             ...(uploadResult && {
                 screenshot: {
@@ -172,10 +271,50 @@ export const registerDonation = async (req,res) =>{
                     publicId: uploadResult.public_id,
                 },
             }),
-            paymentDate : new Date()
+            paymentDate: ocrExtraction.paymentDate || new Date(),
+            ocrVerification: {
+                attempted: ocrExtraction.performed,
+                verified: false,
+                confidence: ocrExtraction.confidence,
+                extractedTransactionId: ocrExtraction.transactionId,
+                extractedAmount: ocrExtraction.amount,
+                extractedPaymentDate: ocrExtraction.paymentDate,
+                reason: ocrDecision.reason,
+            },
         })
 
         await newDonation.save()
+
+        let ocrVerified = false;
+        let ocrVerificationError = "";
+
+        if (isUpiPayment && ocrDecision.verified) {
+            try {
+                await autoVerificationService.verifyDonation({
+                    donationId: newDonation._id,
+                    verificationMethod: "OCR",
+                });
+
+                ocrVerified = true;
+                await Donation.updateOne(
+                    { _id: newDonation._id },
+                    {
+                        $set: {
+                            "ocrVerification.verified": true,
+                            "ocrVerification.reason": "OCR transaction ID and amount matched; donation was verified automatically.",
+                        },
+                    }
+                );
+            } catch (error) {
+                // Keep the donation pending. Existing bank-statement and manual verification
+                // workflows can process it later.
+                ocrVerificationError = String(error?.message || "Automatic OCR verification failed.").slice(0, 500);
+                await Donation.updateOne(
+                    { _id: newDonation._id },
+                    { $set: { "ocrVerification.reason": ocrVerificationError } }
+                );
+            }
+        }
 
         //here we will send successfull donationr esponse to the frontend
         res.status(201).json(
@@ -183,24 +322,39 @@ export const registerDonation = async (req,res) =>{
                 201,
                 {
                     donationId: newDonation._id,
-                    donationStatus: newDonation.status
+                    donationStatus: ocrVerified ? "Verified" : "Pending",
+                    ocr: {
+                        attempted: ocrExtraction.performed,
+                        verified: ocrVerified,
+                        confidence: ocrExtraction.confidence,
+                        extractedTransactionId: ocrExtraction.transactionId || null,
+                        extractedAmount: ocrExtraction.amount,
+                        extractedPaymentDate: ocrExtraction.paymentDate,
+                        reason: ocrVerified
+                            ? "Donation verified automatically from the payment screenshot."
+                            : ocrVerificationError || ocrDecision.reason,
+                    },
                 },
-                "New donation registered Successfully!!"
+                ocrVerified
+                    ? "Donation verified successfully from the payment screenshot."
+                    : "New donation registered successfully and is pending verification."
                 )
         );
 
         //now here, we will send mail message to the donor regardiing the successfully registration of donation 
 
-        emailService.sendDonationConfirmationEmail({
-            donorName,
-            donorEmail,
-            campaignName: "Early Childhood Education",
-            donationAmount,
-            transactionId,
-            trackingLink: `${process.env.CLIENT_ADDRESS}/track-donations`
-            }).catch(err => {
-            console.error("Email sending failed:", err);
-        });
+        if (!ocrVerified) {
+            emailService.sendDonationConfirmationEmail({
+                donorName,
+                donorEmail,
+                campaignName: "Early Childhood Education",
+                donationAmount,
+                transactionId,
+                trackingLink: `${process.env.CLIENT_ADDRESS}/track-donations`
+                }).catch(err => {
+                console.error("Email sending failed:", err);
+            });
+        }
 
     } catch (error) {
         console.error(error);

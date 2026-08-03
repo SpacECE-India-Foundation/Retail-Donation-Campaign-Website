@@ -446,6 +446,25 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 ## 12. Public donation routes
 
+### `POST /api/public/donation/scan-payment-screenshot`
+
+- Purpose: scan a selected UPI payment screenshot before donation submission, so the form can auto-fill payment information.
+- No authentication required.
+- Request type: `multipart/form-data`.
+
+#### Request fields
+
+- `paymentMode` (string, required): must be `UPI`.
+- `paymentscreenshot` (file, required): JPEG, PNG, or WebP image; maximum 5 MB.
+
+#### Response
+
+- Status: `200`.
+- If `data.fields` is present, copy its `transactionId`, `amount`, and optional `paymentDate` into the donation form.
+- If `data.requiresManualEntry` is `true`, ask the donor to enter the transaction ID and amount manually before submission.
+
+---
+
 ### `POST /api/public/donation/new-donation`
 
 - Purpose: submit a donation for verification.
@@ -462,7 +481,10 @@ This document describes all backend endpoints available in the Donation Drive ba
 - `address` (string, optional)
 - `donorMessage` (string, optional)
 - `transactionId` (string, optional; if supplied, it must be 6–50 characters)
+- `paymentMode` (string, optional; `UPI`, `Bank Transfer`, `Cash`, or `Cheque`)
 - `campaign` (string, required; campaign `_id`)
+
+For UPI donations, `paymentscreenshot` is required. The backend scans the screenshot again during final submission. If a high-confidence UTR and amount match the final form values, the donation is verified immediately; otherwise it remains pending for the existing manual or bank-statement verification process.
 ---
 
 ### `POST /api/public/donation/donation-details`
