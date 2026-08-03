@@ -8,7 +8,9 @@ import Message from "../../models/message.modals.js";
 import mongoose from "mongoose";
 import Certificate from "../../models/certificate.modals.js";
 import certificateService from "../../services/certificate.services.js";
-
+import verificationService from "../../services/verification.service.js"
+import BankTransaction from "../../models/bankTransaction.model.js"
+import { certificateQueue } from "../../queues/certificate.queue.js"
 
 //---------------------------------------------------HELPER: RESOLVE WHICH CAMPAIGNS THIS REQUEST IS ALLOWED TO SEE---------------------------------------------------------------------------------------
 // Centralizes the admin-scoping logic so fetchDonations, fetchPendingRejectedDonations, and
@@ -177,33 +179,71 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
     const campaignScope = await resolveDonationCampaignFilter(req)
 
     const donations = await Donation.find({
-      ...campaignScope,
-      $or: [
-      {
-        status: "Pending"
-      },
-      {
-        status: "Rejected",
-        resubmissionCount: { $gt: 0 }
-      }
-    ]
-  })
-    .populate({
-      path: "campaign",
-      select: "campaignName createdBy",
-      populate: { path: "createdBy", select: "fullName" }
-    })
-    .sort({
-      createdAt: -1
-    });
 
+    ...campaignScope,
+
+    automationAttempted: true,
+
+    $or: [
+        {
+            status: "Pending"
+        },
+        {
+            status: "Rejected",
+            resubmissionCount: { $gt: 0 }
+        }
+    ]
+
+})
+.populate({
+    path: "campaign",
+    select: "campaignName createdBy",
+    populate: {
+        path: "createdBy",
+        select: "fullName"
+    }
+})
+.sort({
+    createdAt: -1
+});
+
+    /*
+------------------------------------------
+Attach Bank Verification Details
+------------------------------------------
+*/
+
+const donationIds = donations.map(d => d._id);
+
+const bankTransactions = await BankTransaction.find({
+    matchedDonation: {
+        $in: donationIds
+    }
+}).select(
+    "matchedDonation processingStatus failureReason retryCount"
+);
+
+const transactionMap = new Map(
+    bankTransactions.map(transaction => [
+        transaction.matchedDonation.toString(),
+        transaction
+    ])
+);
+
+const enrichedDonations = donations.map(donation => ({
+    ...donation.toObject(),
+    bankVerification:
+        transactionMap.get(
+            donation._id.toString()
+        ) || null
+}));
     //now we have those donations we will simply send them with the response
 
     return res.status(200).json(
         new ApiResponse(
           200,
           {
-            newPendingDonations:donations
+            newPendingDonations:enrichedDonations
           },
             "Campaign Fetched Successfully!!"
           )
@@ -230,7 +270,7 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
 // milestones. Called inside verifyDonation's transaction right after campaignRaisedAmt is
 // incremented, so it always re-evaluates every milestone against the fresh total — meaning
 // any previously-missed completions catch up automatically on the next verified donation.
-async function syncMilestoneCompletion(campaignId, session) {
+export default async function syncMilestoneCompletion(campaignId, session) {
   const [freshCampaign, milestones] = await Promise.all([
     Campaign.findById(campaignId).session(session),
     Milestone.find({ campaign: campaignId }).sort({ displayOrder: 1 }).session(session)
@@ -322,180 +362,491 @@ export const fetchRecentActivity = async (req, res) => {
 
 
 //-----------------------------------------------------------CONTROLLER FOR THE VERIFICATION OF DONATION----------------------------------------
-export const verifyDonation = async (req,res) =>{
-  const session = await mongoose.startSession();  //here, we had starting the session
+export const verifyDonation = async (req, res) => {
 
-  try {
+    const session = await mongoose.startSession();
 
-    session.startTransaction();
-    //just for debugging, remove later
-    console.log("verifyDonation request params:", req.params)
-    console.log("verifyDonation adminId:", req.admin?.adminId)
-
-    //so, how the verification process will goes
-    //user get all the pending donations record
-    //user checks them manually and if everything is correct he will click on the verify so we just have to change the status of the donation send success email and make some numeric changes in the collectons
-
-    //first of all we want adminId for authentication
-    const adminId = req.admin.adminId
-    const isSuperAdmin = req.admin.role === "SUPER_ADMIN"
-    const {donationId} = req.params
-
-    //lets check weather the donation entry is valid or not
-    //allow verifying a donation that's either freshly Pending, OR was Rejected and has since
-    //been resubmitted by the donor (same condition fetchPendingRejectedDonations uses to
-    //surface it in the first place)
-    let donation = await Donation.findOne({
-      _id:donationId,
-      $or: [
-        { status: "Pending" },
-        { status: "Rejected", resubmissionCount: { $gt: 0 } }
-      ]
-    }).session(session)
-
-    //just for debugging, remove later
-    console.log("verifyDonation found donation:", donation ? {
-      id: donation._id,
-      status: donation.status,
-      transactionId: donation.transactionId,
-      campaign: donation.campaign,
-      certificateGenerated: donation.certificateGenerated
-    } : null)
-
-    ApiError.assert(donation,"Donation don't found")
-
-    //Get campaign before generating certificate
-    let campaign = await Campaign.findById(donation.campaign).session(session)
-    //just for debugging, remove later
-    console.log("verifyDonation found campaign:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
-    ApiError.assert(campaign,"No campaign Found with this donation")
-
-    //Ownership check — previously missing entirely, meaning any authenticated admin could
-    //verify any donation regardless of which campaign it belonged to. Super Admin is exempt
-    //by design; everyone else must actually own the campaign this donation is under.
-    ApiError.assert(
-      isSuperAdmin || campaign.createdBy.toString() === adminId,
-      403,
-      "You are not authorized to verify donations for this campaign."
-    )
-
-    //Generate certificate for verified donation with error handling
-    let certificateData = null;
     try {
-      certificateData = await certificateService.generateAndUploadCertificate({
-        donorName: donation.donorName,
-        campaignName: campaign.campaignName,
-        amount: donation.amount,
-        donationDate: donation.paymentDate,
-      });
-      //just for debugging, remove later
-      console.log("verifyDonation certificateData:", certificateData)
-    } catch (certError) {
-      console.error("Certificate generation failed, continuing with verification:", certError.message);
-      //Certificate generation failure should not block donation verification
-      //Log the error but allow the donation to be verified without certificate
-    }
 
-    //Update donation with certificate information if generated successfully
-    if (certificateData) {
-      donation.certificateGenerated = true;
-      donation.certificateUrl = certificateData.certificateUrl;
-    }
+        session.startTransaction();
 
+        console.log("verifyDonation request params:", req.params);
+        console.log("verifyDonation adminId:", req.admin?.adminId);
 
-    //lets set the status of this donation to verified
-    donation.status = "Verified"
-    //lets set verified by to the admin id
-    donation.verifiedBy = adminId
-    //lets set verified at to the current date
-    donation.verifiedAt = new Date();
-    //lets set the verified booleam to true
-    donation.verified = true;
+        const adminId = req.admin.adminId;
+        const isSuperAdmin = req.admin.role === "SUPER_ADMIN";
 
+        const { donationId } = req.params;
 
- //Save donation, update campaign, and create certificate record in parallel
-    const saveOperations = [
-      donation.save({session}),
-      Campaign.findByIdAndUpdate(
-        campaign._id,
-        {
-          $inc:{
-            campaignRaisedAmt: donation.amount,
-            contributors:1
-          }
-        },
-        {
-          session
+        /*
+        ---------------------------------------
+        Fetch Donation
+        ---------------------------------------
+        */
+
+        const donation = await Donation.findOne({
+
+            _id: donationId,
+
+            $or: [
+
+                { status: "Pending" },
+
+                {
+
+                    status: "Rejected",
+
+                    resubmissionCount: { $gt: 0 }
+
+                }
+
+            ]
+
+        }).session(session);
+
+        console.log(
+
+            "verifyDonation found donation:",
+
+            donation
+                ? {
+
+                    id: donation._id,
+
+                    status: donation.status,
+
+                    transactionId: donation.transactionId,
+
+                    campaign: donation.campaign,
+
+                    certificateGenerated:
+                        donation.certificateGenerated
+
+                }
+
+                : null
+
+        );
+
+        ApiError.assert(
+            donation,
+            "Donation doesn't exist."
+        );
+
+        /*
+        ---------------------------------------
+        Fetch Campaign
+        ---------------------------------------
+        */
+
+        const campaign = await Campaign.findById(
+            donation.campaign
+        ).session(session);
+
+        console.log(
+
+            "verifyDonation found campaign:",
+
+            campaign
+                ? {
+
+                    id: campaign._id,
+
+                    name: campaign.campaignName
+
+                }
+
+                : null
+
+        );
+
+        ApiError.assert(
+            campaign,
+            "Campaign not found."
+        );
+
+        /*
+        ---------------------------------------
+        Ownership Check
+        ---------------------------------------
+        */
+
+        if (
+
+            !isSuperAdmin &&
+
+            campaign.createdBy.toString() !== adminId
+
+        ) {
+
+            throw new ApiError(
+
+                403,
+
+                "You are not authorized to verify donations for this campaign."
+
+            );
+
         }
-      )
-    ];
 
-    //Add certificate creation if certificate was generated
-    if (certificateData) {
-      saveOperations.push(
-        Certificate.create([{
-          certificateId: certificateData.certificateId,
-          donation: donation._id,
-          displayCertificateNo: certificateData.displayCertificateNo,
-          donorName: donation.donorName,
-          campaignName: campaign.campaignName,
-          amount: donation.amount,
-          donationDate: donation.paymentDate,
-          certificateUrl: certificateData.certificateUrl,
-          publicId: certificateData.publicId,
-          verificationUrl: certificateData.verificationUrl,
-          verified: true,
-          verifiedAt: new Date(),
-        }], { session })
-      );
+        /*
+        ---------------------------------------
+        Verify Donation
+        ---------------------------------------
+        */
+
+        await verificationService.verifyDonation({
+
+            donation,
+
+            campaign,
+
+            verifiedBy: adminId,
+
+            session
+
+        });
+
+        /*
+        ---------------------------------------
+        Commit Mongo Transaction
+        ---------------------------------------
+        */
+
+        await session.commitTransaction();
+
+        /*
+        ---------------------------------------
+        Queue Certificate Generation
+        ---------------------------------------
+        */
+
+        try {
+
+            await certificateQueue.add(
+
+                "GENERATE_CERTIFICATE",
+
+                {
+
+                    donationId: donation._id.toString()
+
+                }
+
+            );
+
+        }
+
+        catch (err) {
+
+            console.error(
+
+                "Unable to queue certificate generation:",
+
+                err.message
+
+            );
+
+        }
+
+        /*
+        ---------------------------------------
+        Response
+        ---------------------------------------
+        */
+
+        return res.status(200).json(
+
+            new ApiResponse(
+
+                200,
+
+                {
+
+                    donationId: donation._id
+
+                },
+
+                "Donation verified successfully."
+
+            )
+
+        );
+
     }
 
-    await Promise.all(saveOperations)
+    catch (error) {
 
+        await session.abortTransaction();
 
-    //campaignRaisedAmt just moved — recalculate which milestones this reaches
-    await syncMilestoneCompletion(campaign._id, session)
+        return res.status(
 
-    await session.commitTransaction();
-    res.status(200).json(
-    new ApiResponse(
-        200,
-        {
-            donationId: donation._id
-        },
-        "Donation verified successfully."
-    )
-);
+            error.statusCode || 500
 
-    //now we will send success message through email
-    emailService.sendDonationVerifiedEmail({
+        ).json(
 
-    donorName: donation.donorName,
+            new ApiError(
 
-    donorEmail: donation.donorEmail,
+                error.statusCode || 500,
 
-    campaignName: campaign.campaignName,
+                error.message
 
-    donationAmount: donation.amount,
-
-    transactionId: donation.transactionId,
-
-    certificateLink: donation.certificateUrl
-
-});
-
-  } catch (error) {
-    await session.abortTransaction();
-    return res.status(error.statusCode || 500).json(
-        new ApiError(
-            error.statusCode || 500,
-            error.message
             )
-        )
-  }finally{
-    session.endSession();
-  }
-}
+
+        );
+
+    }
+
+    finally {
+
+        session.endSession();
+
+    }
+
+};
+// export const verifyDonation = async (req,res) =>{
+//   const session = await mongoose.startSession();  //here, we had starting the session
+
+//   try {
+
+//     session.startTransaction();
+//     //just for debugging, remove later
+//     console.log("verifyDonation request params:", req.params)
+//     console.log("verifyDonation adminId:", req.admin?.adminId)
+
+//     //so, how the verification process will goes
+//     //user get all the pending donations record
+//     //user checks them manually and if everything is correct he will click on the verify so we just have to change the status of the donation send success email and make some numeric changes in the collectons
+
+//     //first of all we want adminId for authentication
+//     const adminId = req.admin.adminId
+//     const isSuperAdmin = req.admin.role === "SUPER_ADMIN"
+//     const {donationId} = req.params
+
+//     //lets check weather the donation entry is valid or not
+//     //allow verifying a donation that's either freshly Pending, OR was Rejected and has since
+//     //been resubmitted by the donor (same condition fetchPendingRejectedDonations uses to
+//     //surface it in the first place)
+//     let donation = await Donation.findOne({
+//       _id:donationId,
+//       $or: [
+//         { status: "Pending" },
+//         { status: "Rejected", resubmissionCount: { $gt: 0 } }
+//       ]
+//     }).session(session)
+
+//     //just for debugging, remove later
+//     console.log("verifyDonation found donation:", donation ? {
+//       id: donation._id,
+//       status: donation.status,
+//       transactionId: donation.transactionId,
+//       campaign: donation.campaign,
+//       certificateGenerated: donation.certificateGenerated
+//     } : null)
+
+//     ApiError.assert(donation,"Donation don't found")
+
+//     //Get campaign before generating certificate
+//     let campaign = await Campaign.findById(donation.campaign).session(session)
+//     //just for debugging, remove later
+//     console.log("verifyDonation found campaign:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
+//     ApiError.assert(campaign,"No campaign Found with this donation")
+
+//     //Ownership check — previously missing entirely, meaning any authenticated admin could
+//     //verify any donation regardless of which campaign it belonged to. Super Admin is exempt
+//     //by design; everyone else must actually own the campaign this donation is under.
+//     ApiError.assert(
+//       campaign.createdBy.toString() === adminId,
+//       403,
+//       "You are not authorized to verify donations for this campaign."
+//     )
+
+//     //Generate certificate for verified donation with error handling
+//     // let certificateData = null;
+//     // try {
+//     //   certificateData = await certificateService.generateAndUploadCertificate({
+//     //     donorName: donation.donorName,
+//     //     campaignName: campaign.campaignName,
+//     //     amount: donation.amount,
+//     //     donationDate: donation.paymentDate,
+//     //   });
+//     //   //just for debugging, remove later
+//     //   console.log("verifyDonation certificateData:", certificateData)
+//     // } catch (certError) {
+//     //   console.error("Certificate generation failed, continuing with verification:", certError.message);
+//     //   //Certificate generation failure should not block donation verification
+//     //   //Log the error but allow the donation to be verified without certificate
+//     // }
+
+//     // //Update donation with certificate information if generated successfully
+//     // if (certificateData) {
+//     //   donation.certificateGenerated = true;
+//     //   donation.certificateUrl = certificateData.certificateUrl;
+//     // }
+
+
+// //     //lets set the status of this donation to verified
+// //     donation.status = "Verified"
+// //     //lets set verified by to the admin id
+// //     donation.verifiedBy = adminId
+// //     //lets set verified at to the current date
+// //     donation.verifiedAt = new Date();
+// //     //lets set the verified booleam to true
+// //     donation.verified = true;
+
+
+// //  //Save donation, update campaign, and create certificate record in parallel
+// //     const saveOperations = [
+// //       donation.save({session}),
+// //       Campaign.findByIdAndUpdate(
+// //         campaign._id,
+// //         {
+// //           $inc:{
+// //             campaignRaisedAmt: donation.amount,
+// //             contributors:1
+// //           }
+// //         },
+// //         {
+// //           session
+// //         }
+// //       )
+// //     ];
+
+// await verificationService.verifyDonation({
+
+//     donation,
+
+//     campaign,
+
+//     verifiedBy: adminId,
+
+//     session
+
+// });
+
+//     //Add certificate creation if certificate was generated
+//     // if (certificateData) {
+//     //   saveOperations.push(
+//     //     Certificate.create([{
+//     //       certificateId: certificateData.certificateId,
+//     //       donation: donation._id,
+//     //       displayCertificateNo: certificateData.displayCertificateNo,
+//     //       donorName: donation.donorName,
+//     //       campaignName: campaign.campaignName,
+//     //       amount: donation.amount,
+//     //       donationDate: donation.paymentDate,
+//     //       certificateUrl: certificateData.certificateUrl,
+//     //       publicId: certificateData.publicId,
+//     //       verificationUrl: certificateData.verificationUrl,
+//     //       verified: true,
+//     //       verifiedAt: new Date(),
+//     //     }], { session })
+//     //   );
+//     // }
+// //     if (certificateData) {
+
+// //     await Certificate.create(
+
+// //         [{
+
+// //             certificateId: certificateData.certificateId,
+
+// //             donation: donation._id,
+
+// //             displayCertificateNo: certificateData.displayCertificateNo,
+
+// //             donorName: donation.donorName,
+
+// //             campaignName: campaign.campaignName,
+
+// //             amount: donation.amount,
+
+// //             donationDate: donation.paymentDate,
+
+// //             certificateUrl: certificateData.certificateUrl,
+
+// //             publicId: certificateData.publicId,
+
+// //             verificationUrl: certificateData.verificationUrl,
+
+// //             verified: true,
+
+// //             verifiedAt: new Date(),
+
+// //         }],
+
+// //         {
+
+// //             session
+
+// //         }
+
+// //     );
+
+// // }
+
+//     // await Promise.all(saveOperations)
+
+
+//     //campaignRaisedAmt just moved — recalculate which milestones this reaches
+//     // await syncMilestoneCompletion(campaign._id, session)
+
+//     await session.commitTransaction();
+//     try {
+
+//     await certificateQueue.add(
+//         "GENERATE_CERTIFICATE",
+//         {
+//             donationId: donation._id.toString()
+//         }
+//     );
+
+// }
+// catch(err){
+
+//     console.error(err);
+
+// }
+
+//     res.status(200).json(
+//     new ApiResponse(
+//         200,
+//         {
+//             donationId: donation._id
+//         },
+//         "Donation verified successfully."
+//     )
+// );
+
+//     //now we will send success message through email
+// //     emailService.sendDonationVerifiedEmail({
+
+// //     donorName: donation.donorName,
+
+// //     donorEmail: donation.donorEmail,
+
+// //     campaignName: campaign.campaignName,
+
+// //     donationAmount: donation.amount,
+
+// //     transactionId: donation.transactionId,
+
+// //     certificateLink: donation.certificateUrl
+
+// // });
+
+//   } catch (error) {
+//     await session.abortTransaction();
+//     return res.status(error.statusCode || 500).json(
+//         new ApiError(
+//             error.statusCode || 500,
+//             error.message
+//             )
+//         )
+//   }finally{
+//     session.endSession();
+//   }
+// }
 
 
 
@@ -526,6 +877,8 @@ export const rejectDonation = async (req,res) =>{
     );
 
     ApiError.assert(donation,"Donation doesn't exist!")
+
+    
 
     //Ownership check — previously missing, same issue as verifyDonation above.
     ApiError.assert(

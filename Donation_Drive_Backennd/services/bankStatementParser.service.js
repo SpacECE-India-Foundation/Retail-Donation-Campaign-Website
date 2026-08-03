@@ -5,6 +5,8 @@ class BankStatementParserService {
     constructor() {
         this.supportedExtensions = [".xlsx"];
 
+        //here, we have done the headermapping so we can allow the flexible schema of bank xlsx file with different headers
+        //this are the commonly used headers in the trasnaction file
         this.headerMapping = {
             transactionId: [
                 "utr",
@@ -52,10 +54,9 @@ class BankStatementParserService {
         };
     }
 
+    //here, is the actual parsing logic is implemented
     async parseStatement(file) {
-        if (!file) {
-            throw new ApiError(400, "No bank statement uploaded.");
-        }
+        ApiError.assert(file,"No file is Uploaded!!")
 
         // DEBUG (remove before production)
         // console.log("Uploaded statement:", file.originalname);
@@ -74,14 +75,11 @@ class BankStatementParserService {
             throw new ApiError(400, "Excel sheet is empty.");
         }
 
+        //storing the very first worksheet from the excel file 
         const worksheet = workbook.worksheets[0];
 
-        if (worksheet.rowCount < 2) {
-            throw new ApiError(
-                400,
-                "Statement must contain at least one transaction."
-            );
-        }
+        //here, we have checked for the rowcount 2 is because if the rowcount is less than two that means there is no any transactionrows, there is only header rows
+        ApiError.assert(worksheet.rowCount>2,"Statement must contain at least one transaction!!")
 
         const headerRow = worksheet.getRow(1);
 
@@ -151,7 +149,7 @@ class BankStatementParserService {
                 : "";
 
             transactions.push({
-                transactionId,
+                utr: transactionId,
                 amount,
                 transactionDate: new Date(transactionDate),
                 senderName,

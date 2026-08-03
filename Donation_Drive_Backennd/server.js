@@ -19,6 +19,11 @@ import certificatePublicRoutes from "./routes/publicOperationRoutes/certificate.
 import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
 import superAdminOperations from "./routes/superAdminOperations.routes.js/accounts.superAdmin.js"
 import bankStatementRoutes from "./routes/superAdminOperations.routes.js/bankStatements.routes.js"
+import redisConnection from "./config/redis.config.js"
+import { verificationWorker } from "./workers/verification.worker.js"
+import { verificationQueue } from "./queues/verification.queue.js"
+import { certificateWorker } from "./workers/certificate.workers.js"
+import { emailWorker } from "./workers/email.worker.js"
 
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER

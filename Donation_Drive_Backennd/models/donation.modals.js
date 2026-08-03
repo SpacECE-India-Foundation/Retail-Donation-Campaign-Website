@@ -135,6 +135,18 @@ const donationSchema = new mongoose.Schema(
     resubmissionCount: {
     type: Number,
     default: 0
+},
+verificationEmailSent: {
+    type: Boolean,
+    default: false,
+},
+automationAttempted:{
+type:Boolean,
+default:false
+},
+automationFailureReason:{
+type:String,
+default:""
 }
   },
   {
