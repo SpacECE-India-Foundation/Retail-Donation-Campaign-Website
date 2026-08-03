@@ -174,7 +174,7 @@ class CertificateService {
   async deleteCertificate(publicId) {
     try {
       if (publicId) {
-        await deleteFromCloudinary(publicId);
+        await deleteFromCloudinary(publicId, "raw");
       }
     } catch (error) {
       console.warn("Failed to delete certificate from Cloudinary:", error.message);

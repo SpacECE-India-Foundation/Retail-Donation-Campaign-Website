@@ -629,6 +629,63 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 ---
 
+## 15. Super Admin bank-statement routes
+
+All bank-statement routes require the `accessToken` authentication cookie and the `SUPER_ADMIN` role.
+
+### `POST /api/super-admin/bank-statement`
+
+- Purpose: upload and import a bank statement, then automatically reconcile eligible bank transactions with pending donations.
+- Request type: `multipart/form-data`.
+
+#### Request fields
+
+- `statement` (file, required): an Excel `.xlsx` bank statement, maximum size 10 MB.
+
+#### Response
+
+- Status: `201`
+- The response data includes:
+  - `importedCount`: new bank transactions stored.
+  - `duplicateCount`: already-imported transaction IDs.
+  - `failedCount`: invalid or failed imports.
+  - `invalidRowCount` and `importFailures`: validation/import details.
+  - `reconciliationSummary`: matched, unmatched, and failed verification counts; includes retry-email results.
+
+---
+
+### `GET /api/super-admin/bank-statement/history`
+
+- Purpose: list uploaded bank-statement batches and their reconciliation status.
+- Request: no body required.
+
+#### Response
+
+- Status: `200`
+- Each item in `data.uploads` includes:
+  - `uploadBatchId`
+  - `fileName`
+  - `uploadedByName`
+  - `uploadedAt`
+  - `totalTransactions`
+  - `matchedTransactions`
+  - `unmatchedTransactions`
+  - `failedTransactions`
+
+---
+
+### `POST /api/super-admin/bank-statement/reconcile`
+
+- Purpose: retry reconciliation for all eligible unmatched or previously failed bank transactions. It also retries recorded failed verification emails.
+- Request: no body required.
+
+#### Response
+
+- Status: `200`
+- `data.reconciliationSummary` contains the number of transactions matched, unmatched, failed, and email retry results.
+
+---
+
 ## Frontend authentication hints
 
 - Send cookies with requests:

@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { ApiError } from "../utils/apiError.utils.js";
+import { amountToPaise, normalizeTransactionId, paiseToAmount } from "../utils/bankTransaction.utils.js";
 
 class BankStatementParserService {
     constructor() {
@@ -62,6 +63,10 @@ class BankStatementParserService {
         // console.log("File size:", file.size);
         // console.log("Mime type:", file.mimetype);
 
+        if (!file.originalname.toLowerCase().endsWith(".xlsx")) {
+            throw new ApiError(400, "Only Excel (.xlsx) statements are supported.");
+        }
+
         const workbook = new ExcelJS.Workbook();
 
         try {
@@ -83,37 +88,35 @@ class BankStatementParserService {
             );
         }
 
-        const headerRow = worksheet.getRow(1);
+        let headerRowNumber = 0;
+        let requiredColumns = null;
 
-        const headers = {};
+        // Bank exports often include a title or account summary before the headers.
+        for (let rowNumber = 1; rowNumber <= Math.min(worksheet.rowCount, 20); rowNumber++) {
+            const headers = {};
+            worksheet.getRow(rowNumber).eachCell((cell, columnNumber) => {
+                const value = String(cell.text ?? cell.value ?? "").trim().toLowerCase();
+                if (value) headers[value] = columnNumber;
+            });
 
-        headerRow.eachCell((cell, columnNumber) => {
-            const value = String(cell.value ?? "")
-                .trim()
-                .toLowerCase();
-
-            headers[value] = columnNumber;
-        });
-
-        // DEBUG (remove before production)
-        // console.log("Detected headers:", headers);
-
-        const requiredColumns = {};
-
-        for (const field of Object.keys(this.headerMapping)) {
-            for (const possibleHeader of this.headerMapping[field]) {
-                if (headers[possibleHeader]) {
-                    requiredColumns[field] = headers[possibleHeader];
-                    break;
+            const columns = {};
+            for (const field of Object.keys(this.headerMapping)) {
+                for (const possibleHeader of this.headerMapping[field]) {
+                    if (headers[possibleHeader]) {
+                        columns[field] = headers[possibleHeader];
+                        break;
+                    }
                 }
+            }
+
+            if (columns.transactionId && columns.transactionDate && columns.amount) {
+                headerRowNumber = rowNumber;
+                requiredColumns = columns;
+                break;
             }
         }
 
-        if (
-            !requiredColumns.transactionId ||
-            !requiredColumns.transactionDate ||
-            !requiredColumns.amount
-        ) {
+        if (!requiredColumns) {
             throw new ApiError(
                 400,
                 "Required statement columns could not be detected."
@@ -121,26 +124,41 @@ class BankStatementParserService {
         }
 
         const transactions = [];
+        const invalidRows = [];
 
         worksheet.eachRow((row, rowNumber) => {
-            if (rowNumber === 1) {
+            if (rowNumber <= headerRowNumber) {
                 return;
             }
 
-            const transactionId =
-                row.getCell(requiredColumns.transactionId).text?.trim() ?? "";
+            const transactionId = row.getCell(requiredColumns.transactionId).text?.trim() ?? "";
+            const transactionIdNormalized = normalizeTransactionId(transactionId);
 
-            if (!transactionId) {
+            if (!transactionIdNormalized) {
                 return;
             }
 
-            const amountValue =
-                row.getCell(requiredColumns.amount).value ?? 0;
+            const amountValue = row.getCell(requiredColumns.amount).value;
+            const amountInPaise = amountToPaise(
+                typeof amountValue === "object" && amountValue?.result !== undefined
+                    ? amountValue.result
+                    : amountValue
+            );
+            const rawDate = row.getCell(requiredColumns.transactionDate).value;
+            const transactionDate = rawDate instanceof Date
+                ? rawDate
+                : typeof rawDate === "number"
+                    ? new Date(Date.UTC(1899, 11, 30) + rawDate * 86400000)
+                    : new Date(rawDate);
 
-            const amount = Number(amountValue);
-
-            const transactionDate =
-                row.getCell(requiredColumns.transactionDate).value;
+            if (!amountInPaise || Number.isNaN(transactionDate.getTime())) {
+                invalidRows.push({
+                    rowNumber,
+                    transactionId,
+                    reason: !amountInPaise ? "Amount must be a positive number." : "Transaction date is invalid.",
+                });
+                return;
+            }
 
             const senderName = requiredColumns.senderName
                 ? row.getCell(requiredColumns.senderName).text?.trim() ?? ""
@@ -152,8 +170,10 @@ class BankStatementParserService {
 
             transactions.push({
                 transactionId,
-                amount,
-                transactionDate: new Date(transactionDate),
+                transactionIdNormalized,
+                amount: paiseToAmount(amountInPaise),
+                amountInPaise,
+                transactionDate,
                 senderName,
                 remarks,
             });
@@ -166,11 +186,12 @@ class BankStatementParserService {
         if (transactions.length === 0) {
             throw new ApiError(
                 400,
-                "No valid transactions were found in the uploaded statement."
+                "No valid transactions were found in the uploaded statement.",
+                invalidRows
             );
         }
 
-        return transactions;
+        return { transactions, invalidRows };
     }
 }
 

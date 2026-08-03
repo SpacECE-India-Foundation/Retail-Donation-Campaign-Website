@@ -94,8 +94,8 @@ export const uploadBufferToCloudinary = async (
 }
 
 //---------------------------------FUNCTION TO DELETE THE CLOUDINARY IMAGE DIRECTLY FROM THE CLOUD SERVER-----------------------------
-export const deleteFromCloudinary = async (publicId) => {
+export const deleteFromCloudinary = async (publicId, resourceType = "image") => {
   if (!publicId) return null;
-    return await cloudinary.uploader.destroy(publicId);
+    return await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
 }
 export { cloudinary }
