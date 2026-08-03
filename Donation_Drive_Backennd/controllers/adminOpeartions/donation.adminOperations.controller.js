@@ -375,8 +375,8 @@ export const verifyDonation = async (req,res) =>{
     //by design; everyone else must actually own the campaign this donation is under.
     ApiError.assert(
       isSuperAdmin || campaign.createdBy.toString() === adminId,
-      403,
-      "You are not authorized to verify donations for this campaign."
+      "You are not authorized to verify donations for this campaign.",
+      403
     )
 
     //Generate certificate for verified donation with error handling
@@ -403,19 +403,41 @@ export const verifyDonation = async (req,res) =>{
     }
 
 
-    //lets set the status of this donation to verified
-    donation.status = "Verified"
-    //lets set verified by to the admin id
-    donation.verifiedBy = adminId
-    //lets set verified at to the current date
-    donation.verifiedAt = new Date();
-    //lets set the verified booleam to true
-    donation.verified = true;
+    //Atomically claim this donation for verification. If another admin (or Super Admin)
+    //verified/rejected it in the gap between the read above and this update, the status
+    //condition below no longer matches and we return a clean "already processed" message
+    //instead of double-crediting the campaign or racing on the write. This is the actual
+    //fix for the "two admins verifying at once" race condition.
+    const claimedDonation = await Donation.findOneAndUpdate(
+      {
+        _id: donation._id,
+        $or: [
+          { status: "Pending" },
+          { status: "Rejected", resubmissionCount: { $gt: 0 } }
+        ]
+      },
+      {
+        $set: {
+          status: "Verified",
+          verifiedBy: adminId,
+          verifiedAt: new Date(),
+          verified: true,
+          ...(certificateData ? {
+            certificateGenerated: true,
+            certificateUrl: certificateData.certificateUrl
+          } : {})
+        }
+      },
+      { session, new: true }
+    )
 
+    ApiError.assert(claimedDonation, "This donation has already been verified or rejected by another admin. Please refresh the queue.", 409)
 
- //Save donation, update campaign, and create certificate record in parallel
+    donation = claimedDonation
+
+ //Update campaign totals and create the certificate record in parallel.
+ //(the donation itself was already persisted by the atomic claim above)
     const saveOperations = [
-      donation.save({session}),
       Campaign.findByIdAndUpdate(
         campaign._id,
         {
@@ -486,6 +508,15 @@ export const verifyDonation = async (req,res) =>{
 
   } catch (error) {
     await session.abortTransaction();
+    //MongoDB itself also detects a real simultaneous write collision (both requests hitting
+    //the exact same instant) and aborts one side with a WriteConflict/TransientTransactionError
+    //— catch that here too so it surfaces as the same friendly message instead of a raw 500.
+    const isWriteConflict = error.errorLabels?.includes("TransientTransactionError") || error.code === 112
+    if (isWriteConflict) {
+      return res.status(409).json(
+        new ApiError(409, "This donation is currently being processed by another admin. Please refresh and try again.")
+      )
+    }
     return res.status(error.statusCode || 500).json(
         new ApiError(
             error.statusCode || 500,
@@ -530,23 +561,43 @@ export const rejectDonation = async (req,res) =>{
     //Ownership check — previously missing, same issue as verifyDonation above.
     ApiError.assert(
       isSuperAdmin || donation.campaign.createdBy.toString() === adminId,
-      403,
-      "You are not authorized to reject donations for this campaign."
+      "You are not authorized to reject donations for this campaign.",
+      403
     )
 
-    //now we just have to simply set status of this donation to rejected or cancelled and send email
-    donation.status = "Rejected"
-    donation.verificationRemarks = verificationRemarks.trim()
-    donation.verified = false;
-    donation.verifiedBy = adminId;
-    donation.verifiedAt = new Date();
-    await donation.save()
+    //Atomically claim this donation for rejection. If another admin (or Super Admin)
+    //verified/rejected it in the gap between the read above and this update, the status
+    //condition below no longer matches and we return a clean "already processed" message
+    //instead of silently overwriting whatever the other admin just did. Same fix as
+    //verifyDonation's race condition, applied here since this function had zero
+    //concurrency protection before (no transaction, no atomic check).
+    const updatedDonation = await Donation.findOneAndUpdate(
+      {
+        _id: donation._id,
+        $or: [
+          { status: "Pending" },
+          { status: "Rejected", resubmissionCount: { $gt: 0 } }
+        ]
+      },
+      {
+        $set: {
+          status: "Rejected",
+          verificationRemarks: verificationRemarks.trim(),
+          verified: false,
+          verifiedBy: adminId,
+          verifiedAt: new Date()
+        }
+      },
+      { new: true }
+    )
+
+    ApiError.assert(updatedDonation, "This donation has already been processed by another admin. Please refresh the queue.", 409)
 
     res.status(200).json(
     new ApiResponse(
         200,
         {
-            donationId: donation._id
+            donationId: updatedDonation._id
         },
         "Donation Rejcted Successfully."
     )
@@ -558,7 +609,7 @@ export const rejectDonation = async (req,res) =>{
     campaignName: donation.campaign.campaignName,
     donationAmount: donation.amount,
     transactionId: donation.transactionId,
-    verificationRemarks: donation.verificationRemarks,
+    verificationRemarks: updatedDonation.verificationRemarks,
     resubmitLink: `${process.env.FRONTEND_URL}/donate/${donation.campaign._id}`
 }).catch(console.error);
   } catch (error) {
