@@ -34,8 +34,12 @@ export const scanPaymentScreenshot = async (req, res) => {
                 transactionId: extraction.transactionId,
                 amount: extraction.amount,
                 paymentDate: extraction.paymentDate,
+                senderName: extraction.senderName || "",
             }
             : null;
+
+        //just for debugging, remove later
+        console.log("scanPaymentScreenshot OCR result:", extraction); 
 
         return res.status(200).json(new ApiResponse(
             200,
@@ -45,6 +49,8 @@ export const scanPaymentScreenshot = async (req, res) => {
                     attempted: extraction.performed,
                     confidence: extraction.confidence,
                     canAutoVerify: extraction.canAutoVerify,
+                    senderName: extraction.senderName || "",
+                    isOutgoingTransfer: extraction.isOutgoingTransfer,
                     reason: extraction.reason,
                 },
                 requiresManualEntry: !fields,
@@ -109,6 +115,9 @@ export const registerDonation = async (req,res) =>{
 
         if (isUpiPayment && req.file?.buffer) {
             ocrExtraction = await paymentScreenshotOcrService.scan(req.file.buffer);
+
+            //just for debugging, remove later
+            console.log("registerDonation OCR extraction:", ocrExtraction);
 
             // A form can omit these values when OCR reads them successfully. Explicit form
             // values are never overwritten; they are checked against the OCR result below.
@@ -252,6 +261,7 @@ export const registerDonation = async (req,res) =>{
                 extraction: ocrExtraction,
                 transactionId,
                 amount: donationAmount,
+                senderName: donorName,
             })
             : { verified: false, reason: "OCR verification applies only to UPI payments." };
 
@@ -276,9 +286,11 @@ export const registerDonation = async (req,res) =>{
                 attempted: ocrExtraction.performed,
                 verified: false,
                 confidence: ocrExtraction.confidence,
-                extractedTransactionId: ocrExtraction.transactionId,
+                extractedTransactionId: ocrExtraction.transactionId || "",
                 extractedAmount: ocrExtraction.amount,
                 extractedPaymentDate: ocrExtraction.paymentDate,
+                extractedSenderName: ocrExtraction.senderName || "",
+                isOutgoingTransfer: Boolean(ocrExtraction.isOutgoingTransfer),
                 reason: ocrDecision.reason,
             },
         })
@@ -330,6 +342,8 @@ export const registerDonation = async (req,res) =>{
                         extractedTransactionId: ocrExtraction.transactionId || null,
                         extractedAmount: ocrExtraction.amount,
                         extractedPaymentDate: ocrExtraction.paymentDate,
+                        extractedSenderName: ocrExtraction.senderName || null,
+                        isOutgoingTransfer: Boolean(ocrExtraction.isOutgoingTransfer),
                         reason: ocrVerified
                             ? "Donation verified automatically from the payment screenshot."
                             : ocrVerificationError || ocrDecision.reason,

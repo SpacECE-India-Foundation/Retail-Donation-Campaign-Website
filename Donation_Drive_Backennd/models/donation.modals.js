@@ -128,6 +128,8 @@ const donationSchema = new mongoose.Schema(
       extractedTransactionId: { type: String, default: "" },
       extractedAmount: { type: Number, default: null },
       extractedPaymentDate: { type: Date, default: null },
+      extractedSenderName: { type: String, default: "" },
+      isOutgoingTransfer: { type: Boolean, default: false },
       reason: { type: String, default: "", maxlength: 500 },
     },
 

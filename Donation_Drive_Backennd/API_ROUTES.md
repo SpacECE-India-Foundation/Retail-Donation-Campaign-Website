@@ -460,8 +460,34 @@ This document describes all backend endpoints available in the Donation Drive ba
 #### Response
 
 - Status: `200`.
-- If `data.fields` is present, copy its `transactionId`, `amount`, and optional `paymentDate` into the donation form.
+- If `data.fields` is present, copy its `transactionId`, `amount`, `paymentDate`, and optional `senderName` into the donation form.
 - If `data.requiresManualEntry` is `true`, ask the donor to enter the transaction ID and amount manually before submission.
+
+#### Example response
+
+```json
+{
+  "status": 200,
+  "data": {
+    "fields": {
+      "transactionId": "ABC123456789",
+      "amount": 500,
+      "paymentDate": "2026-08-04T00:00:00.000Z",
+      "senderName": "John Doe"
+    },
+    "ocr": {
+      "attempted": true,
+      "confidence": 88,
+      "canAutoVerify": true,
+      "senderName": "John Doe",
+      "isOutgoingTransfer": true,
+      "reason": ""
+    },
+    "requiresManualEntry": false
+  },
+  "message": "Payment details were read from the screenshot. Please confirm and submit the donation."
+}
+```
 
 ---
 
@@ -473,7 +499,7 @@ This document describes all backend endpoints available in the Donation Drive ba
 
 #### Request fields
 
-- `paymentscreenshot` (file, required)
+- `paymentscreenshot` (file, required for UPI donations)
 - `donorName` (string, required)
 - `donorEmail` (string, required)
 - `amount` (number, required)
@@ -484,7 +510,21 @@ This document describes all backend endpoints available in the Donation Drive ba
 - `paymentMode` (string, optional; `UPI`, `Bank Transfer`, `Cash`, or `Cheque`)
 - `campaign` (string, required; campaign `_id`)
 
-For UPI donations, `paymentscreenshot` is required. The backend scans the screenshot again during final submission. If a high-confidence UTR and amount match the final form values, the donation is verified immediately; otherwise it remains pending for the existing manual or bank-statement verification process.
+For UPI donations, `paymentscreenshot` is required. The backend scans the screenshot again during final submission. If the OCR finds a strong outgoing-payment match for the submitted transaction ID, amount, and sender details, the donation can be auto-verified; otherwise it stays in the existing pending/manual or bank-statement verification flow.
+
+#### OCR metadata stored with the donation
+
+When OCR runs for a UPI screenshot, the backend stores the extracted values in the donation record under:
+
+- `ocr.attempted`
+- `ocr.confidence`
+- `ocr.extractedTransactionId`
+- `ocr.extractedAmount`
+- `ocr.extractedPaymentDate`
+- `ocr.extractedSenderName`
+- `ocr.isOutgoingTransfer`
+- `ocr.reason`
+
 ---
 
 ### `POST /api/public/donation/donation-details`
