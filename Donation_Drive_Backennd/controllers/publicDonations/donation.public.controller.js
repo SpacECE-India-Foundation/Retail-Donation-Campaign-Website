@@ -343,18 +343,17 @@ export const registerDonation = async (req,res) =>{
 
         //now here, we will send mail message to the donor regardiing the successfully registration of donation 
 
-        if (!ocrVerified) {
-            emailService.sendDonationConfirmationEmail({
-                donorName,
-                donorEmail,
-                campaignName: "Early Childhood Education",
-                donationAmount,
-                transactionId,
-                trackingLink: `${process.env.CLIENT_ADDRESS}/track-donations`
-                }).catch(err => {
-                console.error("Email sending failed:", err);
-            });
-        }
+        console.log("Sending donation confirmation email to:", donorEmail)
+        emailService.sendDonationConfirmationEmail({
+            donorName,
+            donorEmail,
+            campaignName: "Early Childhood Education",
+            donationAmount,
+            transactionId,
+            trackingLink: `${process.env.CLIENT_ADDRESS}/track-donations`
+            }).catch(err => {
+            console.error("Email sending failed:", err);
+        });
 
     } catch (error) {
         console.error(error);

@@ -180,7 +180,8 @@ export const fetchPendingRejectedDonations = async (req,res) =>{
       ...campaignScope,
       $or: [
       {
-        status: "Pending"
+        status: "Pending",
+        automaticVerificationAttempted: true,
       },
       {
         status: "Rejected",
@@ -422,6 +423,7 @@ export const verifyDonation = async (req,res) =>{
           verifiedBy: adminId,
           verifiedAt: new Date(),
           verified: true,
+          automaticVerificationAttempted: true,
           ...(certificateData ? {
             certificateGenerated: true,
             certificateUrl: certificateData.certificateUrl

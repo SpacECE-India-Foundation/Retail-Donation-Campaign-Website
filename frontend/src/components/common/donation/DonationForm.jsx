@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -10,23 +10,64 @@ import {
   Info,
   IndianRupee,
   Smartphone,
+  UploadCloud,
+  X,
 } from "lucide-react";
 import { Button } from "../Button";
 import FormField, { inputClass } from "./FormField";
 import FormSection from "./FormSection";
 import { AMOUNT_PRESETS } from "../../../utils/donationForm";
+import { scanPaymentScreenshot } from "../../../services/donationService";
 import { cn } from "../../../utils/cn";
+
+/**
+ * DonationForm — V2 self-service UPI flow + OCR screenshot scan.
+ *
+ * There's still no payment gateway integration. The donor pays the
+ * organisation's UPI ID directly (real `upi://pay` deep link on mobile, or
+ * QR/UPI ID/bank details on desktop), then uploads a screenshot of that
+ * payment. `scanPaymentScreenshot` (services/donationService.js) calls the
+ * real backend OCR endpoint (`POST /public/donation/scan-payment-screenshot`)
+ * — no mock, no fallback.
+ *
+ * IMPORTANT: the backend's OCR only ever extracts Transaction ID, amount,
+ * and payment date from the screenshot (services/paymentScreenshotOcr.service.js)
+ * — it does NOT and cannot return the donor's name or email from a UPI
+ * payment screenshot. So only Transaction ID gets auto-filled (and only
+ * when OCR read it confidently — the backend can return a 200 with
+ * `requiresManualEntry: true`, which is not an error, just a signal to type
+ * it in). Full Name and Email are always donor-entered, same as before this
+ * feature existed. The final "Submit Donation" button still calls the
+ * existing, unchanged submitPublicDonation API.
+ *
+ * Step flow:
+ *  1. Amount + Payment — mobile fires the real UPI intent and waits for
+ *     "I Have Completed the Payment". Desktop has no confirmation click —
+ *     "Donate Now" goes straight to step 2, which already contains the
+ *     QR/bank details. Includes scroll-to-first-error on invalid submit and
+ *     a disabled state on "Donate Now" until the amount step is valid.
+ *  2. Verification — desktop shows the same QR/UPI ID/bank details card
+ *     (plus a collapsible bank-transfer fallback) plus the screenshot
+ *     upload area. Mobile shows just the upload area (payment was already
+ *     confirmed in step 1).
+ *  3. Details + Submit — Full Name/Email are always editable inputs;
+ *     Transaction ID is read-only when OCR read it confidently, otherwise
+ *     an editable field with a note explaining why. Merged with the
+ *     existing review + submit button.
+ */
 
 const STEPS = [
   { key: "amount", label: "Amount" },
+  { key: "verify", label: "Verify" },
   { key: "details", label: "Details" },
-  { key: "submit", label: "Submit" },
 ];
 
 const UPI_ID = import.meta.env.VITE_UPI_ID || "demo@upi";
 const UPI_NAME = import.meta.env.VITE_UPI_NAME || "Demo Organisation";
 
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+const ACCEPTED_SCREENSHOT_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
 function buildUpiLink(amount) {
   const params = new URLSearchParams({
@@ -98,12 +139,30 @@ export default function DonationForm({
 }) {
   const [step, setStep] = useState(1);
   const [stepErrors, setStepErrors] = useState({});
-  const [paymentPhase, setPaymentPhase] = useState("idle");
+  const [paymentPhase, setPaymentPhase] = useState("idle"); // 'idle' | 'active' — mobile only
   const [copied, setCopied] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
 
   const campaignFieldRef = useRef(null);
   const amountFieldRef = useRef(null);
+
+  // ---- Screenshot OCR scan (Step 2) ----
+  const [screenshotFile, setScreenshotFile] = useState(null);
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  // True until OCR confidently reads a Transaction ID — the backend can
+  // legitimately return requiresManualEntry: true (not an error), in which
+  // case the donor types their Transaction ID in themselves on Step 3.
+  const [manualEntryRequired, setManualEntryRequired] = useState(true);
+
+  useEffect(() => {
+    // Revoke the object URL when the file changes or the form unmounts.
+    return () => {
+      if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
+    };
+  }, [screenshotPreview]);
 
   const fieldError = (name) => errors[name] || stepErrors[name];
 
@@ -149,30 +208,10 @@ export default function DonationForm({
     return nextErrors;
   };
 
-  const validateDetailsStep = () => {
-    const nextErrors = {};
-    const trimmedName = formData.name.trim();
-    const trimmedEmail = formData.email.trim();
-    const trimmedTxn = formData.transactionId.trim();
-    if (!trimmedName || trimmedName.length < 2) {
-      nextErrors.name = "Enter your full name (min 2 characters).";
-    }
-    if (!trimmedEmail) {
-      nextErrors.email = "Email address is required.";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      nextErrors.email = "Please enter a valid email address.";
-    }
-    if (!trimmedTxn) {
-      nextErrors.transactionId = "Enter the UTR / transaction ID from your UPI app.";
-    } else if (!/^[A-Za-z0-9_-]{6,50}$/.test(trimmedTxn)) {
-      nextErrors.transactionId = "Transaction ID must be 6–50 characters (letters, numbers, - or _).";
-    }
-    if (formData.phone.trim() && !/^[6-9]\d{9}$/.test(formData.phone.trim())) {
-      nextErrors.phone = "Enter a valid 10-digit Indian mobile number.";
-    }
-    return nextErrors;
-  };
-
+  // Step 1: amount/campaign validated inline, then straight into payment —
+  // mobile fires the UPI intent and waits for confirmation (unchanged);
+  // desktop has no extra confirmation click, it goes directly to Step 2
+  // where the QR/bank details card already lives.
   const handleDonateNow = () => {
     const nextErrors = validateAmountStep();
     if (Object.keys(nextErrors).length > 0) {
@@ -184,8 +223,12 @@ export default function DonationForm({
 
     if (isMobile) {
       window.location.href = buildUpiLink(formData.amount);
+      setPaymentPhase("active");
+      return;
     }
-    setPaymentPhase("active");
+
+    setStep(2);
+    scrollToTop();
   };
 
   const handleCopyUpi = async () => {
@@ -198,6 +241,8 @@ export default function DonationForm({
     }
   };
 
+  // Mobile-only: "I Have Completed the Payment" → advance to the
+  // Verification step (screenshot upload only, no QR card needed here).
   const confirmPaymentDone = () => {
     setStep(2);
     scrollToTop();
@@ -209,18 +254,7 @@ export default function DonationForm({
     scrollToTop();
   };
 
-  const goFromDetailsToSubmit = () => {
-    const nextErrors = validateDetailsStep();
-    if (Object.keys(nextErrors).length > 0) {
-      setStepErrors(nextErrors);
-      return;
-    }
-    setStepErrors({});
-    setStep(3);
-    scrollToTop();
-  };
-
-  const goBackFromSubmit = () => {
+  const goBackToVerification = () => {
     setStep(2);
     scrollToTop();
   };
@@ -228,6 +262,90 @@ export default function DonationForm({
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
     buildUpiLink(formData.amount),
   )}`;
+
+  // ---- Screenshot upload handlers ----
+  // Object URL revocation lives solely in the useEffect above (keyed off
+  // screenshotPreview) — it fires on every change, including to null, so
+  // there's no need to also revoke manually here.
+  const applyScreenshotFile = (file) => {
+    if (!file) return;
+    if (!ACCEPTED_SCREENSHOT_TYPES.includes(file.type)) {
+      setVerifyError("Please upload a JPG, JPEG, or PNG file.");
+      return;
+    }
+    setVerifyError("");
+    setScreenshotFile(file);
+    setScreenshotPreview(URL.createObjectURL(file));
+  };
+
+  const handleFileInputChange = (event) => {
+    applyScreenshotFile(event.target.files?.[0]);
+    event.target.value = "";
+  };
+
+  const handleDrop = (event) => {
+    event.preventDefault();
+    setIsDragging(false);
+    applyScreenshotFile(event.dataTransfer.files?.[0]);
+  };
+
+  const handleDragOver = (event) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  // Removing the screenshot resets the full verification state — not just
+  // the file — so a stale error from a previous attempt doesn't linger.
+  const clearScreenshot = () => {
+    setScreenshotFile(null);
+    setScreenshotPreview(null);
+    setVerifyError("");
+  };
+
+  // Continue (Step 2) — calls the real OCR scan API only (no mock, no
+  // fallback). On success, prefills Step 3's Transaction ID from the
+  // response when OCR read it confidently; otherwise leaves it blank and
+  // editable (requiresManualEntry: true is a valid 200, not an error — the
+  // backend genuinely can't always read a screenshot reliably). Full
+  // Name/Email are never touched here — the backend never returns them.
+  // Guarded against re-entrancy: `disabled={verifying}` on the button covers
+  // the common case, but that's async (waits on a re-render), so a fast
+  // double-click could otherwise slip a second request through — this
+  // synchronous check closes that gap.
+  const handleScanScreenshot = async () => {
+    if (verifying) return;
+    if (!screenshotFile) {
+      setVerifyError("Please upload your payment screenshot to continue.");
+      return;
+    }
+    setVerifying(true);
+    setVerifyError("");
+    try {
+      const result = await scanPaymentScreenshot({ screenshot: screenshotFile });
+      const extractedTransactionId = result?.fields?.transactionId;
+
+      if (extractedTransactionId) {
+        onFieldChange("transactionId", extractedTransactionId);
+        setManualEntryRequired(false);
+      } else {
+        onFieldChange("transactionId", "");
+        setManualEntryRequired(true);
+      }
+
+      onFieldChange("paymentScreenshot", screenshotFile);
+      setStep(3);
+      scrollToTop();
+    } catch (err) {
+      setVerifyError(
+        err?.response?.data?.message ||
+          "We couldn't scan your payment screenshot. Please check the image and try again.",
+      );
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <section
@@ -256,6 +374,7 @@ export default function DonationForm({
       )}
 
       <form onSubmit={onSubmit} noValidate className="space-y-6 sm:space-y-8">
+        {/* ============ Step 1 — Amount + Payment ============ */}
         {step === 1 && (
           <div className="animate-fade-in-up space-y-6 sm:space-y-8">
             <div ref={campaignFieldRef}>
@@ -386,6 +505,8 @@ export default function DonationForm({
                 </div>
               )}
 
+              {/* Mobile-only: fires the UPI intent, then waits for explicit
+                  confirmation before moving on. */}
               {paymentPhase === "active" && isMobile && (
                 <div className="animate-fade-in-up mt-6 flex flex-col items-center text-center">
                   <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange">
@@ -412,8 +533,27 @@ export default function DonationForm({
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
 
-              {paymentPhase === "active" && !isMobile && (
+        {/* ============ Step 2 — Verification ============ */}
+        {step === 2 && (
+          <div className="animate-fade-in-up space-y-6">
+            {/* Desktop-only: the same QR + UPI ID + bank details card,
+                opens directly (no extra confirmation click) instead of
+                gating behind one. */}
+            {!isMobile && (
+              <div className="overflow-hidden rounded-2xl border border-brand-border/60 bg-brand-cream/40 p-6 sm:p-8">
+                <div className="flex flex-col items-center text-center">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-brand-muted">
+                    Amount to pay
+                  </p>
+                  <p className="mt-1 font-display text-3xl font-extrabold text-brand-dark">
+                    ₹{formData.amount ? Number(formData.amount).toLocaleString("en-IN") : "0"}
+                  </p>
+                </div>
+
                 <div className="animate-fade-in-up mt-6 flex flex-col items-center">
                   <div className="overflow-hidden rounded-xl border border-brand-border bg-white p-3">
                     <img
@@ -450,9 +590,8 @@ export default function DonationForm({
                     </button>
                   </div>
 
-                  {/* Fix #3 placeholder: bank transfer fallback for donors
-                      without UPI access. Replace with real account details
-                      before launch. */}
+                  {/* Fix #3: bank transfer fallback for donors without UPI
+                      access. Replace with real account details before launch. */}
                   <details className="mt-4 w-full max-w-xs rounded-xl border border-brand-border bg-white px-4 py-3 text-left">
                     <summary className="cursor-pointer text-xs font-semibold text-brand-dark">
                       Prefer a bank transfer instead?
@@ -463,24 +602,110 @@ export default function DonationForm({
                       <p>IFSC: XXXXXXXX (add real value)</p>
                     </div>
                   </details>
-
-                  <Button
-                    type="button"
-                    size="lg"
-                    onClick={confirmPaymentDone}
-                    className="mt-6 w-full gap-2 rounded-xl shadow-md shadow-brand-orange/20 sm:w-auto sm:px-12"
-                  >
-                    I Have Completed Payment
-                  </Button>
                 </div>
+              </div>
+            )}
+
+            {/* ---------------- Payment Screenshot Verification ---------------- */}
+            <div>
+              <h3 className="font-display text-xl font-bold tracking-tight text-brand-dark sm:text-2xl">
+                Payment Verification
+              </h3>
+              <p className="mt-2 text-sm text-brand-muted sm:text-base">
+                Upload your payment screenshot to verify your transaction before submitting your donation.
+              </p>
+            </div>
+
+            {verifyError && (
+              <div
+                role="alert"
+                className="flex items-start gap-3 rounded-xl border border-brand-danger/30 bg-brand-danger/5 px-4 py-3"
+              >
+                <AlertCircle size={18} className="mt-0.5 shrink-0 text-brand-danger" aria-hidden="true" />
+                <p className="text-sm text-brand-danger">{verifyError}</p>
+              </div>
+            )}
+
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={cn(
+                "flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-8 text-center transition-colors duration-300",
+                isDragging ? "border-brand-orange bg-brand-orange/5" : "border-brand-border bg-brand-cream/30",
               )}
+            >
+              {screenshotPreview ? (
+                <div className="relative">
+                  <img
+                    src={screenshotPreview}
+                    alt="Payment screenshot preview"
+                    className="max-h-48 rounded-xl border border-brand-border object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearScreenshot}
+                    className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full border border-brand-border bg-white text-brand-dark shadow-md transition-colors duration-200 hover:border-brand-danger hover:text-brand-danger"
+                    aria-label="Remove screenshot"
+                  >
+                    <X size={14} aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-orange/10 text-brand-orange">
+                    <UploadCloud size={22} aria-hidden="true" />
+                  </span>
+                  <p className="text-sm font-semibold text-brand-dark">Drag &amp; drop your screenshot here</p>
+                  <p className="text-xs text-brand-muted">Supported formats: JPG, JPEG, PNG</p>
+                  <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-brand-border bg-white px-4 py-2 text-sm font-semibold text-brand-dark transition-colors duration-200 hover:border-brand-orange hover:text-brand-orange">
+                    Choose File
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                      className="hidden"
+                      onChange={handleFileInputChange}
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between border-t border-brand-border/60 pt-6">
+              <button
+                type="button"
+                onClick={goBackToAmount}
+                className="inline-flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold text-brand-dark transition-colors duration-200 hover:text-brand-orange"
+              >
+                <ArrowLeft size={16} aria-hidden="true" />
+                Back
+              </button>
+              <Button
+                type="button"
+                size="lg"
+                isLoading={verifying}
+                disabled={!screenshotFile || verifying}
+                onClick={handleScanScreenshot}
+                className="gap-2 rounded-xl px-8 shadow-md shadow-brand-orange/20 transition-all duration-300 hover:shadow-lg hover:shadow-brand-orange/30"
+              >
+                Continue
+                <ArrowRight size={16} aria-hidden="true" />
+              </Button>
             </div>
           </div>
         )}
 
-        {step === 2 && (
-          <div className="animate-fade-in-up">
-            <FormSection title="Your Details" description="Tell us who is making this contribution.">
+        {/* ============ Step 3 — Details + Submit ============ */}
+        {step === 3 && (
+          <div className="animate-fade-in-up space-y-6">
+            <FormSection
+              title="Your Details"
+              description={
+                manualEntryRequired
+                  ? "We couldn't automatically read your Transaction ID — please enter it below, along with your name and email."
+                  : "Transaction ID was read from your screenshot. Add your name and email to finish."
+              }
+            >
               <div className="grid gap-5 lg:grid-cols-2">
                 <FormField id="name" label="Full Name" required error={fieldError("name")}>
                   {({ id, errorId, hasError }) => (
@@ -521,18 +746,30 @@ export default function DonationForm({
                 required
                 error={fieldError("transactionId")}
               >
-                {({ id, errorId, hasError }) => (
-                  <input
-                    id={id}
-                    type="text"
-                    value={formData.transactionId}
-                    onChange={(e) => onFieldChange("transactionId", e.target.value)}
-                    placeholder="From your UPI app's payment confirmation"
-                    aria-invalid={hasError}
-                    aria-describedby={errorId}
-                    className={inputClass(hasError)}
-                  />
-                )}
+                {({ id, errorId, hasError }) =>
+                  manualEntryRequired ? (
+                    <input
+                      id={id}
+                      type="text"
+                      value={formData.transactionId}
+                      onChange={(e) => onFieldChange("transactionId", e.target.value)}
+                      placeholder="From your UPI app's payment confirmation"
+                      aria-invalid={hasError}
+                      aria-describedby={errorId}
+                      className={inputClass(hasError)}
+                    />
+                  ) : (
+                    <input
+                      id={id}
+                      type="text"
+                      readOnly
+                      value={formData.transactionId}
+                      aria-invalid={hasError}
+                      aria-describedby={errorId}
+                      className={cn(inputClass(hasError), "cursor-not-allowed bg-brand-cream/40 text-brand-muted")}
+                    />
+                  )
+                }
               </FormField>
 
               <div className="border-t border-brand-border/60 pt-5">
@@ -606,30 +843,6 @@ export default function DonationForm({
               </div>
             </FormSection>
 
-            <div className="flex items-center justify-between border-t border-brand-border/60 pt-6">
-              <button
-                type="button"
-                onClick={goBackToAmount}
-                className="inline-flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold text-brand-dark transition-colors duration-200 hover:text-brand-orange"
-              >
-                <ArrowLeft size={16} aria-hidden="true" />
-                Back
-              </button>
-              <Button
-                type="button"
-                size="lg"
-                onClick={goFromDetailsToSubmit}
-                className="gap-2 rounded-xl px-8 shadow-md shadow-brand-orange/20 transition-all duration-300 hover:shadow-lg hover:shadow-brand-orange/30"
-              >
-                Continue
-                <ArrowRight size={16} aria-hidden="true" />
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="animate-fade-in-up space-y-6">
             <div className="rounded-2xl border border-brand-border/70 bg-brand-cream/30 p-5 sm:p-6">
               <h3 className="mb-4 text-sm font-bold uppercase tracking-wide text-brand-muted">
                 Review your donation
@@ -661,7 +874,7 @@ export default function DonationForm({
             <div className="flex items-center justify-between border-t border-brand-border/60 pt-6">
               <button
                 type="button"
-                onClick={goBackFromSubmit}
+                onClick={goBackToVerification}
                 className="inline-flex items-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold text-brand-dark transition-colors duration-200 hover:text-brand-orange"
               >
                 <ArrowLeft size={16} aria-hidden="true" />
