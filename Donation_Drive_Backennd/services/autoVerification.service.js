@@ -206,9 +206,10 @@ class AutoVerificationService {
                             emailLastAttemptedAt: new Date(),
                         },
                     },
-                    { returnDocument: "after", session }
-                );
-                ApiError.assert(matchedTransaction, "Bank transaction is no longer available for reconciliation.", 409);
+                        { returnDocument: "after", session }
+                    );
+                    ApiError.assert(matchedTransaction, "Bank transaction is no longer available for reconciliation.", 409);
+                }
             });
             committed = true;
         } catch (error) {
