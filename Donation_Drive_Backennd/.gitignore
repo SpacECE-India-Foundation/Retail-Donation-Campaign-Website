@@ -39,3 +39,9 @@ coverage/
 
 #Tesseract data
 eng.traineddata
+
+
+#testing files, will be removed 
+printAllCollections.js
+populateDonation.js
+testBankStatements/
