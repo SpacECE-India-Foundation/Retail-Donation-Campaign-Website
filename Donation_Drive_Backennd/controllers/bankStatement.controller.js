@@ -112,7 +112,7 @@ export const reconcileBankTransactions = async (req, res) => {
     try {
         const reconciliationSummary = await reconciliationService.reconcileTransactions();
         return res.status(200).json(
-            new ApiResponse(200, { reconciliationSummary }, "Bank transactions reconciled successfully.")
+            new ApiResponse(200, { reconciliationSummary }, "Automated Donation Verification Completed Successfully.")
         );
     } catch (error) {
         return res.status(error.statusCode || 500).json(

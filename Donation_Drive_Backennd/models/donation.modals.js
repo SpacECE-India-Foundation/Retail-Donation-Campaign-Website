@@ -151,7 +151,11 @@ const donationSchema = new mongoose.Schema(
     resubmissionCount: {
     type: Number,
     default: 0
-}
+},
+automaticVerificationAttempted: {
+    type: Boolean,
+    default: false
+},
   },
   {
     timestamps: true,

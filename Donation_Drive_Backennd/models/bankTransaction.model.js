@@ -67,21 +67,21 @@ const bankTransactionSchema = new Schema(
 
         reconciliationStatus: {
             type: String,
-            enum: ["UNMATCHED", "PROCESSING", "MATCHED", "FAILED"],
+            enum: ["UNMATCHED", "MATCHED", "FAILED"],
             default: "UNMATCHED",
             index: true,
         },
 
-        reconciliationAttempts: {
-            type: Number,
-            default: 0,
-            min: 0,
-        },
+        // reconciliationAttempts: {
+        //     type: Number,
+        //     default: 0,
+        //     min: 0,
+        // },
 
-        reconciliationLastAttemptedAt: {
-            type: Date,
-            default: null,
-        },
+        // reconciliationLastAttemptedAt: {
+        //     type: Date,
+        //     default: null,
+        // },
 
         reconciliationError: {
             type: String,
