@@ -210,7 +210,7 @@ class AutoVerificationService {
                     );
                     ApiError.assert(matchedTransaction, "Bank transaction is no longer available for reconciliation.", 409);
                 }
-            });
+            );
             committed = true;
         } catch (error) {
             if (certificateData?.publicId) {
