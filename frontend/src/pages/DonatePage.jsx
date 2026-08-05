@@ -229,7 +229,10 @@ export default function DonatePage() {
         onShare={handleShare}
       />
 
-      <div className="mx-auto max-w-7xl space-y-10 px-4 sm:space-y-12 sm:px-6 lg:space-y-14 lg:px-8">
+      {/* Breathing room below the hero before the donation form starts —
+          a flat 72px (top of the requested 64-72px band) at every
+          breakpoint. */}
+      <div className="mx-auto max-w-7xl space-y-10 px-4 pt-[72px] sm:space-y-12 sm:px-6 sm:pt-[72px] lg:space-y-14 lg:px-8 lg:pt-[72px]">
         {selectedCampaign && stats && (
           <>
             <CampaignOverview stats={stats} />
