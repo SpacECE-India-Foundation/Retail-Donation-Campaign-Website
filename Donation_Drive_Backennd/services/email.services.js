@@ -4,6 +4,8 @@ import { donationVerifiedTemplate } from "../templates/donationVerified.template
 import { donationRejectedTemplate } from "../templates/donationRejectionTemplate.js";
 import { resendDonationRequestTemplate } from "../templates/resendDonationRequest.template.js";
 import { adminAccountCreatedTemplate } from "../templates/adminCreation.templates.js";
+import { newCampaignNotificationTemplate } from "../templates/newCampaignNotification.template.js";
+import { campaignMilestoneUpdateTemplate } from "../templates/campaignMilestoneUpdate.template.js";
 
 class EmailService {
     constructor() {
@@ -223,7 +225,33 @@ async sendDonationResubmittedEmail({
         });
 
     }
+    async sendCampaignMilestoneUpdate({
+    donorName,
+    donorEmail,
+    campaignTitle,
+    milestones,
+    amountRaised,
+    targetAmount,
+    campaignLink
+}) {
 
+    const html = campaignMilestoneUpdateTemplate({
+        donorName,
+        campaignTitle,
+        milestones,
+        amountRaised,
+        targetAmount,
+        campaignLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `🎉 ${campaignTitle} achieved ${milestones.length} new milestone${milestones.length>1?"s":""} thanks to supporters like you!`,
+        html,
+        text: `${campaignTitle} has achieved ${milestones.length} new milestone${milestones.length>1?"s":""}`
+    });
+
+}
     async sendDonationRejectedEmail({
     donorName,
     donorEmail,
@@ -250,7 +278,33 @@ async sendDonationResubmittedEmail({
         text: `Your donation could not be verified. Please review the remarks and submit again.`
     });
 }
+async sendNewCampaignNotification({
+    donorName,
+    donorEmail,
+    campaignTitle,
+    campaignDescription,
+    campaignTimeline,
+    campaignImage,
+    campaignLink
+}) {
 
+    const html = newCampaignNotificationTemplate({
+        donorName,
+        campaignTitle,
+        campaignDescription,
+        campaignTimeline,
+        campaignImage,
+        campaignLink
+    });
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `New Campaign Launched - ${campaignTitle}`,
+        html,
+        text: `A new campaign "${campaignTitle}" has been launched. Visit ${campaignLink} to learn more.`
+    });
+
+}
     async sendOtpEmail(email, otp) {
 
         const html = `

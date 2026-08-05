@@ -7,14 +7,14 @@ import BankTransaction from "../models/bankTransaction.model.js";
 import certificateService from "./certificate.services.js";
 import emailService from "./email.services.js";
 import { ApiError } from "../utils/apiError.utils.js";
-import { normalizeTransactionId, paiseToAmount } from "../utils/bankTransaction.utils.js";
+import Subscriber from "../models/subscribers.modals.js";
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 async function syncMilestoneCompletion(campaignId, session) {
     const freshCampaign = await Campaign.findById(campaignId).session(session);
-    if (!freshCampaign) return;
-
+    if (!freshCampaign) return [];
+    const newlyCompletedMilestones = [];
     const milestones = await Milestone.find({ campaign: campaignId })
         .sort({ displayOrder: 1 })
         .session(session);
@@ -25,8 +25,10 @@ async function syncMilestoneCompletion(campaignId, session) {
             milestone.isCompleted = true;
             milestone.completedAt = now;
             await milestone.save({ session });
+            newlyCompletedMilestones.push(milestone);
         }
     }
+    return newlyCompletedMilestones;
 }
 
 class AutoVerificationService {
@@ -135,7 +137,7 @@ class AutoVerificationService {
         let verifiedDonation;
         let campaign;
         let committed = false;
-
+        let completedMilestones = []
         try {
             session = await mongoose.startSession();
             await session.withTransaction(async () => {
@@ -165,13 +167,21 @@ class AutoVerificationService {
                 );
                 ApiError.assert(verifiedDonation, "Donation has already been processed.", 409);
 
-                await Campaign.findByIdAndUpdate(
+                campaign = await Campaign.findByIdAndUpdate(
                     campaign._id,
-                    { $inc: { campaignRaisedAmt: freshDonation.amount, contributors: 1 } },
-                    { session }
-                );
+                {
+                    $inc: {
+                        campaignRaisedAmt: freshDonation.amount,
+                        contributors: 1
+                    }
+                },
+                {
+                    new: true,
+                    session
+                }
+            );
 
-                await syncMilestoneCompletion(campaign._id, session);
+completedMilestones = await syncMilestoneCompletion(campaign._id, session);
 
                 // The donation is claimed atomically above; this check also makes recovery
                 // safe if a legacy partial certificate record exists.
@@ -212,6 +222,37 @@ class AutoVerificationService {
                 }
             );
             committed = true;
+            if(completedMilestones.length > 0) {
+                const subscribers = await Subscriber.find({
+                    subscribedCampaigns: campaign._id,
+                    subscribed: true
+                }).select("donorName donorEmail");;
+
+            const result = await Promise.allSettled(
+                subscribers.map(subscriber=>
+                emailService.sendCampaignMilestoneUpdate({
+                    donorName: subscriber.donorName,
+                    donorEmail: subscriber.donorEmail,
+                    campaignTitle: campaign.campaignName,
+                    milestones: completedMilestones,
+                    amountRaised: campaign.campaignRaisedAmt,
+                    targetAmount: campaign.campaignTargetAmt,
+            campaignLink:
+                `${process.env.FRONTEND_URL}/campaign/${campaign._id}`
+        })
+
+    )
+
+);
+const failed = result.filter(
+    r => r.status === "rejected"
+);
+
+console.log(
+    `${failed.length} milestone emails failed`
+);
+                
+            }
         } catch (error) {
             if (certificateData?.publicId) {
                 await certificateService.deleteCertificate(certificateData.publicId);
