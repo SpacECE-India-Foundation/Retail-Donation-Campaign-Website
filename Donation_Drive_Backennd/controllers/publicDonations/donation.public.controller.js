@@ -9,6 +9,8 @@ import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js";
 import { deleteFromCloudinary } from "../../utils/cloudinary.utils.js";
 import paymentScreenshotOcrService from "../../services/paymentScreenshotOcr.service.js";
 import autoVerificationService from "../../services/autoVerification.service.js";
+import Subscriber from "../../models/subscribers.modals.js";
+import {addUserToSubscribers}  from "../../services/subscribtion.service.js";
 
 const normalizePaymentMode = (value) => {
     const normalized = String(value || "").trim().toUpperCase();
@@ -79,7 +81,8 @@ export const registerDonation = async (req,res) =>{
             amount,
             transactionId,
             paymentMode,
-            campaign  //need campaign id from the frontend not the name, you can show the camapign name on the frontend but we need id as a response
+            campaign,  //need campaign id from the frontend not the name, you can show the camapign name on the frontend but we need id as a response
+            notifyMe //optional, this is only for the purpose of the subscriber, if the user wants to be notified about the new campaigns and their already donated campaigns milestones achievement and events then we will save their email in the subscriber collection
         } = req.body
 
         if (paymentMode !== undefined) {
@@ -314,6 +317,16 @@ export const registerDonation = async (req,res) =>{
                     { $set: { "ocrVerification.reason": ocrVerificationError } }
                 );
             }
+        }
+
+
+        //-----------------------NOW WE WILL CHECK FOR THE NOTIFY ME PARAMETER IF IT IS TRUE THEN WE WILL ADD THAT DONOR INTO SUBSCRIBER ------------------------------------------------------------
+        if (notifyMe) {
+            await addUserToSubscribers(
+                newDonation.donorName,
+                newDonation.donorEmail,
+                newDonation.campaign
+            );
         }
 
         //here we will send successfull donationr esponse to the frontend

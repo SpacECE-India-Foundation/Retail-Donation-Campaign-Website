@@ -6,7 +6,8 @@ import { ApiResponse } from "../../utils/apiResponse.utils.js";
 import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js";
 import { deleteFromCloudinary } from "../../utils/cloudinary.utils.js";
 import Milestone from "../../models/milestone.modals.js";
-
+import subscribersModals from "../../models/subscribers.modals.js";
+import emailService from "../../services/email.services.js";
 
 //THIS FUNCTIONALITY DEAL WITH THE NEW CAMPAIGN CREATION
 export const newCampaign = async (req,res) =>{
@@ -75,8 +76,15 @@ export const newCampaign = async (req,res) =>{
         newCampaignData.campaignStatus = start.getTime() > Date.now() ? "Upcoming" : "Active";
         await newCampaignData.save()
 
+        //here, we have to send email regarding the new donation created to the subscribers for that we will fetcch all the subscribers
+        const subscribers = await Subscriber.find(
+            { subscribed: true },
+            "donorName donorEmail"
+        );
+
+
         //RETURNING THE RESPONSE BEFORE THE MAIL SERVICE BECAUSE MAIL SERVICES TAKES TIME SO IT IS NECESSARY TO GIVE A ATLEAST COMPLETION REPONSE TO THE FRONTEND
-        return res.status(201).json(
+        res.status(201).json(
                     new ApiResponse(
                     201,
                     {
@@ -89,7 +97,32 @@ export const newCampaign = async (req,res) =>{
 
         //HERE, IF WE WANTS TO SEND MAIL TO THE OFFICIAL BODY REGARDING NEW CREATION WE CAN SEND
         //------------------------------MAIL CODE GOES HERE ------------------------------------
+        //sending mail to all the subscribers regarding the new campaign launch 
+        
+            //here, we have used allsettled because we want to send mail to all the subscribers and if any one of them fails we dont want to stop the process for other subscribers
+        if (subscribers.length > 0) {
+            Promise.allSettled(
+                subscribers.map((subscriber) =>
+                    emailService.sendNewCampaignNotification({
+                        donorName: subscriber.donorName,
+                        donorEmail: subscriber.donorEmail,
+                        campaignTitle: newCampaignData.campaignName,
+                        campaignDescription: newCampaignData.campaignDescription,
+                        campaignTimeline: `${newCampaignData.startDate.toDateString()} - ${newCampaignData.endDate.toDateString()}`,
+                        campaignImage: newCampaignData.campaignBanner.url,
+                        campaignLink: `${process.env.FRONTEND_URL}/campaign/${newCampaignData._id}`,
+                    })
+                )
+            )
+                .then((results) => {
+                    const success = results.filter(r => r.status === "fulfilled").length;
+                    const failed = results.filter(r => r.status === "rejected").length;
 
+                    console.log(`Campaign notification emails: ${success} sent, ${failed} failed.`);
+                })
+                .catch(console.error);
+            }
+            return 
 
     } catch (error) {
         console.error(error);

@@ -55,6 +55,13 @@ const milestoneSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    notificationSent: {
+    type: Boolean,
+    default: false
+},
+notificationSentAt: {
+    type: Date
+}
   },
   {
     timestamps: true,
