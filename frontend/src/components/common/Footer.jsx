@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { HandHeart, Heart, ArrowRight } from "lucide-react";
-import { FaLinkedin, FaInstagram, FaFacebook, FaXTwitter } from "react-icons/fa6";
+import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa6";
 import { cn } from "../../utils/cn";
 
 const linkColumns = [
@@ -25,11 +25,15 @@ const linkColumns = [
   },
 ];
 
+// Real org accounts (verified via web search — there are lookalike/sister-org
+// pages under spacece.co, so these are specifically the SpacECE India
+// Foundation ones matching the .in branding used across this app). No X/
+// Twitter account currently exists for the org, so that icon was dropped
+// rather than link somewhere uncertain.
 const socialLinks = [
-  { label: "LinkedIn", icon: FaLinkedin, href: "https://www.linkedin.com/" },
-  { label: "Instagram", icon: FaInstagram, href: "https://www.instagram.com/" },
-  { label: "Facebook", icon: FaFacebook, href: "https://www.facebook.com/" },
-  { label: "X", icon: FaXTwitter, href: "https://x.com/" },
+  { label: "LinkedIn", icon: FaLinkedin, href: "https://www.linkedin.com/company/spacecein/" },
+  { label: "Instagram", icon: FaInstagram, href: "https://www.instagram.com/spacece.in/" },
+  { label: "Facebook", icon: FaFacebook, href: "https://www.facebook.com/SpacECEIn/" },
 ];
 
 function FooterLink({ to, children }) {
