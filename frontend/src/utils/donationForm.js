@@ -16,6 +16,13 @@ export const INITIAL_FORM_STATE = {
   transactionId: "",
   paymentScreenshot: null,
   message: "",
+  // "Stay Connected" modal choice (DonationForm.jsx, shown once on reaching
+  // the Details step). true = donor opted in, false = declined/never asked.
+  // Defaults to false so the field is always a real boolean on submit even
+  // if the modal is somehow skipped.
+  // Backend field name is `notifyMe` (donation.public.controller.js:91) —
+  // matched here 1:1 so preparePayload doesn't need a rename step.
+  notifyMe: false,
 };
 
 export function createInitialFormState() {
@@ -98,6 +105,7 @@ export function preparePayload(formData) {
     transactionId: formData.transactionId.trim(),
     paymentScreenshot: formData.paymentScreenshot,
     message: formData.message.trim(),
+    notifyMe: Boolean(formData.notifyMe),
   };
 }
 

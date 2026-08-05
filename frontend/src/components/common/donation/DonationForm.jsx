@@ -3,6 +3,7 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
+  Bell,
   Check,
   CheckCheck,
   ChevronDown,
@@ -189,6 +190,13 @@ export default function DonationForm({
   const [pendingOcrResult, setPendingOcrResult] = useState(null);
   const [showContinueConfirm, setShowContinueConfirm] = useState(false);
 
+  // ---- "Stay Connected" opt-in prompt (auto-shown once on Step 3) ----
+  // `notifyPromptShown` guards against re-showing it if the donor goes Back
+  // to Step 2 and forward again — it's a one-time ask per form session, not
+  // a gate on the flow (Step 3 renders normally underneath it either way).
+  const [showNotifyPrompt, setShowNotifyPrompt] = useState(false);
+  const [notifyPromptShown, setNotifyPromptShown] = useState(false);
+
   useEffect(() => {
     // Revoke the object URL when the file changes or the form unmounts.
     return () => {
@@ -207,6 +215,21 @@ export default function DonationForm({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showContinueConfirm]);
+
+  useEffect(() => {
+    if (step === 3 && !notifyPromptShown) {
+      setShowNotifyPrompt(true);
+      setNotifyPromptShown(true);
+    }
+  }, [step, notifyPromptShown]);
+
+  // Records the donor's choice (true = Yes, false = No) and closes the
+  // popup — does not block or alter Step 3 in any other way. Field name
+  // matches the backend's `notifyMe` (donation.public.controller.js:91).
+  const handleNotifyChoice = (choice) => {
+    onFieldChange("notifyMe", choice);
+    setShowNotifyPrompt(false);
+  };
 
   const fieldError = (name) => errors[name] || stepErrors[name];
 
@@ -1013,6 +1036,56 @@ export default function DonationForm({
                 className="rounded-xl px-6 shadow-md shadow-brand-orange/20"
               >
                 Continue
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* "Stay Connected" opt-in — auto-shown once on reaching Step 3.
+          Purely informational/preference collection: Step 3 renders normally
+          underneath it, and either button just records the choice and
+          closes the popup — nothing else in the flow is gated on it. */}
+      {showNotifyPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="stay-connected-title"
+            aria-describedby="stay-connected-desc"
+            className="w-full max-w-md rounded-2xl border border-brand-border/60 bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-orange/10 text-brand-orange">
+                <Bell size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <h3 id="stay-connected-title" className="font-display text-lg font-bold text-brand-dark">
+                  Stay Connected
+                </h3>
+                <p id="stay-connected-desc" className="mt-2 text-sm text-brand-muted">
+                  Would you like to be notified about our future campaigns and learn about the impact
+                  your donation has made?
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <button
+                type="button"
+                onClick={() => handleNotifyChoice(false)}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-brand-dark transition-colors duration-200 hover:text-brand-orange"
+              >
+                No, Thanks
+              </button>
+              <Button
+                type="button"
+                onClick={() => handleNotifyChoice(true)}
+                className="rounded-xl px-6 shadow-md shadow-brand-orange/20"
+              >
+                Yes, Notify Me
               </Button>
             </div>
           </div>
