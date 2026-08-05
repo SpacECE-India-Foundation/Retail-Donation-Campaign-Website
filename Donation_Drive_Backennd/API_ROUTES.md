@@ -478,10 +478,10 @@ This document describes all backend endpoints available in the Donation Drive ba
     "ocr": {
       "attempted": true,
       "confidence": 88,
-      "canAutoVerify": true,
+      "canAutoVerify": false,
       "senderName": "John Doe",
       "isOutgoingTransfer": true,
-      "reason": ""
+      "reason": "Auto verification using OCR disabled."
     },
     "requiresManualEntry": false
   },

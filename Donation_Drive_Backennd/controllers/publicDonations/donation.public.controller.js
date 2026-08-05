@@ -31,7 +31,7 @@ export const scanPaymentScreenshot = async (req, res) => {
         ApiError.assert(req.file?.buffer, "A payment screenshot is required for OCR scanning.");
 
         const extraction = await paymentScreenshotOcrService.scan(req.file.buffer);
-        const fields = extraction.canAutoVerify
+        const fields = extraction.transactionId || extraction.amount || extraction.paymentDate || extraction.senderName
             ? {
                 transactionId: extraction.transactionId,
                 amount: extraction.amount,
