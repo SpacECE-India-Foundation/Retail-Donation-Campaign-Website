@@ -334,11 +334,11 @@ export const registerDonation = async (req,res) =>{
 
         //-----------------------NOW WE WILL CHECK FOR THE NOTIFY ME PARAMETER IF IT IS TRUE THEN WE WILL ADD THAT DONOR INTO SUBSCRIBER ------------------------------------------------------------
         if (notifyMe) {
-            await addUserToSubscribers(
-                newDonation.donorName,
-                newDonation.donorEmail,
-                newDonation.campaign
-            );
+            await addUserToSubscribers({
+                donorName: newDonation.donorName,
+                donorEmail: newDonation.donorEmail,
+                campaignId: newDonation.campaign,
+            });
         }
 
         //here we will send successfull donationr esponse to the frontend

@@ -27,6 +27,14 @@ function buildDonationFormData(frontendPayload) {
   formData.append("amount", String(frontendPayload.amount));
   formData.append("transactionId", frontendPayload.transactionId);
   formData.append("campaign", frontendPayload.campaignId);
+  // "Stay Connected" modal choice (DonationForm.jsx Step 3, shown once).
+  // Backend field name is `notifyMe`, confirmed against the current pull —
+  // donation.public.controller.js:91 destructures it from req.body, and
+  // (only when truthy) controller.js:336-342 upserts the donor into the
+  // separate Subscriber collection (models/subscribers.modals.js) via
+  // addUserToSubscribers() — it is not stored on the Donation document
+  // itself.
+  formData.append("notifyMe", String(Boolean(frontendPayload.notifyMe)));
 
   if (frontendPayload.paymentScreenshot instanceof File) {
     formData.append("paymentscreenshot", frontendPayload.paymentScreenshot);
