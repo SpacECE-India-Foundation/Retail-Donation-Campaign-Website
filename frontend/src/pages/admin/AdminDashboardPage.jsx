@@ -14,13 +14,14 @@ import {
   XCircle,
   Trophy,
   Filter,
+  Mail,
 } from "lucide-react";
 
 import { Card } from "../../components/common/Card";
 import { fetchAdminPendingDonations, fetchRecentActivity } from "../../services/donationService";
 import { fetchAdminCampaigns } from "../../services/campaignService";
 import { getCurrentAdmin } from "../../services/authService";
-import { getAllAdmins, getAllCampaignsForTransfer } from "../../services/superAdminService";
+import { getAllAdmins, getAllCampaignsForTransfer, getSubscriberCount } from "../../services/superAdminService";
 
 const NOTIFICATION_POLL_MS = 60000;
 
@@ -33,6 +34,7 @@ const STAT_ACCENTS = [
   { iconBg: "bg-blue-50", iconText: "text-blue-600", bar: "bg-blue-500" },
   { iconBg: "bg-purple-50", iconText: "text-purple-600", bar: "bg-purple-500" },
   { iconBg: "bg-emerald-50", iconText: "text-emerald-600", bar: "bg-emerald-500" },
+  { iconBg: "bg-pink-50", iconText: "text-pink-600", bar: "bg-pink-500" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -290,6 +292,7 @@ export default function AdminDashboardPage() {
   const [adminProfile, setAdminProfile] = useState(null);
   const isSuperAdmin = adminProfile?.role === "SUPER_ADMIN";
   const [allAdmins, setAllAdmins] = useState([]);
+  const [subscriberCount, setSubscriberCount] = useState(0);
   const [viewedAdminId, setViewedAdminId] = useState("self");
   const viewingOther = isSuperAdmin && viewedAdminId !== "self";
   const viewedAdminName = allAdmins.find((a) => a._id === viewedAdminId)?.fullName;
@@ -312,6 +315,22 @@ export default function AdminDashboardPage() {
     getAllAdmins()
       .then((response) => {
         if (!cancelled) setAllAdmins(response.data?.data?.admins ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
+  // Platform-wide count, not scoped to whichever admin the dropdown above is set to — every
+  // donor who ticked "notify me" counts toward this regardless of which admin's campaign they
+  // donated to, so it's fetched once and left alone by the viewedAdminId switch above.
+  useEffect(() => {
+    if (!isSuperAdmin) return undefined;
+    let cancelled = false;
+    getSubscriberCount()
+      .then((response) => {
+        if (!cancelled) setSubscriberCount(response.data?.data?.subscriberCount ?? 0);
       })
       .catch(() => {});
     return () => {
@@ -372,13 +391,28 @@ export default function AdminDashboardPage() {
 
     const campaignScopeLabel = viewingOther ? "Across their campaigns" : "Across all your campaigns";
 
-    return [
+    const baseStats = [
       { title: "Total Raised", value: formatINR(totalRaised), change: campaignScopeLabel, isPositive: true, icon: IndianRupee, accent: STAT_ACCENTS[0] },
       { title: "Active Campaigns", value: String(activeCampaignsCount), change: `${campaigns.length} total`, isPositive: true, icon: FolderKanban, accent: STAT_ACCENTS[1] },
       { title: "Total Contributors", value: String(totalContributors), change: "Verified donors", isPositive: true, icon: Users, accent: STAT_ACCENTS[2] },
       { title: "Pending Requests", value: String(pendingCount), change: "Awaiting review", isPositive: pendingCount === 0, icon: BarChart3, accent: STAT_ACCENTS[3] },
     ];
-  }, [donations, campaigns, viewingOther]);
+
+    // Super-Admin-only KPI — platform-wide, doesn't exist for regular admins since it isn't
+    // scoped to any one admin's campaigns.
+    if (isSuperAdmin) {
+      baseStats.push({
+        title: "Email Subscribers",
+        value: String(subscriberCount),
+        change: "Opted in for updates",
+        isPositive: true,
+        icon: Mail,
+        accent: STAT_ACCENTS[4],
+      });
+    }
+
+    return baseStats;
+  }, [donations, campaigns, viewingOther, isSuperAdmin, subscriberCount]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -440,7 +474,10 @@ export default function AdminDashboardPage() {
 
       {!isLoading && !fetchError && (
         <>
-          <section aria-label="Key metrics" className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+          <section
+            aria-label="Key metrics"
+            className={`grid gap-6 sm:grid-cols-2 ${isSuperAdmin ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}
+          >
             {stats.map((item) => (
               <StatCard key={item.title} {...item} />
             ))}
