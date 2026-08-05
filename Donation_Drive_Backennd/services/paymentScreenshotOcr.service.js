@@ -324,12 +324,8 @@ class PaymentScreenshotOcrService {
                 senderName,
                 isOutgoingTransfer,
                 paymentDate: extractDate(combinedText),
-                canAutoVerify: Boolean(
-                    utr && amount && isOutgoingTransfer && confidence >= MINIMUM_CONFIDENCE
-                ),
-                reason: utr && amount && isOutgoingTransfer
-                    ? ""
-                    : "OCR could not reliably find a valid outgoing UTR, amount, and transfer direction.",
+                canAutoVerify: false,
+                reason: "Auto verification using OCR disabled.",
             };
         } catch (error) {
             return {
@@ -341,7 +337,7 @@ class PaymentScreenshotOcrService {
                 isOutgoingTransfer: false,
                 paymentDate: null,
                 canAutoVerify: false,
-                reason: `OCR unavailable: ${String(error?.message || "unknown error").slice(0, 300)}`,
+                reason: "Auto verification using OCR disabled.",
             };
         } finally {
             await worker?.terminate();
