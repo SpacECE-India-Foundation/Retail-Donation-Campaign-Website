@@ -30,15 +30,35 @@ import { cn } from "../../../utils/cn";
  * real backend OCR endpoint (`POST /public/donation/scan-payment-screenshot`)
  * — no mock, no fallback.
  *
- * IMPORTANT: the backend's OCR only ever extracts Transaction ID, amount,
- * and payment date from the screenshot (services/paymentScreenshotOcr.service.js)
- * — it does NOT and cannot return the donor's name or email from a UPI
- * payment screenshot. So only Transaction ID gets auto-filled (and only
- * when OCR read it confidently — the backend can return a 200 with
- * `requiresManualEntry: true`, which is not an error, just a signal to type
- * it in). Full Name and Email are always donor-entered, same as before this
- * feature existed. The final "Submit Donation" button still calls the
- * existing, unchanged submitPublicDonation API.
+ * Current backend OCR contract (controllers/publicDonations/donation.public.controller.js:25-67,
+ * services/paymentScreenshotOcr.service.js), re-verified against the latest
+ * backend code:
+ *   - Success (200) response shape:
+ *       { fields: { transactionId, amount, paymentDate, senderName } | null,
+ *         ocr: { attempted, confidence, canAutoVerify, senderName, isOutgoingTransfer, reason },
+ *         requiresManualEntry: boolean }
+ *     `fields` is null when OCR couldn't reliably read the screenshot — that's
+ *     still a 200, not an error; `requiresManualEntry` tells the caller to
+ *     fall back to manual entry instead of treating it as a failure.
+ *   - There is NO `donorName` field anywhere in this response. The OCR
+ *     service only ever extracts transactionId, amount, paymentDate, and
+ *     `senderName` (read from a "From:" / "Paid by:" line on the screenshot,
+ *     when present) — it never reads the donor's email at all.
+ *   - Per Juhi's latest update: Transaction ID stays editable even when OCR
+ *     reads it confidently — nothing on Step 3 is locked/read-only anymore.
+ *     `senderName`, when present, is used only as a helpful starting value
+ *     for Full Name; the donor can freely change it. Email always stays a
+ *     normal editable input, since the backend has no email field to return.
+ *   - `ocr.isOutgoingTransfer` (new boolean, services/paymentScreenshotOcr.service.js)
+ *     is a read-only, server-computed signal — not a field the frontend ever
+ *     sends, and not required by either /scan-payment-screenshot or
+ *     /new-donation. It's not rendered or edited on Step 3; it only affects
+ *     whether the backend's own `canAutoVerify`/auto-verification logic
+ *     trusts the screenshot.
+ *   - Failure responses (400/500) come back as
+ *       { statusCode, message, data: null, success: false, errors: [] }
+ *     via ApiError — e.g. 400 "A payment screenshot is required for OCR
+ *     scanning." or "OCR scanning is available only for UPI payments."
  *
  * Step flow:
  *  1. Amount + Payment — mobile fires the real UPI intent and waits for
@@ -49,11 +69,14 @@ import { cn } from "../../../utils/cn";
  *  2. Verification — desktop shows the same QR/UPI ID/bank details card
  *     (plus a collapsible bank-transfer fallback) plus the screenshot
  *     upload area. Mobile shows just the upload area (payment was already
- *     confirmed in step 1).
- *  3. Details + Submit — Full Name/Email are always editable inputs;
- *     Transaction ID is read-only when OCR read it confidently, otherwise
- *     an editable field with a note explaining why. Merged with the
- *     existing review + submit button.
+ *     confirmed in step 1). "Continue" calls the OCR scan, then opens a
+ *     "Continue with Extracted Details?" confirmation dialog before
+ *     advancing — Cancel keeps the donor on this step with nothing applied.
+ *  3. Details + Submit — an AI-assisted-verification notice sits above the
+ *     details form. Full Name, Email, and Transaction ID are all editable
+ *     inputs. Transaction ID (and, when found, Full Name) get pre-filled
+ *     from the OCR scan as a convenience, but the donor can edit any of them
+ *     before submitting. Merged with the existing review + submit button.
  */
 
 const STEPS = [
@@ -152,10 +175,19 @@ export default function DonationForm({
   const [isDragging, setIsDragging] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState("");
-  // True until OCR confidently reads a Transaction ID — the backend can
-  // legitimately return requiresManualEntry: true (not an error), in which
-  // case the donor types their Transaction ID in themselves on Step 3.
+  // True until OCR confidently reads a Transaction ID. This no longer locks
+  // any input — Transaction ID (and every other Step 3 field) stays
+  // editable regardless — it only drives the helper copy shown above the
+  // form so donors know whether to double-check a pre-filled value or type
+  // it in from scratch.
   const [manualEntryRequired, setManualEntryRequired] = useState(true);
+
+  // ---- "Continue with Extracted Details?" confirmation (Step 2 → Step 3) ----
+  // The OCR result is held here, unapplied, until the donor explicitly
+  // confirms — Cancel leaves Step 2 untouched (screenshot stays, nothing is
+  // written to formData) so they can re-upload or just try Continue again.
+  const [pendingOcrResult, setPendingOcrResult] = useState(null);
+  const [showContinueConfirm, setShowContinueConfirm] = useState(false);
 
   useEffect(() => {
     // Revoke the object URL when the file changes or the form unmounts.
@@ -163,6 +195,18 @@ export default function DonationForm({
       if (screenshotPreview) URL.revokeObjectURL(screenshotPreview);
     };
   }, [screenshotPreview]);
+
+  useEffect(() => {
+    if (!showContinueConfirm) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setShowContinueConfirm(false);
+        setPendingOcrResult(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showContinueConfirm]);
 
   const fieldError = (name) => errors[name] || stepErrors[name];
 
@@ -305,11 +349,10 @@ export default function DonationForm({
   };
 
   // Continue (Step 2) — calls the real OCR scan API only (no mock, no
-  // fallback). On success, prefills Step 3's Transaction ID from the
-  // response when OCR read it confidently; otherwise leaves it blank and
-  // editable (requiresManualEntry: true is a valid 200, not an error — the
-  // backend genuinely can't always read a screenshot reliably). Full
-  // Name/Email are never touched here — the backend never returns them.
+  // fallback). On success, the result is held in `pendingOcrResult` and a
+  // confirmation dialog opens ("Continue with Extracted Details?") — nothing
+  // is written to formData and Step doesn't advance until the donor
+  // explicitly confirms via `applyOcrResultAndContinue`.
   // Guarded against re-entrancy: `disabled={verifying}` on the button covers
   // the common case, but that's async (waits on a re-render), so a fast
   // double-click could otherwise slip a second request through — this
@@ -324,19 +367,8 @@ export default function DonationForm({
     setVerifyError("");
     try {
       const result = await scanPaymentScreenshot({ screenshot: screenshotFile });
-      const extractedTransactionId = result?.fields?.transactionId;
-
-      if (extractedTransactionId) {
-        onFieldChange("transactionId", extractedTransactionId);
-        setManualEntryRequired(false);
-      } else {
-        onFieldChange("transactionId", "");
-        setManualEntryRequired(true);
-      }
-
-      onFieldChange("paymentScreenshot", screenshotFile);
-      setStep(3);
-      scrollToTop();
+      setPendingOcrResult(result);
+      setShowContinueConfirm(true);
     } catch (err) {
       setVerifyError(
         err?.response?.data?.message ||
@@ -345,6 +377,44 @@ export default function DonationForm({
     } finally {
       setVerifying(false);
     }
+  };
+
+  // Confirm-dialog "Continue": applies the OCR result to the editable Step 3
+  // fields and advances. Pre-fills Step 3's Transaction ID from the response
+  // when OCR read it confidently, and pre-fills Full Name from `senderName`
+  // when the screenshot's "From/Paid by" line was readable — both stay
+  // fully editable afterwards (Step 3 has no read-only fields). When OCR
+  // can't read the screenshot confidently, `fields` is null (a valid 200,
+  // not an error) and Step 3 starts blank for manual entry. Email is never
+  // touched here — the backend has no field for it.
+  const applyOcrResultAndContinue = () => {
+    const extractedTransactionId = pendingOcrResult?.fields?.transactionId || "";
+    const extractedSenderName =
+      pendingOcrResult?.fields?.senderName || pendingOcrResult?.ocr?.senderName || "";
+
+    onFieldChange("transactionId", extractedTransactionId);
+    setManualEntryRequired(!extractedTransactionId);
+
+    // Helpful starting value only — not authoritative, not locked. The
+    // donor can change it on Step 3 like any other field.
+    if (extractedSenderName) {
+      onFieldChange("name", extractedSenderName);
+    }
+
+    onFieldChange("paymentScreenshot", screenshotFile);
+
+    setShowContinueConfirm(false);
+    setPendingOcrResult(null);
+    setStep(3);
+    scrollToTop();
+  };
+
+  // Confirm-dialog "Cancel": discard the OCR result and stay on Step 2 —
+  // the screenshot is untouched so the donor can retry Continue, or remove
+  // and re-upload a different screenshot.
+  const cancelContinueConfirm = () => {
+    setShowContinueConfirm(false);
+    setPendingOcrResult(null);
   };
 
   return (
@@ -698,12 +768,27 @@ export default function DonationForm({
         {/* ============ Step 3 — Details + Submit ============ */}
         {step === 3 && (
           <div className="animate-fade-in-up space-y-6">
+            {/* AI/OCR notice — sits above the OCR result/details section so
+                donors know to double-check anything that was auto-filled. */}
+            <div className="flex items-start gap-3 rounded-xl border border-brand-teal/25 bg-brand-teal/5 px-4 py-3.5">
+              <Info size={18} className="mt-0.5 shrink-0 text-brand-teal" aria-hidden="true" />
+              <div>
+                <p className="text-sm font-semibold text-brand-teal">AI-assisted Payment Verification</p>
+                <p className="mt-1 text-sm text-brand-dark/80">
+                  Our OCR system automatically extracts payment details from your uploaded screenshot to
+                  speed up the donation process. Since this feature is still being improved, OCR results
+                  may occasionally be inaccurate. Please carefully review and edit all extracted
+                  information before submitting your donation.
+                </p>
+              </div>
+            </div>
+
             <FormSection
               title="Your Details"
               description={
                 manualEntryRequired
-                  ? "We couldn't automatically read your Transaction ID — please enter it below, along with your name and email."
-                  : "Transaction ID was read from your screenshot. Add your name and email to finish."
+                  ? "We couldn't automatically read your Transaction ID — please enter your details below."
+                  : "We've pre-filled some details from your screenshot — feel free to edit anything before submitting."
               }
             >
               <div className="grid gap-5 lg:grid-cols-2">
@@ -746,30 +831,18 @@ export default function DonationForm({
                 required
                 error={fieldError("transactionId")}
               >
-                {({ id, errorId, hasError }) =>
-                  manualEntryRequired ? (
-                    <input
-                      id={id}
-                      type="text"
-                      value={formData.transactionId}
-                      onChange={(e) => onFieldChange("transactionId", e.target.value)}
-                      placeholder="From your UPI app's payment confirmation"
-                      aria-invalid={hasError}
-                      aria-describedby={errorId}
-                      className={inputClass(hasError)}
-                    />
-                  ) : (
-                    <input
-                      id={id}
-                      type="text"
-                      readOnly
-                      value={formData.transactionId}
-                      aria-invalid={hasError}
-                      aria-describedby={errorId}
-                      className={cn(inputClass(hasError), "cursor-not-allowed bg-brand-cream/40 text-brand-muted")}
-                    />
-                  )
-                }
+                {({ id, errorId, hasError }) => (
+                  <input
+                    id={id}
+                    type="text"
+                    value={formData.transactionId}
+                    onChange={(e) => onFieldChange("transactionId", e.target.value)}
+                    placeholder="From your UPI app's payment confirmation"
+                    aria-invalid={hasError}
+                    aria-describedby={errorId}
+                    className={inputClass(hasError)}
+                  />
+                )}
               </FormField>
 
               <div className="border-t border-brand-border/60 pt-5">
@@ -892,6 +965,59 @@ export default function DonationForm({
           </div>
         )}
       </form>
+
+      {/* "Continue with Extracted Details?" confirmation — gates Step 2 → 3.
+          Cancel keeps the donor on Step 2 with nothing applied; Continue
+          hands off to applyOcrResultAndContinue. */}
+      {showContinueConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-[fadeIn_0.15s_ease-out]"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) cancelContinueConfirm();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="continue-confirm-title"
+            aria-describedby="continue-confirm-desc"
+            className="w-full max-w-md rounded-2xl border border-brand-border/60 bg-white p-6 shadow-2xl"
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-teal/10 text-brand-teal">
+                <Info size={18} aria-hidden="true" />
+              </span>
+              <div>
+                <h3 id="continue-confirm-title" className="font-display text-lg font-bold text-brand-dark">
+                  Continue with Extracted Details?
+                </h3>
+                <p id="continue-confirm-desc" className="mt-2 text-sm text-brand-muted">
+                  Our AI system has extracted payment details from your screenshot. Please note that OCR
+                  is still under improvement and may occasionally produce incorrect information. You will
+                  be able to review and edit all details before submitting your donation.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={cancelContinueConfirm}
+                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-brand-dark transition-colors duration-200 hover:text-brand-orange"
+              >
+                Cancel
+              </button>
+              <Button
+                type="button"
+                onClick={applyOcrResultAndContinue}
+                className="rounded-xl px-6 shadow-md shadow-brand-orange/20"
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

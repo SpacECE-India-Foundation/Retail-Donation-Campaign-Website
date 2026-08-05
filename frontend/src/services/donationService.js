@@ -9,7 +9,7 @@ const SUBMIT_DONATION_ENDPOINT = `${PUBLIC_DONATION_BASE}/new-donation`;
 // Real endpoint, confirmed against the current backend:
 // routes/publicOperationRoutes/donations.routes.js:8 —
 //   donationPublicRoutes.post('/scan-payment-screenshot', upload.single("paymentscreenshot"), scanPaymentScreenshot)
-// Controller: controllers/publicDonations/donation.public.controller.js:25 (scanPaymentScreenshot).
+// Controller: controllers/publicDonations/donation.public.controller.js:25-67 (scanPaymentScreenshot).
 const SCAN_SCREENSHOT_ENDPOINT = `${PUBLIC_DONATION_BASE}/scan-payment-screenshot`;
 
 function buildDonationFormData(frontendPayload) {
@@ -46,25 +46,45 @@ export const submitPublicDonation = (frontendPayload) =>
   api.post(SUBMIT_DONATION_ENDPOINT, buildDonationFormData(frontendPayload));
 
 // ---- Payment Screenshot OCR scan (V2 donation flow, Step 2) ----
-// Real request/response contract, confirmed against
-// controllers/publicDonations/donation.public.controller.js:25-61:
+// Real request/response contract, re-confirmed against
+// controllers/publicDonations/donation.public.controller.js:25-67 and
+// services/paymentScreenshotOcr.service.js:
 //   - multipart/form-data, field name "paymentscreenshot" (matches the
 //     route's multer config), plus a "paymentMode" field that must equal
 //     "UPI" (case-insensitive) or the backend rejects with 400.
 //   - Success (200) response shape:
-//       { fields: { transactionId, amount, paymentDate } | null,
-//         ocr: { attempted, confidence, canAutoVerify, reason },
+//       { fields: { transactionId, amount, paymentDate, senderName } | null,
+//         ocr: { attempted, confidence, canAutoVerify, senderName, isOutgoingTransfer, reason },
 //         requiresManualEntry: boolean }
 //     `fields` is null when OCR couldn't reliably read the screenshot —
 //     that's still a 200, not an error; requiresManualEntry tells the
 //     caller to fall back to manual entry instead of treating it as a
 //     failure.
-//   - IMPORTANT: the backend does NOT return donorName or donorEmail —
-//     the OCR service (services/paymentScreenshotOcr.service.js) only ever
-//     extracts transactionId, amount, and paymentDate from the image. A UPI
-//     screenshot has no reliable way to reveal the donor's own name/email,
-//     so DonationForm keeps those two fields as normal editable inputs and
-//     only ever auto-fills Transaction ID from this response.
+//   - IMPORTANT: the backend does NOT return a "donorName" field — it never
+//     has. It now returns `senderName`, read from a "From:"/"Paid by:" line
+//     on the screenshot when present. DonationForm uses that only as a
+//     helpful starting value for Full Name; the donor can still edit it.
+//     The backend still never returns an email address at all, so Email
+//     stays a normal editable input. Transaction ID is pre-filled when OCR
+//     reads it confidently, but — per Juhi's latest update — stays editable
+//     too, never read-only.
+//   - NEW boolean field: `isOutgoingTransfer` (services/paymentScreenshotOcr.service.js:309,325).
+//     It's read-only, server-computed output, never a request field the
+//     frontend sends — it's set by `isLikelyOutgoingTransfer()` scanning the
+//     OCR'd text for "paid/sent/debited/to" vs "received/credited" language,
+//     to reject screenshots of an *incoming* payment being passed off as
+//     proof of donation. It only appears inside the top-level `ocr` object
+//     of this scan-payment-screenshot response (not inside `fields`), and it
+//     also factors into the server's own `canAutoVerify` gate here and into
+//     registerDonation's OCR pass on submit (donation.public.controller.js:293,346,
+//     stored on the Donation doc as ocrVerification.isOutgoingTransfer —
+//     confirmed via models/donation.modals.js:132). Grepped every
+//     ApiError.assert in donation.public.controller.js: none of them require
+//     `isOutgoingTransfer` as an input on either /scan-payment-screenshot or
+//     /new-donation — it is not required in the request body of either
+//     endpoint, only ever produced by the backend. DonationForm does not
+//     render or let the donor edit it; it's surfaced only if needed for a
+//     future "this doesn't look like an outgoing payment" warning.
 //   - Failure responses (400/500) come back as
 //       { statusCode, message, data: null, success: false, errors: [] }
 //     via ApiError — e.g. 400 "A payment screenshot is required for OCR
