@@ -11,8 +11,8 @@ export const addUserToSubscribers = async ({
 }) => {
     try {
 
-        ApiError.assert(donorEmail, 400, "Donor email is required to subscribe.");
-        ApiError.assert(donorName, 400, "Donor name is required to subscribe.");
+        ApiError.assert(donorEmail, "Donor email is required to subscribe.", 400);
+        ApiError.assert(donorName, "Donor name is required to subscribe.", 400);
 
         const update = {
             $setOnInsert: {
