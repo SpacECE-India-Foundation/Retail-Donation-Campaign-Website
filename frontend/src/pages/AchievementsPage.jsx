@@ -26,14 +26,14 @@ export default function AchievementsPage() {
 
           {/* CTA Buttons below hero */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
-            
+
              <a href="/donate"
               className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-full bg-[#E8741A] text-white font-bold shadow-[0_8px_24px_-6px_rgba(232,116,26,0.5)] hover:-translate-y-0.5 hover:bg-[#D86712] transition-all duration-300"
             >
               Support a Program
               <ArrowRight size={18} />
             </a>
-            
+
             <a  href="/impact"
               className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-full bg-white border border-slate-200 text-slate-700 font-bold shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300"
             >
@@ -89,9 +89,10 @@ export default function AchievementsPage() {
       </section>
 
       {/* ================= GRID SECTION ================= */}
-      <section className="relative pt-16 pb-10">
-        <AchievementsGrid />
-      </section>
+      {/* AchievementsGrid renders its own complete <section> with its own top/bottom
+          padding (py-14 lg:py-20) — no extra wrapper padding here, or the two stack
+          into a huge dead gap before "Transparent Impact" shows up. */}
+      <AchievementsGrid />
 
     </div>
   );
