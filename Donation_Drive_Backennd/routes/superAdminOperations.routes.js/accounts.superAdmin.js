@@ -1,5 +1,5 @@
 import express from "express"
-import { addNewAdmin, deleteAdminAccount, transferCampaignManagement, getAllAdmins, getAllCampaignsForTransfer, fetchAllAdmins } from "../../controllers/superAdminOperations/manageAdmins.superAdminOperations.controller.js"
+import { addNewAdmin, deleteAdminAccount, transferCampaignManagement, getAllAdmins, getAllCampaignsForTransfer, fetchAllAdmins, getSubscriberCount } from "../../controllers/superAdminOperations/manageAdmins.superAdminOperations.controller.js"
 import { adminAuth } from "../../middelwares/adminAuth.middelware.js"
 import { authorize } from "../../middelwares/RBAC.middelware.js"
 
@@ -10,5 +10,6 @@ superAdminOperations.post('/transfer-management',adminAuth,authorize("SUPER_ADMI
 superAdminOperations.get('/admins',adminAuth,authorize("SUPER_ADMIN"),getAllAdmins)
 superAdminOperations.get('/all-admins',adminAuth,authorize("SUPER_ADMIN"),fetchAllAdmins)
 superAdminOperations.get('/campaigns-overview',adminAuth,authorize("SUPER_ADMIN"),getAllCampaignsForTransfer)
+superAdminOperations.get('/subscribers-count',adminAuth,authorize("SUPER_ADMIN"),getSubscriberCount)
 
 export default superAdminOperations
