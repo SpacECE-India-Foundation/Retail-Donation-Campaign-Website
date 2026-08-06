@@ -18,6 +18,14 @@ class EmailService {
                 pass: process.env.SMTP_PASSWORD
             }
         });
+        this.transporter.verify(function (error, success) {
+    if (error) {
+        console.error("SMTP Verify Failed");
+        console.error(error);
+    } else {
+        console.log("SMTP Server Ready");
+    }
+});
     }
     async sendCampaignOwnershipTransferEmail({
     adminName,
@@ -97,8 +105,19 @@ SpaceECE Team
         text
     });
 }
-    async sendEmail({to, subject, html, text, attachments = []}) {
-        return await this.transporter.sendMail({
+    // async sendEmail({to, subject, html, text, attachments = []}) {
+    //     return await this.transporter.sendMail({
+    //         from: process.env.SMTP_FROM,
+    //         to,
+    //         subject,
+    //         text,
+    //         html,
+    //         attachments
+    //     });
+    // }
+    async sendEmail({ to, subject, html, text, attachments = [] }) {
+    try {
+        const info = await this.transporter.sendMail({
             from: process.env.SMTP_FROM,
             to,
             subject,
@@ -106,7 +125,19 @@ SpaceECE Team
             html,
             attachments
         });
+
+        console.log("✅ Email sent successfully");
+        console.log(info);
+
+        return info;
+
+    } catch (error) {
+        console.error("❌ Email Error");
+        console.error(error);
+
+        throw error;
     }
+}
 
     async sendAdminAccountCreatedEmail({
     adminName,
