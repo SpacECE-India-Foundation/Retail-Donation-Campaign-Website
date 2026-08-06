@@ -9,6 +9,247 @@ import { verifyOtpHandler } from "../../utils/otp.utils.js"
 import otpModel from "../../models/otp.modals.js"
 import bcrypt from "bcryptjs";
 
+/*
+=========================================================================================
+                                COOKIE SECURITY GUIDE
+=========================================================================================
+
+Cookies browser me store hoti hain aur har request ke saath backend ko automatically
+bheji ja sakti hain. Lekin browser kuch security rules follow karta hai.
+
+Humare liye sabse important 3 options hain:
+
+1. httpOnly
+2. secure
+3. sameSite
+
+-----------------------------------------------------------------------------------------
+1. httpOnly
+-----------------------------------------------------------------------------------------
+
+httpOnly: true
+
+Meaning:
+---------
+Browser ki JavaScript (document.cookie) is cookie ko access nahi kar sakti.
+
+Why?
+----
+Agar website me kabhi XSS (Cross Site Scripting) attack ho jaye,
+to attacker JavaScript ke through authentication cookie chura nahi payega.
+
+Industry Practice:
+------------------
+Authentication cookies (JWT, Session ID, Refresh Token) ke liye hamesha
+httpOnly:true use karna chahiye.
+
+-----------------------------------------------------------------------------------------
+2. secure
+-----------------------------------------------------------------------------------------
+
+secure: true
+
+Meaning:
+---------
+Cookie sirf HTTPS connection par hi browser se backend ko bheji jayegi.
+
+secure: false
+
+Meaning:
+---------
+Cookie HTTP aur HTTPS dono par kaam karegi.
+
+When to use?
+------------
+Local Development:
+Frontend  -> http://localhost:5173
+Backend   -> http://localhost:3002
+
+Yaha HTTPS nahi hota.
+Isliye:
+
+secure:false
+
+Production:
+Frontend  -> https://xxxxx.vercel.app
+Backend   -> https://xxxxx.onrender.com
+
+Production me HTTPS hota hai.
+Isliye:
+
+secure:true
+
+Note:
+-----
+Agar localhost par secure:true kar diya,
+to browser cookie send hi nahi karega.
+
+-----------------------------------------------------------------------------------------
+3. sameSite
+-----------------------------------------------------------------------------------------
+
+sameSite browser ko batata hai ki cookie kis type ki request ke saath bhejni hai.
+
+3 options hote hain:
+
+----------------------------------
+A) sameSite: "strict"
+----------------------------------
+
+Sabse secure option.
+
+Browser cookie sirf same-site requests me bhejega.
+
+Example:
+
+Frontend
+http://localhost:5173
+
+Backend
+http://localhost:3002
+
+Ye development me generally sahi kaam karta hai.
+
+Lekin agar frontend aur backend alag domains par ho:
+
+Frontend
+https://abc.vercel.app
+
+Backend
+https://xyz.onrender.com
+
+To browser cookie send nahi karega.
+
+----------------------------------
+B) sameSite: "lax"
+----------------------------------
+
+Strict se thoda relaxed.
+
+Cookie same-site requests me to jayegi hi.
+
+Cross-site me sirf kuch safe situations me jayegi
+(jaise top-level GET navigation).
+
+Lekin cross-site fetch()/axios POST requests me generally use nahi hoti.
+
+Authentication APIs ke liye ye usually enough nahi hoti.
+
+----------------------------------
+C) sameSite: "none"
+----------------------------------
+
+Cookie same-site aur cross-site dono requests me bheji jayegi.
+
+Ye tab use hota hai jab frontend aur backend alag domains par deployed hon.
+
+Example:
+
+Frontend:
+https://myapp.vercel.app
+
+Backend:
+https://myapi.onrender.com
+
+IMPORTANT:
+-----------
+sameSite:"none" use karte waqt secure:true mandatory hai.
+
+Agar secure:false hua,
+to modern browsers cookie reject kar dete hain.
+
+=========================================================================================
+                    LOCALHOST vs PRODUCTION CONFIGURATION
+=========================================================================================
+
+LOCAL DEVELOPMENT
+
+Frontend:
+http://localhost:5173
+
+Backend:
+http://localhost:3002
+
+Cookie:
+
+httpOnly : true
+secure    : false
+sameSite  : "strict"
+
+Reason:
+-------
+HTTP use ho raha hai aur localhost development environment hai.
+
+-----------------------------------------------------------------------------------------
+
+PRODUCTION
+
+Frontend:
+https://xxxxx.vercel.app
+
+Backend:
+https://xxxxx.onrender.com
+
+Cookie:
+
+httpOnly : true
+secure    : true
+sameSite  : "none"
+
+Reason:
+-------
+Frontend aur backend different origins par hain.
+Cross-origin authentication ke liye browser cookie tabhi bhejega.
+
+=========================================================================================
+                    BEST PRACTICE
+=========================================================================================
+
+const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+
+    // Production:
+    // Frontend & Backend different domains
+    // -> SameSite=None
+
+    // Development:
+    // Localhost
+    // -> SameSite=Strict
+
+    sameSite:
+        process.env.NODE_ENV === "production"
+            ? "none"
+            : "strict",
+};
+
+Production Environment Variable:
+
+NODE_ENV=production
+
+Local Environment Variable:
+
+NODE_ENV=development
+(or simply don't set NODE_ENV)
+
+=========================================================================================
+Remember:
+
+✔ httpOnly  -> Protects cookie from JavaScript (XSS protection)
+
+✔ secure    -> Cookie works only on HTTPS
+
+✔ sameSite=strict -> Best for same-site/local development
+
+✔ sameSite=none   -> Required when frontend and backend are on different domains
+
+✔ sameSite=none always requires secure:true
+
+✔ Never use secure:true on localhost (HTTP), otherwise cookies won't work.
+
+=========================================================================================
+*/
+
 // Used only at registration, where there's no crop/adjust step yet — a
 // square, subject-aware crop is still far better than the default 1200x675
 // landscape crop used for campaign banners.
@@ -119,8 +360,16 @@ export const registerAdmin = async (req,res) =>{
             accessToken,
             {
             httpOnly: true,
+
+            // Localhost -> false
+            // Production -> true
+            //if we were in localhot then it will always be false because we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the secure cookie can be sent to the browser
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+
+            //now for same site in local development we will set it to strict because the frontend and backend are on the same domain but in production we will set it to none because the frontend and backend are on different domains
+            // sameSite: "strict",
+            //here, the same reason goes in the localhost we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the same site cookie can be sent to the browser
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
             maxAge: 5 * 24 * 60 * 60 * 1000,
             }
         );
@@ -130,8 +379,15 @@ export const registerAdmin = async (req,res) =>{
             refreshToken,
             {
             httpOnly: true,
+            // Localhost -> false
+            // Production -> true
+            //if we were in localhot then it will always be false because we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the secure cookie can be sent to the browser
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+
+            //now for same site in local development we will set it to strict because the frontend and backend are on the same domain but in production we will set it to none because the frontend and backend are on different domains
+            // sameSite: "strict",
+            //here, the same reason goes in the localhost we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the same site cookie can be sent to the browser
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
             maxAge: 14 * 24 * 60 * 60 * 1000,
             }
         );
@@ -228,8 +484,15 @@ export const adminLogin = async (req,res) =>{
             accessToken,
             {
             httpOnly: true,
+            // Localhost -> false
+            // Production -> true
+            //if we were in localhot then it will always be false because we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the secure cookie can be sent to the browser
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+
+            //now for same site in local development we will set it to strict because the frontend and backend are on the same domain but in production we will set it to none because the frontend and backend are on different domains
+            // sameSite: "strict",
+            //here, the same reason goes in the localhost we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the same site cookie can be sent to the browser
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
             maxAge: 5 * 24 * 60 * 60 * 1000,
             }
         );
@@ -240,7 +503,10 @@ export const adminLogin = async (req,res) =>{
             {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            //now for same site in local development we will set it to strict because the frontend and backend are on the same domain but in production we will set it to none because the frontend and backend are on different domains
+            // sameSite: "strict",
+            //here, the same reason goes in the localhost we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the same site cookie can be sent to the browser
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
             maxAge: 14 * 24 * 60 * 60 * 1000,
             }
         );
@@ -386,14 +652,14 @@ export const resetPassword = async (req,res) =>{
         //clearing the cookies from the browser
         res.clearCookie("accessToken", {
     httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
 });
 
 res.clearCookie("refreshToken", {
     httpOnly: true,
-    sameSite: "strict",
-    secure: process.env.NODE_ENV === "production"
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
 });
 
         return res.status(200).json(
@@ -417,13 +683,29 @@ export const logoutAdmin = async (req, res) => {
     try {
         res.clearCookie("accessToken", {
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production"
+            // Localhost -> false
+            // Production -> true
+            //if we were in localhot then it will always be false because we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the secure cookie can be sent to the browser
+            secure: process.env.NODE_ENV === "production",
+
+            //now for same site in local development we will set it to strict because the frontend and backend are on the same domain but in production we will set it to none because the frontend and backend are on different domains
+            // sameSite: "strict",
+            //here, the same reason goes in the localhost we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the same site cookie can be sent to the browser
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+            maxAge: 5 * 24 * 60 * 60 * 1000,
         });
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production"
+            // Localhost -> false
+            // Production -> true
+            //if we were in localhot then it will always be false because we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the secure cookie can be sent to the browser
+            secure: process.env.NODE_ENV === "production",
+
+            //now for same site in local development we will set it to strict because the frontend and backend are on the same domain but in production we will set it to none because the frontend and backend are on different domains
+            // sameSite: "strict",
+            //here, the same reason goes in the localhost we are not storing NODE_ENV in our local .env file but in production we will set it to production so that the same site cookie can be sent to the browser
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+            maxAge: 14 * 24 * 60 * 60 * 1000,
         });
         return res.status(200).json(
             new ApiResponse(200, null, "Logged out successfully")
@@ -529,13 +811,13 @@ export const changePassword = async (req,res) =>{
         //clear this session's cookies as well, so the admin has to log back in with the new password
         res.clearCookie("accessToken", {
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            sameSite:process.env.NODE_ENV === "production" ? "none" : "strict",
         });
         res.clearCookie("refreshToken", {
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV === "production"
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         });
 
         return res.status(200).json(
