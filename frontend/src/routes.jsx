@@ -22,6 +22,8 @@ import AdminCampaignDetailPage from "./pages/admin/AdminCampaignDetailPage";
 import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import MyProfilePage from "./pages/admin/MyProfilePage";
+import ManageAdminsPage from "./pages/admin/ManageAdminsPage";
+import BankStatementUploadPage from "./pages/admin/BankStatementUploadPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -89,6 +91,14 @@ const router = createBrowserRouter([
       {
         path: "profile",
         element: <MyProfilePage />,
+      },
+      {
+        path: "manage-admins",
+        element: <ManageAdminsPage />,
+      },
+      {
+        path: "bank-statements",
+        element: <BankStatementUploadPage />,
       },
     ],
   },
