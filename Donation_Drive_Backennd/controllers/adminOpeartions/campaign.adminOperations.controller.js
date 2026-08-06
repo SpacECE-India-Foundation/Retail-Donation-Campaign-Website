@@ -6,7 +6,7 @@ import { ApiResponse } from "../../utils/apiResponse.utils.js";
 import { uploadBufferToCloudinary } from "../../utils/cloudinary.utils.js";
 import { deleteFromCloudinary } from "../../utils/cloudinary.utils.js";
 import Milestone from "../../models/milestone.modals.js";
-import subscribersModals from "../../models/subscribers.modals.js";
+import Subscriber from "../../models/subscribers.modals.js";
 import emailService from "../../services/email.services.js";
 
 //THIS FUNCTIONALITY DEAL WITH THE NEW CAMPAIGN CREATION

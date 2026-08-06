@@ -77,7 +77,9 @@ const advisoryMembers = [
   { name: "Ms Madhuri Sahasrabudhe", org: "Councilor, Pune Municipal Corporation (PMC)" },
   { name: "Dr Suneeta Kulkarni", org: "Granny Cloud (Early childhood education tech platform)" },
   { name: "Mr Chittaranjan Kaul", org: "CLR (Community Learning Resources)" },
-  { name: "Mr Nilesh Kumar", org: "QUEST (Quality Education Initiative)" },
+  // Corrected from "Nilesh Kumar" — the original SpacECE source lists
+  // "Mr Nilesh Nimkar" as the QUEST representative.
+  { name: "Mr Nilesh Nimkar", org: "QUEST (Quality Education Initiative)" },
   { name: "Ms Sushma Padhye", org: "Grammangal (Rural Education NGO)" },
   { name: "Ms Shubhada Joshi", org: "Khelghar (Play-based learning for disadvantaged children)" },
   { name: "Dr Godbole", org: "Chiranjiv Clinic (Initiated the MS Talk Series on ECE)" },

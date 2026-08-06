@@ -23,11 +23,12 @@ import ReportsPage from "./pages/admin/ReportsPage";
 import SettingsPage from "./pages/admin/SettingsPage";
 import MyProfilePage from "./pages/admin/MyProfilePage";
 import ManageAdminsPage from "./pages/admin/ManageAdminsPage";
+import BankStatementUploadPage from "./pages/admin/BankStatementUploadPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
 import CertificateVerificationPage from "./pages/verifyCertificate";
-import BankStatementUploadPage from "./pages/admin/BankStatementUploadPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 const router = createBrowserRouter([
   {
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
       { path: "/documents", element: <DocumentsPage /> },
       { path: "/thank-you", element: <ThankYouPage /> },
       { path: "/verify/:certificateId", element: <CertificateVerificationPage /> },
+      { path: "*", element: <NotFoundPage /> },
     ],
   },
   { path: "/admin/login", element: <AdminLoginPage /> },
@@ -95,9 +97,9 @@ const router = createBrowserRouter([
         element: <ManageAdminsPage />,
       },
       {
-       path: "bank-statements",
-       element: <BankStatementUploadPage />,
-    },
+        path: "bank-statements",
+        element: <BankStatementUploadPage />,
+      },
     ],
   },
 ]);

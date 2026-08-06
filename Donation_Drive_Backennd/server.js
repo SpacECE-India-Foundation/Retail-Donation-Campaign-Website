@@ -40,7 +40,10 @@ const allowedOrigins = [
     "http://localhost:5173", //currently localhost is set in allowed origins as we are working on localhost
     "http://127.0.0.1:5173", //some setups open the Vite dev server via 127.0.0.1 instead of localhost
     "http://localhost:5174", //Vite falls back to 5174 when 5173 is already in use
-    "http://127.0.0.1:5174"
+    "http://127.0.0.1:5174",
+
+    // Production Frontend (Vercel)
+    "https://retail-donation-campaign-website-e7.vercel.app"
 ]
 
 const corsOptions = {
