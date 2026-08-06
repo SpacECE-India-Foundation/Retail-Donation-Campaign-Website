@@ -33,17 +33,17 @@ export const AchievementsGrid = () => {
   };
 
   return (
-    <section className="relative w-full py-14 lg:py-20 px-4 sm:px-6 lg:px-8 bg-slate-50/50 overflow-hidden">
+    <section className="relative w-full py-16 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden bg-[#FFF8F1]">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-100/40 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative mx-auto max-w-7xl">
-        <div className="text-center max-w-3xl mx-auto mb-14 space-y-4">
+        <div className="text-center max-w-3xl mx-auto mb-12 space-y-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-100/80 text-orange-700 text-xs font-bold tracking-wide uppercase">
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
             Transparent Impact
           </div>
-          <h2 className="text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
+          <h2 className="font-display text-4xl sm:text-5xl font-black text-slate-900 tracking-tight">
             Our Track Record
           </h2>
           <p className="text-lg text-slate-600 font-normal leading-relaxed">
@@ -51,7 +51,7 @@ export const AchievementsGrid = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
           {achievements.map((item, index) => {
             const Icon = item.icon;
             const TagIcon = item.badgeIcon || CheckCircle2;
@@ -62,12 +62,12 @@ export const AchievementsGrid = () => {
             return (
               <div
                 key={index}
-                className={`group relative flex flex-col justify-between p-7 rounded-3xl transition-all duration-300 border overflow-hidden ${
+                className={`group relative flex flex-col justify-between p-7 rounded-3xl transition-all duration-500 ease-out hover:scale-[1.02] border overflow-hidden ${
                   item.isPlatinum
                     ? "border-amber-300 bg-gradient-to-br from-amber-100/80 via-amber-50/40 to-white shadow-lg shadow-amber-500/15 hover:shadow-xl hover:shadow-amber-500/25 hover:-translate-y-1.5"
                     : item.featured
                     ? "border-orange-200 bg-gradient-to-br from-orange-50/60 via-white to-white shadow-md hover:shadow-xl hover:border-orange-300 hover:-translate-y-1.5"
-                    : "bg-white border-slate-100 shadow-sm hover:shadow-lg hover:border-slate-200 hover:-translate-y-1.5"
+                    : "bg-[#FFFDF9] border-orange-100 shadow-xl shadow-orange-100/20 hover:shadow-2xl hover:shadow-orange-200/25 hover:border-orange-300 hover:-translate-y-2"
                 }`}
               >
                 {/* Top accent bar for special cards */}
@@ -85,7 +85,7 @@ export const AchievementsGrid = () => {
 
                 <div className="relative">
                   <div className="flex items-center justify-between mb-6">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3 ${iconStyle}`}>
+                    <div className={`w-14 h-14 rounded-3xl flex items-center justify-center transition-transform group-hover:scale-110 group-hover:rotate-3 ${iconStyle}`}>
                       <Icon className="w-6 h-6 stroke-[2.2]" />
                     </div>
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold tracking-wide ${
@@ -97,7 +97,7 @@ export const AchievementsGrid = () => {
                   </div>
 
                   <div className="space-y-1">
-                    <div className={`text-4xl lg:text-[42px] font-black tracking-tight ${
+                    <div className={`text-5xl lg:text-[48px] font-black tracking-tight ${
                       item.isPlatinum ? "text-amber-900" : "text-slate-900"
                     }`}>
                       {item.number}
