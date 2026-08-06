@@ -102,7 +102,7 @@ export default function DocumentsPage() {
           ))}
         </div>
       </div>
-      
+
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-3 gap-6 mt-14">
   {documents.map((doc, index) => (
     <div
@@ -227,22 +227,38 @@ export default function DocumentsPage() {
       {/* CTA */}
 
       <div className="max-w-6xl mx-auto mt-20">
-        <div className="rounded-3xl bg-gradient-to-r from-[#0D4A52] to-[#14616B] px-8 py-14 md:px-16 text-center">
+        <div
+          className="relative overflow-hidden rounded-3xl px-8 py-14 text-center md:px-16"
+          style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand-dark), #1f3d3a)" }}
+        >
+          {/* Same blurred orange/teal orbs as the "Help us reach our goal"
+              section on the home page (CampaignProgress.jsx), so this dark
+              banner reads as the same treatment instead of a flat gradient. */}
+          <div
+            className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl"
+            style={{ background: "var(--color-brand-orange)", opacity: 0.25 }}
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -bottom-28 -left-16 h-80 w-80 rounded-full blur-3xl"
+            style={{ background: "var(--color-brand-teal)", opacity: 0.3 }}
+            aria-hidden="true"
+          />
 
-          <span className="inline-flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium mb-6">
+          <span className="relative inline-flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full text-sm font-medium mb-6">
             ❤️ Support Transparency
           </span>
 
-          <h2 className="font-['Playfair_Display'] text-4xl font-bold text-white mb-5">
+          <h2 className="relative font-['Playfair_Display'] text-4xl font-bold text-white mb-5">
             Support Our Mission with Confidence
           </h2>
 
-          <p className="max-w-2xl mx-auto text-white/80 leading-8 mb-10">
+          <p className="relative max-w-2xl mx-auto text-white/80 leading-8 mb-10">
             Every contribution supports impactful programmes while maintaining
             complete transparency, governance and accountability.
           </p>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
+          <div className="relative flex flex-col sm:flex-row justify-center gap-4">
 
             <a
               href="/donate"
@@ -265,4 +281,4 @@ export default function DocumentsPage() {
 
     </section>
   );
-}       
+}
