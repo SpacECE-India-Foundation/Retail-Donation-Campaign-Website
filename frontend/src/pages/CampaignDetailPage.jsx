@@ -131,7 +131,9 @@ export default function CampaignDetailPage() {
         onShare={handleShare}
       />
 
-      <div className="mx-auto max-w-7xl space-y-10 px-4 pt-10 sm:space-y-12 sm:px-6 lg:px-8">
+      {/* Extra breathing room below the hero (pt-10 → pt-12/14/16) so the
+          content doesn't start right up against the banner. */}
+      <div className="mx-auto max-w-7xl space-y-10 px-4 pt-12 sm:space-y-12 sm:px-6 sm:pt-14 lg:px-8 lg:pt-16">
         <nav
           aria-label="Campaign detail breadcrumb"
           className="flex flex-wrap items-center gap-1 text-sm text-brand-muted"
