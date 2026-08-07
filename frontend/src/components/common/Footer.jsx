@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
-import { HandHeart, Heart, ArrowRight } from "lucide-react";
+import { Heart, ArrowRight } from "lucide-react";
 import { FaLinkedin, FaInstagram, FaFacebook } from "react-icons/fa6";
 import { cn } from "../../utils/cn";
+import logo4 from "../../assets/logo4.png";
 
 const linkColumns = [
   {
@@ -58,29 +59,24 @@ export const Footer = () => {
           already ends in this exact color (#FFF8F2), so the two blend with
           no visible seam instead of a stray line marking the boundary. */}
 
-      {/* Off-white footer background — first stop stays #FFF8F2 so it still
-          blends seamlessly with the page above (e.g. ImpactPage's wave);
-          the second stop is pulled way down from the original warm peach
-          so the footer itself reads clean and quiet, letting the CTA card
-          stay the one warm focal point. */}
+      {/* Warm cream gradient background — exact editorial palette */}
       <div
         className="relative"
-        style={{ background: "linear-gradient(180deg, #FFF8F2 0%, #FDFBF9 100%)" }}
+        style={{ background: "linear-gradient(180deg, #FFF8F2 0%, #FFF3E8 100%)" }}
       >
         {/* Ambient lighting — orange glow top-right, accent glow bottom-left,
-            trimmed down further to just a faint warm hint rather than any
-            visible haze. */}
+            both large and blurred, kept subtle and minimal */}
         <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           <div
-            className="absolute -right-24 -top-20 h-[260px] w-[260px] rounded-full blur-[70px]"
-            style={{ background: "rgba(232,116,26,0.02)" }}
+            className="absolute -right-24 -top-20 h-[420px] w-[420px] rounded-full blur-[110px]"
+            style={{ background: "rgba(232,116,26,0.14)" }}
           />
           <div
-            className="absolute -left-32 bottom-0 h-[360px] w-[360px] rounded-full blur-[80px]"
-            style={{ background: "#FFD8B5", opacity: 0.05 }}
+            className="absolute -left-32 bottom-0 h-[360px] w-[360px] rounded-full blur-[100px]"
+            style={{ background: "#FFD8B5", opacity: 0.35 }}
           />
           <div
-            className="absolute inset-0 opacity-[0.04]"
+            className="absolute inset-0 opacity-[0.35]"
             style={{
               background:
                 "radial-gradient(600px 400px at 95% 8%, rgba(232,116,26,0.08), transparent 60%)",
@@ -97,9 +93,11 @@ export const Footer = () => {
         </div>
 
         <div className="relative mx-auto max-w-6xl px-6 py-7 sm:px-8 sm:py-9 lg:py-10">
-          {/* CTA banner — soft cream-to-peach card with its own border and
-              shadow only; the internal orange glow layers have been removed
-              so this stays a clean, quiet card rather than a lit-up panel. */}
+          {/* CTA banner — NOT a white glass card. This is a warm
+              orange-tinted frosted glass panel: a layered cream-to-peach
+              fill plus internal radial glows (top-center, center, and
+              bottom-right), so the card itself reads as softly illuminated
+              rather than a plain white pane sitting on the background. */}
           <div
             className="animate-fade-in-up relative mx-auto max-w-4xl overflow-hidden rounded-[34px] px-8 py-7 text-center sm:px-12 sm:py-9"
             style={{
@@ -112,6 +110,24 @@ export const Footer = () => {
                 "0 35px 80px rgba(232,116,26,0.1), 0 12px 40px rgba(255,180,110,0.08), inset 0 1px 0 rgba(255,255,255,0.65)",
             }}
           >
+            {/* Internal ambient lighting — soft and contained, not a heavy
+                overall wash */}
+            <div
+              className="pointer-events-none absolute inset-0 -z-10"
+              style={{
+                background:
+                  "radial-gradient(650px 300px at 50% 0%, rgba(255,195,145,0.25), transparent 68%), " +
+                  "radial-gradient(750px 450px at 50% 55%, rgba(255,175,120,0.16), transparent 70%), " +
+                  "radial-gradient(500px 350px at 100% 100%, rgba(255,205,160,0.16), transparent 68%)",
+              }}
+              aria-hidden="true"
+            />
+            <div
+              className="pointer-events-none absolute -inset-8 -z-20 rounded-[46px] opacity-55 blur-3xl"
+              style={{ background: "radial-gradient(circle at 50% 40%, rgba(232,116,26,0.14), transparent 70%)" }}
+              aria-hidden="true"
+            />
+
             <h2 className="font-display text-2xl font-semibold tracking-tight text-[#E8741A] sm:text-3xl lg:text-[36px] lg:leading-tight">
               Together, Every Contribution Creates Change
             </h2>
@@ -156,25 +172,35 @@ export const Footer = () => {
             </div>
           </div>
 
-          {/* Footer columns — more breathing room above (mt-7/8 → mt-14/20)
-              so this reads as its own section instead of running straight
-              on from the CTA card. Column layout/gaps themselves untouched. */}
-          <div className="mt-14 grid gap-7 sm:grid-cols-2 lg:mt-20 lg:grid-cols-4 lg:gap-9">
+          {/* Footer columns */}
+          <div className="mt-7 grid gap-7 sm:grid-cols-2 lg:mt-8 lg:grid-cols-4 lg:gap-9">
             {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center gap-3.5">
+              <div className="flex items-center gap-4">
+                {/* Bigger badge (h-12 → h-16) with a soft inner highlight and a
+                    thin white ring, so it reads as a proper mark rather than
+                    a small flat icon tile. */}
                 <span
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white shadow-[0_6px_20px_-6px_rgba(232,116,26,0.35)]"
+                  className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[22px] text-white shadow-[0_10px_28px_-8px_rgba(232,116,26,0.45)] ring-2 ring-white"
                   style={{
                     backgroundImage:
                       "linear-gradient(135deg, var(--color-brand-orange), var(--color-brand-teal))",
                   }}
                 >
-                  <HandHeart size={21} aria-hidden="true" />
+                  <span
+                    className="pointer-events-none absolute inset-0"
+                    style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.35), transparent 55%)" }}
+                    aria-hidden="true"
+                  />
+                  <img
+                    src={logo4}
+                    alt="SpacECE India Foundation"
+                    className="relative h-12 w-12 object-contain"
+                  />
                 </span>
                 <div className="leading-tight">
-                  <p className="font-display text-xl font-bold text-[#0D4A52]">SpacECE</p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#9CA3AF]">
+                  <p className="font-display text-2xl font-bold text-[#0D4A52]">SpacECE</p>
+                  <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9CA3AF]">
                     India Foundation
                   </p>
                 </div>
