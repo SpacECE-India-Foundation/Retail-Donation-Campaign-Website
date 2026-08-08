@@ -147,18 +147,27 @@ export const updateMilestone = async (req, res) => {
         } = req.body;
 
         // Fetch campaign and milestones simultaneously, here we are using promise.all as all this db calls will be made paralloly unlike the first call will wait for another call's completion
-        const [campaign, milestones] = await Promise.all([
+        // const [campaign, milestones] = await Promise.all([
 
-            Campaign.findOne({
-                _id: campaignId,
-                createdBy: adminId
-            }).session(session),
+        //     Campaign.findOne({
+        //         _id: campaignId,
+        //         createdBy: adminId
+        //     }).session(session),
 
-            Milestone.find({
-                campaign: campaignId
-            }).session(session)
+        //     Milestone.find({
+        //         campaign: campaignId
+        //     }).session(session)
 
-        ]);
+        // ]);
+
+        const campaign = await Campaign.findOne({
+            _id: campaignId,
+            createdBy: adminId
+        }).session(session);
+
+        const milestones = await Milestone.find({
+            campaign: campaignId
+        }).session(session);
 
         ApiError.notFound(
             campaign,
