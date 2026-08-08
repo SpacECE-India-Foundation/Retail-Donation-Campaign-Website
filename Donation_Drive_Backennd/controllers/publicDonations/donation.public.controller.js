@@ -121,6 +121,15 @@ export const registerDonation = async (req,res) =>{
 
             //just for debugging, remove later
            // console.log("registerDonation OCR extraction:", ocrExtraction);
+
+            // A form can omit these values when OCR reads them successfully. Explicit form
+            // values are never overwritten; they are checked against the OCR result below.
+            // if (!transactionId && ocrExtraction.transactionId) {
+                // transactionId = ocrExtraction.transactionId;
+            // }
+            // if ((amount === undefined || amount === null || amount === "") && ocrExtraction.amount) {
+                // amount = ocrExtraction.amount;
+            // }
         }
 
         //first of all we have to find that weather the selected campaign id exists or not and aslo we will check the duplicacy here 
