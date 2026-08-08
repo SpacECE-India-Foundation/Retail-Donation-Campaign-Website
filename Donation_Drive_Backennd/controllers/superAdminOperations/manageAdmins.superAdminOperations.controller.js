@@ -47,7 +47,9 @@ export const addNewAdmin = async (req,res)=>{
                 adminName: newAdmin.fullName,
                 adminEmail: newAdmin.email,
                 temporaryPassword: randomPassword,
-                loginUrl: `${process.env.FRONTEND_URL}/admin/login`
+                // loginUrl: `${process.env.FRONTEND_URL}/admin/login`
+                loginUrl: `${process.env.CLIENT_ADDRESS}/admin/login`
+                
             });
         } catch (error) {
             console.error("Failed to send admin credentials email:", error);
