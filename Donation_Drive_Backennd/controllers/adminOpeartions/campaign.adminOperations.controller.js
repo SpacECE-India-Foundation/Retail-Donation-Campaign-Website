@@ -110,7 +110,7 @@ export const newCampaign = async (req,res) =>{
                         campaignDescription: newCampaignData.campaignDescription,
                         campaignTimeline: `${newCampaignData.startDate.toDateString()} - ${newCampaignData.endDate.toDateString()}`,
                         campaignImage: newCampaignData.campaignBanner.url,
-                        campaignLink: `${process.env.FRONTEND_URL}/campaign/${newCampaignData._id}`,
+                        campaignLink: `${process.env.CLIENT_ADDRESS}/campaign/${newCampaignData._id}`,
                     })
                 )
             )
