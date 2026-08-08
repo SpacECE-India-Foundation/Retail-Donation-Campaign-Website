@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { HandHeart, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { Button } from "./Button";
 
 export const Navbar = () => {
@@ -28,21 +28,19 @@ export const Navbar = () => {
         }}
       >
       <div className="mx-auto flex h-[68px] max-w-[1300px] items-center justify-between px-5 lg:px-7">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-90">
+        {/* Logo — text-only wordmark now that the icon badge is gone, so
+            "SpacECE" carries the full weight of the brand mark: bumped up
+            to a big Playfair Display serif (matching the site's headings)
+            instead of the small 17px sans it was sized at alongside the icon. */}
+        <Link to="/" className="flex flex-col justify-center leading-none transition-opacity hover:opacity-90">
           <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-md"
-            style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand-orange), var(--color-brand-teal))" }}
+            className="text-[26px] font-bold tracking-tight lg:text-[28px]"
+            style={{ color: "var(--color-brand-dark)", fontFamily: "'Playfair Display', serif" }}
           >
-            <HandHeart size={20} aria-hidden="true" />
+            SpacECE
           </span>
-          <span className="flex flex-col leading-none">
-            <span className="text-[17px] font-bold tracking-tight" style={{ color: "var(--color-brand-dark)" }}>
-              SpacECE
-            </span>
-            <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              India Foundation
-            </span>
+          <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-gray-400">
+            India Foundation
           </span>
         </Link>
 

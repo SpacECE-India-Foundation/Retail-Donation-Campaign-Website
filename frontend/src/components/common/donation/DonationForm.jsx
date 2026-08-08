@@ -86,22 +86,48 @@ const STEPS = [
   { key: "details", label: "Details" },
 ];
 
-const UPI_ID = import.meta.env.VITE_UPI_ID || "demo@upi";
-const UPI_NAME = import.meta.env.VITE_UPI_NAME || "Demo Organisation";
+// Display copies of the same two env vars generateUPIUrl reads below — for
+// the "UPI ID" / "Account Name" text in the payment card. No fallback
+// strings here (previously "demo@upi" / "Demo Organisation"): if the env var
+// is unset, this now shows exactly what generateUPIUrl would put in the
+// link, instead of the display text silently disagreeing with the URL.
+const UPI_ID = import.meta.env.VITE_UPI_ID;
+const UPI_PAYEE_NAME = import.meta.env.VITE_UPI_PAYEE_NAME;
 
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 const ACCEPTED_SCREENSHOT_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
-function buildUpiLink(amount) {
-  const params = new URLSearchParams({
-    pa: UPI_ID,
-    pn: UPI_NAME,
-    am: String(amount || ""),
-    cu: "INR",
-  });
-  return `upi://pay?${params.toString()}`;
-}
+// Builds an NPCI-format `upi://pay` deep link entirely from env vars — no
+// hardcoded UPI id/payee/currency/note anywhere in this file. Used both for
+// the mobile UPI-app intent (handleDonateNow) and as the QR code's payload
+// (qrImageUrl) — same generated URL, same values, in both places.
+//
+// `transactionId` is optional: at the point this is called (before the
+// donor has paid), there usually isn't one yet, so `tr` is only appended
+// when a real value is passed in — never a fake/generated one.
+const generateUPIUrl = (amount, transactionId) => {
+  const upiId = import.meta.env.VITE_UPI_ID;
+  const payeeName = import.meta.env.VITE_UPI_PAYEE_NAME;
+  const currency = import.meta.env.VITE_UPI_CURRENCY || "INR";
+  const note = import.meta.env.VITE_UPI_NOTE || "Donation";
+
+  let url =
+    `upi://pay?pa=${encodeURIComponent(upiId)}` +
+    `&pn=${encodeURIComponent(payeeName)}` +
+    `&mc=0000`;
+
+  if (transactionId) {
+    url += `&tr=${encodeURIComponent(transactionId)}`;
+  }
+
+  url +=
+    `&am=${Number(amount).toFixed(2)}` +
+    `&cu=${encodeURIComponent(currency)}` +
+    `&tn=${encodeURIComponent(note)}`;
+
+  return url;
+};
 
 function StepIndicator({ current }) {
   return (
@@ -289,7 +315,7 @@ export default function DonationForm({
     setStepErrors({});
 
     if (isMobile) {
-      window.location.href = buildUpiLink(formData.amount);
+      window.location.href = generateUPIUrl(formData.amount, formData.transactionId);
       setPaymentPhase("active");
       return;
     }
@@ -327,7 +353,7 @@ export default function DonationForm({
   };
 
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-    buildUpiLink(formData.amount),
+    generateUPIUrl(formData.amount, formData.transactionId),
   )}`;
 
   // ---- Screenshot upload handlers ----
@@ -690,7 +716,7 @@ export default function DonationForm({
                       Prefer a bank transfer instead?
                     </summary>
                     <div className="mt-3 space-y-1 text-xs text-brand-muted">
-                      <p>Account Name: {UPI_NAME}</p>
+                      <p>Account Name: {UPI_PAYEE_NAME}</p>
                       <p>Account Number: XXXXXXXXXX (add real value)</p>
                       <p>IFSC: XXXXXXXX (add real value)</p>
                     </div>
