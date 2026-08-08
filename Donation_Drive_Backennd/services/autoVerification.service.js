@@ -120,6 +120,13 @@ class AutoVerificationService {
     async verifyDonation({donation,
     bankTransaction,
     superAdminId}) {
+        //just for debugging, remove later
+        console.log("Starting auto verification", {
+            donationId: donation._id,
+            donationTransactionId: donation.transactionId,
+            bankTransactionId: bankTransaction?._id,
+            campaignId: donation.campaign,
+        });
         
         const campaignForCertificate = await Campaign.findById(donation.campaign);
         ApiError.assert(campaignForCertificate, "Campaign not found.", 404);
@@ -202,6 +209,11 @@ completedMilestones = await syncMilestoneCompletion(campaign._id, session);
                         verifiedAt: new Date(),
                     }], { session });
                 }
+                ////just for debugging, remove later
+                console.log("Updating donation and matching bank transaction", {
+                    donationId: freshDonation._id,
+                    bankTransactionId: bankTransaction._id,
+                });
 
                 const matchedTransaction = await BankTransaction.findOneAndUpdate(
                     { _id: bankTransaction._id, isMatched: false },
@@ -219,7 +231,7 @@ completedMilestones = await syncMilestoneCompletion(campaign._id, session);
                         { returnDocument: "after", session }
                     );
                     ApiError.assert(matchedTransaction, "Bank transaction is no longer available for reconciliation.", 409);
-                }
+                         }
             );
             committed = true;
             if(completedMilestones.length > 0) {
@@ -264,6 +276,7 @@ console.log(
 
         let emailError = "";
         try {
+
             await emailService.sendDonationVerifiedEmail({
                 donorName: verifiedDonation.donorName,
                 donorEmail: verifiedDonation.donorEmail,
@@ -276,6 +289,9 @@ console.log(
                 {  _id: bankTransaction._id},
                 { $set: { emailStatus: "SENT", emailError: "" } }
             );
+            console.log( "Donation verified email sent", {
+                donationId: verifiedDonation._id,
+            });
         } catch (error) {
             emailError = String(error?.message || "Email delivery failed.").slice(0, 1000);
             await BankTransaction.updateOne(
