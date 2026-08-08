@@ -152,8 +152,12 @@ class ReconciliationService {
 
         const donations = await Donation.find({
             status: "Pending",
-            automaticVerificationAttempted: false,
+            verified: false,
         }).sort({ createdAt: 1 });
+        //just for debugging, remove later
+        // console.log( "Reconciliation candidates", {
+            // donationCount: donations.length,
+        // });
 
         const summary = {
             totalDonations: donations.length,
@@ -164,6 +168,12 @@ class ReconciliationService {
         };
 
         for (const donation of donations) {
+            //just for debugging, remove later
+            // console.log("Evaluating donation for auto-verification", {
+                // donationId: donation._id,
+                // transactionId: donation.transactionId,
+                // amount: donation.amount,
+            // });
 
             const transactionIdNormalized = normalizeTransactionId(
                 donation.transactionId
@@ -190,6 +200,11 @@ class ReconciliationService {
 
             // No transaction found
             if (!transaction) {
+                //just for debugging, remove later
+                // console.log( "No matching bank transaction found for donation", {
+                    // donationId: donation._id,
+                    // transactionId: donation.transactionId,
+                // });
                 donation.automaticVerificationAttempted = true;
                 await donation.save();
 
@@ -203,12 +218,25 @@ class ReconciliationService {
 
             // Amount mismatch
             if (bankAmount !== amountInPaise) {
+                //just for debugging, remove later
+                // console.log("Donation amount mismatch", {
+                    // donationId: donation._id,
+                    // donationAmountInPaise: amountInPaise,
+                    // bankAmountInPaise: bankAmount,
+                // });
                 donation.automaticVerificationAttempted = true;
                 await donation.save();
 
                 summary.pendingManualReview++;
                 continue;
             }
+
+            //just for debugging, remove later
+            // console.log("Attempting donation verification", {
+                // donationId: donation._id,
+                // transactionId: transaction.transactionId,
+                // bankTransactionId: transaction._id,
+            // });
 
             try {
 
@@ -219,6 +247,12 @@ class ReconciliationService {
                         superAdminId: transaction.uploadedBy,
                     });
 
+                //just for debugging, remove later
+                // console.log("Donation verified successfully", {
+                    // donationId: donation._id,
+                    // bankTransactionId: transaction._id,
+                    // result,
+                // });
                 summary.matchedCount++;
 
                 if (result.emailError) {
@@ -229,6 +263,12 @@ class ReconciliationService {
                 }
 
             } catch (error) {
+
+                //just for debugging, remove later
+                // console.log("Donation verification failed", {
+                    // donationId: donation._id,
+                    // error: errorMessage(error),
+                // });
 
                 donation.automaticVerificationAttempted = true;
                 await donation.save();
@@ -245,7 +285,6 @@ class ReconciliationService {
 
         summary.emailRetry =
             await autoVerificationService.retryFailedEmails();
-
         return summary;
     }
 }

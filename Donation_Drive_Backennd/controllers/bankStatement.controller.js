@@ -28,10 +28,17 @@ export const uploadBankStatement = async (req, res) => {
         const uploadBatchId = randomUUID();
 
         for (const transaction of transactions) {
+            //just for debugging, remove later
+            // console.log("Processing imported bank transaction", {
+                // transactionId: transaction.transactionId,
+                // normalizedId: transaction.transactionIdNormalized,
+                // amount: transaction.amount,
+                // amountInPaise: transaction.amountInPaise,
+            // });
 
             try {
 
-                const alreadyExists = await BankTransaction.exists({
+                const existingTransaction = await BankTransaction.findOne({
                     $or: [
                         { transactionIdNormalized: transaction.transactionIdNormalized },
                         // Supports records imported before transactionIdNormalized existed.
@@ -39,8 +46,26 @@ export const uploadBankStatement = async (req, res) => {
                     ],
                 });
 
-                if (alreadyExists) {
-                    duplicateCount++;
+                if (existingTransaction) {
+                    await BankTransaction.updateOne(
+                        { _id: existingTransaction._id },
+                        {
+                            $set: {
+                                ...transaction,
+                                uploadedBy: req.admin.adminId,
+                                statementFileName: req.file.originalname,
+                                uploadBatchId,
+                                reconciliationStatus: existingTransaction.isMatched ? "MATCHED" : "UNMATCHED",
+                                reconciliationError: "",
+                                isMatched: false,
+                                matchedDonation: null,
+                                matchedAt: null,
+                                emailStatus: "NOT_SENT",
+                                emailError: "",
+                            },
+                        }
+                    );
+                    importedCount++;
                     continue;
                 }
 
@@ -52,7 +77,11 @@ export const uploadBankStatement = async (req, res) => {
                     statementFileName: req.file.originalname,
                     uploadBatchId,
                 });
-
+                //just for debugging, remove later
+                // console.log( "Bank transaction imported successfully", {
+                    // transactionId: transaction.transactionId,
+                    // uploadBatchId,
+                // });
                 importedCount++;
 
             } catch (error) {
@@ -69,10 +98,17 @@ export const uploadBankStatement = async (req, res) => {
             }
 
         }
+        //just for debugging, remove later
+        // console.log( "Starting reconciliation after bank statement upload", {
+            // importedCount,
+            // duplicateCount,
+            // failedCount,
+        // });
 
         const reconciliationSummary =
             await reconciliationService.reconcileTransactions();
 
+       
         return res.status(201).json(
 
             new ApiResponse(

@@ -330,8 +330,8 @@ export const verifyDonation = async (req,res) =>{
 
     session.startTransaction();
     //just for debugging, remove later
-    console.log("verifyDonation request params:", req.params)
-    console.log("verifyDonation adminId:", req.admin?.adminId)
+    // console.log("verifyDonation request params:", req.params)
+    // console.log("verifyDonation adminId:", req.admin?.adminId)
 
     //so, how the verification process will goes
     //user get all the pending donations record
@@ -355,20 +355,20 @@ export const verifyDonation = async (req,res) =>{
     }).session(session)
 
     //just for debugging, remove later
-    console.log("verifyDonation found donation:", donation ? {
-      id: donation._id,
-      status: donation.status,
-      transactionId: donation.transactionId,
-      campaign: donation.campaign,
-      certificateGenerated: donation.certificateGenerated
-    } : null)
+    // console.log("verifyDonation found donation:", donation ? {
+      // id: donation._id,
+      // status: donation.status,
+      // transactionId: donation.transactionId,
+      // campaign: donation.campaign,
+      // certificateGenerated: donation.certificateGenerated
+    // } : null)
 
     ApiError.assert(donation,"Donation don't found")
 
     //Get campaign before generating certificate
     let campaign = await Campaign.findById(donation.campaign).session(session)
     //just for debugging, remove later
-    console.log("verifyDonation found campaign:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
+    // console.log("verifyDonation found campaign:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
     ApiError.assert(campaign,"No campaign Found with this donation")
 
     //Ownership check — previously missing entirely, meaning any authenticated admin could
@@ -390,7 +390,7 @@ export const verifyDonation = async (req,res) =>{
         donationDate: donation.paymentDate,
       });
       //just for debugging, remove later
-      console.log("verifyDonation certificateData:", certificateData)
+      // console.log("verifyDonation certificateData:", certificateData)
     } catch (certError) {
       console.error("Certificate generation failed, continuing with verification:", certError.message);
       //Certificate generation failure should not block donation verification

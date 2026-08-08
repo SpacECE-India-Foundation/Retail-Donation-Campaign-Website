@@ -310,11 +310,11 @@ class PaymentScreenshotOcrService {
             const confidence = Math.round(bestResult.confidence || 0);
 
             //just for debugging, remove later
-            console.log("OCR pass results:", passResults.map((result) => ({ confidence: result.confidence || 0, text: (result.text || "").slice(0, 300) })));
-            console.log("OCR extracted UTR:", utr); //just for debugging, remove later
-            console.log("OCR extracted sender name:", senderName); //just for debugging, remove later
-            console.log("OCR extracted amount:", amount); //just for debugging, remove later
-            console.log("OCR text:\n", combinedText); //just for debugging, remove later
+            // console.log("OCR pass results:", passResults.map((result) => ({ confidence: result.confidence || 0, text: (result.text || "").slice(0, 300) })));
+            // console.log("OCR extracted UTR:", utr); //just for debugging, remove later
+            // console.log("OCR extracted sender name:", senderName); //just for debugging, remove later
+            // console.log("OCR extracted amount:", amount); //just for debugging, remove later
+            // console.log("OCR text:\n", combinedText); //just for debugging, remove later
 
             return {
                 performed: true,

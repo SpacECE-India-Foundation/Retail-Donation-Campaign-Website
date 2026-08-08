@@ -306,7 +306,7 @@ export const registerAdmin = async (req,res) =>{
         } = req.body
 
         //just for debugging, remove later
-        console.log("registerAdmin called for email:", email, "fullName:", fullName, "phone:", phone)
+        // console.log("registerAdmin called for email:", email, "fullName:", fullName, "phone:", phone)
 
         //lets check for the validation
         ApiError.assert(fullName,"Full Name of the Admin is Required")
@@ -326,11 +326,11 @@ export const registerAdmin = async (req,res) =>{
           const uploadResult = await uploadBufferToCloudinary(req.file.buffer, "admin-profile-images", "image", AVATAR_TRANSFORMATION)
           profileImageUrl = uploadResult.secure_url
           //just for debugging, remove later
-          console.log("registerAdmin uploaded profile image", profileImageUrl)
+          // console.log("registerAdmin uploaded profile image", profileImageUrl)
         } else if (req.body.profileImage) {
           profileImageUrl = req.body.profileImage
           //just for debugging, remove later
-          console.log("registerAdmin using profileImage from body")
+          // console.log("registerAdmin using profileImage from body")
         }
 
         const newAdmin = new Admin ({
@@ -419,7 +419,7 @@ export const adminLogin = async (req,res) =>{
     try {
         const {email,password} = req.body
         //just for debugging, remove later
-        console.log("adminLogin called for email:", email)
+        // console.log("adminLogin called for email:", email)
         ApiError.assert(email,"Email is Required for Login!")
         ApiError.assert(password,"Both the password and email is Required!!")
 
@@ -542,7 +542,7 @@ export const forgotPassword = async (req,res) =>{
     try {
         const {email} = req.body
         //just for debugging, remove later
-        console.log("forgotPassword called for email:", email)
+        // console.log("forgotPassword called for email:", email)
 
         ApiError.assert(email,"Email is required to reset the password")
 
@@ -582,7 +582,7 @@ export const verifyOtp = async (req,res) =>{
     try {
         const {otp,email} = req.body
         //just for debugging, remove later
-        console.log("verifyOtp called for email:", email, "otp:", otp)
+        // console.log("verifyOtp called for email:", email, "otp:", otp)
         ApiError.assert(otp,"OTP is required")
 
         //verification of the OTP
@@ -616,7 +616,7 @@ export const resetPassword = async (req,res) =>{
     try {
         const {email,newPassword} = req.body
         //just for debugging, remove later
-        console.log("resetPassword called for email:", email)
+        // console.log("resetPassword called for email:", email)
         ApiError.assert(email,"email is required")
         ApiError.assert(newPassword && newPassword.length >= 8,"Valid Password is required")
 
@@ -726,7 +726,7 @@ export const updateAdminProfile = async (req,res) =>{
 
         const { fullName, phone, removeProfileImage } = req.body
         //just for debugging, remove later
-        console.log("updateAdminProfile called for adminId:", adminId)
+        // console.log("updateAdminProfile called for adminId:", adminId)
 
         const admin = await Admin.findById(adminId)
         ApiError.notFound(admin,"Admin not found")
@@ -790,7 +790,7 @@ export const changePassword = async (req,res) =>{
         const adminId = req.admin.adminId
         const { currentPassword, newPassword } = req.body
         //just for debugging, remove later
-        console.log("changePassword called for adminId:", adminId)
+        // console.log("changePassword called for adminId:", adminId)
 
         ApiError.assert(currentPassword,"Current password is required")
         ApiError.assert(newPassword && newPassword.length >= 8,"New password is required and should be 8 characters or longer")

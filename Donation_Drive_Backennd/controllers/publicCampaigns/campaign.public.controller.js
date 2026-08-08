@@ -7,22 +7,22 @@ import Milestone from "../../models/milestone.modals.js"
 export const fetchPublicCampaigns = async (req, res) => {
   try {
     //just for debugging, remove later
-    console.log("fetchPublicCampaigns called")
+    // console.log("fetchPublicCampaigns called")
     const query = {}
-    console.log("fetchPublicCampaigns query:", query)
+    // console.log("fetchPublicCampaigns query:", query)
     const campaigns = await Campaign.find(query)
     .select(`
-campaignName
-campaignBanner
-campaignGoalAmt
-campaignRaisedAmt
-contributors
-campaignStatus
-startDate
-endDate
-`).sort({ createdAt: -1 }).lean()
+        campaignName
+        campaignBanner
+        campaignGoalAmt
+        campaignRaisedAmt
+        contributors
+        campaignStatus
+        startDate
+        endDate
+        `).sort({ createdAt: -1 }).lean()
     //just for debugging, remove later
-    console.log("fetchPublicCampaigns result count:", campaigns.length)
+    // console.log("fetchPublicCampaigns result count:", campaigns.length)
 
     return res.status(200).json(
       new ApiResponse(
@@ -48,7 +48,7 @@ export const fetchPublicCampaignDetail = async (req, res) => {
   try {
     const { id } = req.params
     //just for debugging, remove later
-    console.log("fetchPublicCampaignDetail called for id:", id)
+    // console.log("fetchPublicCampaignDetail called for id:", id)
     ApiError.assert(id, "Campaign ID is required")
     ApiError.assert(
       mongoose.Types.ObjectId.isValid(id),
@@ -58,16 +58,16 @@ export const fetchPublicCampaignDetail = async (req, res) => {
     const campaignQuery = { _id: id }
     const milestoneQuery = { campaign: id }
     //just for debugging, remove later
-    console.log("fetchPublicCampaignDetail campaignQuery:", campaignQuery)
-    console.log("fetchPublicCampaignDetail milestoneQuery:", milestoneQuery)
+    // console.log("fetchPublicCampaignDetail campaignQuery:", campaignQuery)
+    // console.log("fetchPublicCampaignDetail milestoneQuery:", milestoneQuery)
 
     const [campaign, milestones] = await Promise.all([
       Campaign.findById(id).lean(),
       Milestone.find(milestoneQuery).sort({ displayOrder: 1 }).lean(),
     ])
     //just for debugging, remove later
-    console.log("fetchPublicCampaignDetail campaign result:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
-    console.log("fetchPublicCampaignDetail milestone count:", milestones.length)
+    // console.log("fetchPublicCampaignDetail campaign result:", campaign ? { id: campaign._id, name: campaign.campaignName } : null)
+    // console.log("fetchPublicCampaignDetail milestone count:", milestones.length)
 
     ApiError.notFound(campaign, "Campaign not found")
 

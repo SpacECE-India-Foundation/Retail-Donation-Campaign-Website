@@ -22,14 +22,14 @@ export const newCampaign = async (req,res) =>{
         //lets get the admin id who is creating the campaign
         const adminId = req.admin.adminId //geeting this from the token/ the middelware we created
         //just for debugging, remove later
-        console.log("newCampaign called by adminId:", adminId)
+        // console.log("newCampaign called by adminId:", adminId)
 
         //as the date are coming as a string we can not directly compare them with actual date object for this we will typecase them into date
         const start = new Date(startDate)
         const end = new Date(endDate)
         //just for debugging, remove later
-        console.log("newCampaign body:", req.body)
-        console.log("newCampaign start/end:", start, end)
+        // console.log("newCampaign body:", req.body)
+        // console.log("newCampaign start/end:", start, end)
         //lets implement validations
         ApiError.assert(campaignName,"campaignName is required")
         ApiError.assert(campaignDescription,"Campaign description is required")
@@ -56,7 +56,7 @@ export const newCampaign = async (req,res) =>{
                 );
             } catch (error) {
                 //just for debugging, remove later
-                console.log("Cloudinary Error:", error)
+                // console.log("Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
 
@@ -118,7 +118,7 @@ export const newCampaign = async (req,res) =>{
                     const success = results.filter(r => r.status === "fulfilled").length;
                     const failed = results.filter(r => r.status === "rejected").length;
 
-                    console.log(`Campaign notification emails: ${success} sent, ${failed} failed.`);
+                    //console.log(`Campaign notification emails: ${success} sent, ${failed} failed.`);
                 })
                 .catch(console.error);
             }
@@ -154,7 +154,7 @@ export const updateCampaignDetails = async (req,res) =>{
         const {campaignId} = req.params
 
         //just for debugging, remove later
-        console.log("updateCampaignDetails called for campaignId:", campaignId, "adminId:", adminId)
+        // console.log("updateCampaignDetails called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id is required!")
 
@@ -338,7 +338,7 @@ export const updateCoverImage = async (req,res) =>{
         const isSuperAdmin = req.admin.role === "SUPER_ADMIN"
         const {campaignId} = req.params
         //just for debugging, remove later
-        console.log("updateCoverImage called for campaignId:", campaignId, "adminId:", adminId)
+        // console.log("updateCoverImage called for campaignId:", campaignId, "adminId:", adminId)
 
         ApiError.assert(campaignId,"Campaign Id not found")
 
@@ -369,7 +369,7 @@ export const updateCoverImage = async (req,res) =>{
                 );
             } catch (error) {
                 //just for debugging, remove later
-                console.log("updateCoverImage Cloudinary Error:", error)
+                // console.log("updateCoverImage Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
 
@@ -412,18 +412,18 @@ export const fetchAdminCampaigns = async (req,res) =>{
         const adminId = req.admin.adminId
 
         //just for debugging, remove later
-        console.log("fetchAdminCampaigns adminId:", adminId)
+        // console.log("fetchAdminCampaigns adminId:", adminId)
         const campaignQuery = { createdBy: adminId }
-        console.log("fetchAdminCampaigns query:", campaignQuery)
+        // console.log("fetchAdminCampaigns query:", campaignQuery)
 
         //now fe will simply find the campaign created by this admin id
         const adminCampaigns = await Campaign.find(campaignQuery)
 
         //just for debugging, remove later
-        console.log("fetchAdminCampaigns result count:", adminCampaigns.length)
-        console.log("fetchAdminCampaigns results:", adminCampaigns.map(c => ({ id: c._id, name: c.campaignName, createdBy: c.createdBy })))
+        // console.log("fetchAdminCampaigns result count:", adminCampaigns.length)
+        // console.log("fetchAdminCampaigns results:", adminCampaigns.map(c => ({ id: c._id, name: c.campaignName, createdBy: c.createdBy })))
         const campaignCountTotal = await Campaign.countDocuments({})
-        console.log("fetchAdminCampaigns total campaigns in DB:", campaignCountTotal)
+        // console.log("fetchAdminCampaigns total campaigns in DB:", campaignCountTotal)
 
         //ApiError.notFound(adminCampaigns,"No Campaigns Created by Admin!")
         //here, we cant use notfound because find returns the array and empty array is always truthy so it will not evoke

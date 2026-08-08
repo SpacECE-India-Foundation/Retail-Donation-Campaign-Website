@@ -41,7 +41,7 @@ export const scanPaymentScreenshot = async (req, res) => {
             : null;
 
         //just for debugging, remove later
-        console.log("scanPaymentScreenshot OCR result:", extraction); 
+       // console.log("scanPaymentScreenshot OCR result:", extraction); 
 
         return res.status(200).json(new ApiResponse(
             200,
@@ -74,8 +74,8 @@ export const registerDonation = async (req,res) =>{
     
     try {
         //just for debugging, remove later
-        console.log("registerDonation request body:", req.body)
-        console.log("registerDonation file attached:", Boolean(req.file && req.file.buffer))
+     //   console.log("registerDonation request body:", req.body)
+     //   console.log("registerDonation file attached:", Boolean(req.file && req.file.buffer))
 
         //This will be a publicly available form so there no authentication needed we can directly start by taking the input from the body
         let {
@@ -120,16 +120,16 @@ export const registerDonation = async (req,res) =>{
             ocrExtraction = await paymentScreenshotOcrService.scan(req.file.buffer);
 
             //just for debugging, remove later
-            console.log("registerDonation OCR extraction:", ocrExtraction);
+           // console.log("registerDonation OCR extraction:", ocrExtraction);
 
             // A form can omit these values when OCR reads them successfully. Explicit form
             // values are never overwritten; they are checked against the OCR result below.
-            if (!transactionId && ocrExtraction.transactionId) {
-                transactionId = ocrExtraction.transactionId;
-            }
-            if ((amount === undefined || amount === null || amount === "") && ocrExtraction.amount) {
-                amount = ocrExtraction.amount;
-            }
+            // if (!transactionId && ocrExtraction.transactionId) {
+                // transactionId = ocrExtraction.transactionId;
+            // }
+            // if ((amount === undefined || amount === null || amount === "") && ocrExtraction.amount) {
+                // amount = ocrExtraction.amount;
+            // }
         }
 
         //first of all we have to find that weather the selected campaign id exists or not and aslo we will check the duplicacy here 
@@ -180,7 +180,7 @@ export const registerDonation = async (req,res) =>{
 
         //validation for amount
         const donationAmount = Number(amount)
-        console.log(donationAmount)
+       // console.log(donationAmount)
         ApiError.assert(Number.isFinite(donationAmount) && donationAmount>0, "Invalid donation amount")
 
         //validation fr the transaction id, this is one of the most major primary key
@@ -219,15 +219,15 @@ export const registerDonation = async (req,res) =>{
         ])
 
         //just for debugging, remove later
-        console.log("registerDonation validation:", {
-          campaign,
-          campaignExists,
-          donorEmail,
-          donorValid,
-          transactionId,
-          isTransactionIdExist,
-          filePresent: Boolean(req.file && req.file.buffer)
-        })
+        // console.log("registerDonation validation:", {
+        //   campaign,
+        //   campaignExists,
+        //   donorEmail,
+        //   donorValid,
+        //   transactionId,
+        //   isTransactionIdExist,
+        //   filePresent: Boolean(req.file && req.file.buffer)
+        // })
 
         //now we will check weather the booleans are false then we will return the not conitunous message
         ApiError.assert(campaignExists,"Campaign Associated with this donation is Invalid")
@@ -246,14 +246,14 @@ export const registerDonation = async (req,res) =>{
                 "donation-screenshots"
                 );
                 //just for debugging, remove later
-                console.log("registerDonation uploadResult:", {
-                  secure_url: uploadResult?.secure_url,
-                  public_id: uploadResult?.public_id,
-                  status: uploadResult ? "ok" : "missing"
-                })
+                // console.log("registerDonation uploadResult:", {
+                //   secure_url: uploadResult?.secure_url,
+                //   public_id: uploadResult?.public_id,
+                //   status: uploadResult ? "ok" : "missing"
+                // })
             } catch (error) {
                 //just for debugging, remove later
-                console.log("Cloudinary Error:", error)
+               // console.log("Cloudinary Error:", error)
                 throw new ApiError(500, "Failed to upload campaign banner");
             }
         }
@@ -267,6 +267,8 @@ export const registerDonation = async (req,res) =>{
                 senderName: donorName,
             })
             : { verified: false, reason: "OCR verification applies only to UPI payments." };
+
+        const submittedPaymentDate = req.body.paymentDate ? new Date(req.body.paymentDate) : new Date();
 
         const newDonation = new Donation({
             donorName,
@@ -284,7 +286,7 @@ export const registerDonation = async (req,res) =>{
                     publicId: uploadResult.public_id,
                 },
             }),
-            paymentDate: ocrExtraction.paymentDate || new Date(),
+            paymentDate: submittedPaymentDate,
             ocrVerification: {
                 attempted: ocrExtraction.performed,
                 verified: false,
@@ -370,7 +372,7 @@ export const registerDonation = async (req,res) =>{
 
         //now here, we will send mail message to the donor regardiing the successfully registration of donation 
 
-        console.log("Sending donation confirmation email to:", donorEmail)
+       // console.log("Sending donation confirmation email to:", donorEmail)
         emailService.sendDonationConfirmationEmail({
             donorName,
             donorEmail,
@@ -418,9 +420,9 @@ export const fetchDonorDetails = async (req,res) =>{
 
         const normalizedEmail = donorEmail.trim().toLowerCase();
         //just for debugging, remove later
-        console.log("fetchDonorDetails normalizedEmail:", normalizedEmail)
+       // console.log("fetchDonorDetails normalizedEmail:", normalizedEmail)
         const donationQuery = { donorEmail: normalizedEmail }
-        console.log("fetchDonorDetails query:", donationQuery)
+       // console.log("fetchDonorDetails query:", donationQuery)
         //now we will fetch all the details of the donations made by this email in the order that the recent donation appears first
         const donations = await Donation.find(donationQuery)
                 .populate(
@@ -444,9 +446,9 @@ export const fetchDonorDetails = async (req,res) =>{
                 });
 
         //just for debugging, remove later
-        console.log("fetchDonorDetails donations count:", donations.length,
-          donations.map((d) => ({ id: d._id, status: d.status, email: d.donorEmail, campaign: d.campaign }))
-        )
+       // console.log("fetchDonorDetails donations count:", donations.length,
+       //   donations.map((d) => ({ id: d._id, status: d.status, email: d.donorEmail, campaign: d.campaign }))
+        //)
         //lets check weather this email exist or not 
         ApiError.assert(donations.length>0,"No donation for this email")
 
