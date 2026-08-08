@@ -155,9 +155,9 @@ class ReconciliationService {
             verified: false,
         }).sort({ createdAt: 1 });
         //just for debugging, remove later
-        console.log( "Reconciliation candidates", {
-            donationCount: donations.length,
-        });
+        // console.log( "Reconciliation candidates", {
+            // donationCount: donations.length,
+        // });
 
         const summary = {
             totalDonations: donations.length,
@@ -169,11 +169,11 @@ class ReconciliationService {
 
         for (const donation of donations) {
             //just for debugging, remove later
-            console.log("Evaluating donation for auto-verification", {
-                donationId: donation._id,
-                transactionId: donation.transactionId,
-                amount: donation.amount,
-            });
+            // console.log("Evaluating donation for auto-verification", {
+                // donationId: donation._id,
+                // transactionId: donation.transactionId,
+                // amount: donation.amount,
+            // });
 
             const transactionIdNormalized = normalizeTransactionId(
                 donation.transactionId
@@ -201,10 +201,10 @@ class ReconciliationService {
             // No transaction found
             if (!transaction) {
                 //just for debugging, remove later
-                console.log( "No matching bank transaction found for donation", {
-                    donationId: donation._id,
-                    transactionId: donation.transactionId,
-                });
+                // console.log( "No matching bank transaction found for donation", {
+                    // donationId: donation._id,
+                    // transactionId: donation.transactionId,
+                // });
                 donation.automaticVerificationAttempted = true;
                 await donation.save();
 
@@ -219,11 +219,11 @@ class ReconciliationService {
             // Amount mismatch
             if (bankAmount !== amountInPaise) {
                 //just for debugging, remove later
-                console.log("Donation amount mismatch", {
-                    donationId: donation._id,
-                    donationAmountInPaise: amountInPaise,
-                    bankAmountInPaise: bankAmount,
-                });
+                // console.log("Donation amount mismatch", {
+                    // donationId: donation._id,
+                    // donationAmountInPaise: amountInPaise,
+                    // bankAmountInPaise: bankAmount,
+                // });
                 donation.automaticVerificationAttempted = true;
                 await donation.save();
 
@@ -232,11 +232,11 @@ class ReconciliationService {
             }
 
             //just for debugging, remove later
-            console.log("Attempting donation verification", {
-                donationId: donation._id,
-                transactionId: transaction.transactionId,
-                bankTransactionId: transaction._id,
-            });
+            // console.log("Attempting donation verification", {
+                // donationId: donation._id,
+                // transactionId: transaction.transactionId,
+                // bankTransactionId: transaction._id,
+            // });
 
             try {
 
@@ -248,11 +248,11 @@ class ReconciliationService {
                     });
 
                 //just for debugging, remove later
-                console.log("Donation verified successfully", {
-                    donationId: donation._id,
-                    bankTransactionId: transaction._id,
-                    result,
-                });
+                // console.log("Donation verified successfully", {
+                    // donationId: donation._id,
+                    // bankTransactionId: transaction._id,
+                    // result,
+                // });
                 summary.matchedCount++;
 
                 if (result.emailError) {
@@ -265,10 +265,10 @@ class ReconciliationService {
             } catch (error) {
 
                 //just for debugging, remove later
-                console.log("Donation verification failed", {
-                    donationId: donation._id,
-                    error: errorMessage(error),
-                });
+                // console.log("Donation verification failed", {
+                    // donationId: donation._id,
+                    // error: errorMessage(error),
+                // });
 
                 donation.automaticVerificationAttempted = true;
                 await donation.save();

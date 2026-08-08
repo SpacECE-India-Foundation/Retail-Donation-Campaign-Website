@@ -126,13 +126,13 @@ SpaceECE Team
             attachments
         });
 
-        console.log("✅ Email sent successfully");
-        console.log(info);
+        // console.log(" Email sent successfully");
+        // console.log(info);
 
         return info;
 
     } catch (error) {
-        console.error("❌ Email Error");
+        console.error("Email Error");
         console.error(error);
 
         throw error;

@@ -49,7 +49,7 @@ class CertificateService {
       const displayCertificateNo = generateDisplayCertificateNo();
       const baseUrl = process.env.CLIENT_ADDRESS || "http://localhost:5000";
       const verificationUrl = `${process.env.CLIENT_ADDRESS}/verify/${certificateId}`;;
-      console.log('certificateId',certificateId)
+      // console.log('certificateId',certificateId)
 
       // Step 2: Generate QR code as data URI
       const qrCodeDataUri = await generateQRCode(verificationUrl);
@@ -212,7 +212,7 @@ class CertificateService {
 
         if (now - stats.mtime.getTime() > maxAge) {
           fs.unlinkSync(filePath);
-          console.log(`Cleaned up old temp file: ${file}`);
+          // console.log(`Cleaned up old temp file: ${file}`);
         }
       }
     } catch (error) {
