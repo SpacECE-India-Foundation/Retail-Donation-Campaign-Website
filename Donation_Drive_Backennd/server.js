@@ -19,6 +19,7 @@ import certificatePublicRoutes from "./routes/publicOperationRoutes/certificate.
 import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
 import superAdminOperations from "./routes/superAdminOperations.routes.js/accounts.superAdmin.js"
 import bankStatementRoutes from "./routes/superAdminOperations.routes.js/bankStatements.routes.js"
+import subscribersSuperAdminOperations from "./routes/superAdminOperations.routes.js/subscribers.superAdminOperations.routes.js"
 
 
 //HERE WE WILL FIRST GET THE PORT FROM OUR ENV ON WHICH LOCALHOST PORT WE WILL RUN ON OUR SERVER
@@ -106,6 +107,7 @@ app.use('/api/public/donation',donationWallRoute)
 app.use('/api/public/certificate',certificatePublicRoutes)
 app.use('/api/super-admin',superAdminOperations)
 app.use("/api/super-admin/bank-statement", bankStatementRoutes);
+app.use("/api/super-admin/subscribers",subscribersSuperAdminOperations)
 
 //----------------------------------------------------ROUTE NOT FOUNF 404 ------------------------------------------
 // route not found handler
