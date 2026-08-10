@@ -126,34 +126,75 @@ class CertificateService {
    * @param {string} htmlContent - HTML content
    * @returns {Promise<Buffer>} - PDF buffer
    */
+  // async _htmlToPdf(htmlContent) {
+  //   let browser;
+  //   try {
+  //     browser = await puppeteer.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+  //     const page = await browser.newPage();
+  //     await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+
+  //     const pdfBuffer = await page.pdf({
+  //       format: this.pdfOptions.format || "A4",
+  //       landscape: this.pdfOptions.orientation === "landscape",
+  //       printBackground: true,
+  //       margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
+  //       preferCSSPageSize: true,
+  //     });
+
+  //     return pdfBuffer;
+  //   } catch (err) {
+  //     throw new Error(`PDF generation failed: ${err.message}`);
+  //   } finally {
+  //     if (browser) {
+  //       try {
+  //         await browser.close();
+  //       } catch (e) {
+  //         // ignore
+  //       }
+  //     }
+  //   }
+  // }
+
   async _htmlToPdf(htmlContent) {
     let browser;
+
     try {
-      browser = await puppeteer.launch({ args: ["--no-sandbox", "--disable-setuid-sandbox"] });
-      const page = await browser.newPage();
-      await page.setContent(htmlContent, { waitUntil: "networkidle0" });
+        browser = await puppeteer.launch({
+            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+        });
 
-      const pdfBuffer = await page.pdf({
-        format: this.pdfOptions.format || "A4",
-        landscape: this.pdfOptions.orientation === "landscape",
-        printBackground: true,
-        margin: { top: "0px", right: "0px", bottom: "0px", left: "0px" },
-        preferCSSPageSize: true,
-      });
+        const page = await browser.newPage();
 
-      return pdfBuffer;
+        await page.setContent(htmlContent, {
+            waitUntil: "domcontentloaded",
+            timeout: 30000
+        });
+
+        const pdfBuffer = await page.pdf({
+            format: "A4",
+            landscape: true,
+            printBackground: true,
+            margin: {
+                top: "0px",
+                right: "0px",
+                bottom: "0px",
+                left: "0px"
+            },
+            preferCSSPageSize: true,
+        });
+
+        return pdfBuffer;
+
     } catch (err) {
-      throw new Error(`PDF generation failed: ${err.message}`);
+        throw new Error(`PDF generation failed: ${err.message}`);
     } finally {
-      if (browser) {
-        try {
-          await browser.close();
-        } catch (e) {
-          // ignore
+        if (browser) {
+            try {
+                await browser.close();
+            } catch (e) {}
         }
-      }
     }
-  }
+}
 
   /**
    * Format date to readable format
