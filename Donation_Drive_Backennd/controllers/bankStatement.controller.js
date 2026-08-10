@@ -29,12 +29,12 @@ export const uploadBankStatement = async (req, res) => {
 
         for (const transaction of transactions) {
             //just for debugging, remove later
-            // console.log("Processing imported bank transaction", {
-                // transactionId: transaction.transactionId,
-                // normalizedId: transaction.transactionIdNormalized,
-                // amount: transaction.amount,
-                // amountInPaise: transaction.amountInPaise,
-            // });
+            console.log("Processing imported bank transaction", {
+                transactionId: transaction.transactionId,
+                normalizedId: transaction.transactionIdNormalized,
+                amount: transaction.amount,
+                amountInPaise: transaction.amountInPaise,
+            });
 
             try {
 
@@ -78,10 +78,10 @@ export const uploadBankStatement = async (req, res) => {
                     uploadBatchId,
                 });
                 //just for debugging, remove later
-                // console.log( "Bank transaction imported successfully", {
-                    // transactionId: transaction.transactionId,
-                    // uploadBatchId,
-                // });
+                console.log( "Bank transaction imported successfully", {
+                    transactionId: transaction.transactionId,
+                    uploadBatchId,
+                });
                 importedCount++;
 
             } catch (error) {
@@ -99,11 +99,11 @@ export const uploadBankStatement = async (req, res) => {
 
         }
         //just for debugging, remove later
-        // console.log( "Starting reconciliation after bank statement upload", {
-            // importedCount,
-            // duplicateCount,
-            // failedCount,
-        // });
+        console.log( "Starting reconciliation after bank statement upload", {
+            importedCount,
+            duplicateCount,
+            failedCount,
+        });
 
         const reconciliationSummary =
             await reconciliationService.reconcileTransactions();
