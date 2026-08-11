@@ -24,6 +24,7 @@ import SettingsPage from "./pages/admin/SettingsPage";
 import MyProfilePage from "./pages/admin/MyProfilePage";
 import ManageAdminsPage from "./pages/admin/ManageAdminsPage";
 import BankStatementUploadPage from "./pages/admin/BankStatementUploadPage";
+import SubscribersPage from "./pages/admin/SubscribersPage";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Layout from "./components/common/Layout";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -99,6 +100,10 @@ const router = createBrowserRouter([
       {
         path: "bank-statements",
         element: <BankStatementUploadPage />,
+      },
+      {
+        path: "subscribers",
+        element: <SubscribersPage />,
       },
     ],
   },
