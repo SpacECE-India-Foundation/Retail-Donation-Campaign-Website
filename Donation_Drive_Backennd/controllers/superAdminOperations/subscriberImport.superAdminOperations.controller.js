@@ -112,40 +112,61 @@ const buildPreviewRows = async (file) => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(file.buffer);
 
-    const worksheet = workbook.worksheets[0];
-    if (!worksheet) throw new ApiError(400, "The Excel file does not contain a worksheet.");
-
-    const { donorNameColumn, donorEmailColumn, lastDonationColumn, subscribedCampaignsColumn } = getColumnIndexes(worksheet);
     const rows = [];
     const emailsInFile = new Set();
 
-    worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
+    if (!workbook.worksheets.length) {
+        throw new ApiError(400, "The Excel file does not contain a worksheet.");
+    }
 
-        const donorName = cellText(row.getCell(donorNameColumn));
-        const donorEmail = cellText(row.getCell(donorEmailColumn)).toLowerCase();
-        const lastDonationAt = lastDonationColumn ? parseDate(row.getCell(lastDonationColumn).value) : null;
-        const subscribedCampaigns = subscribedCampaignsColumn ? splitCampaigns(cellText(row.getCell(subscribedCampaignsColumn))) : [];
-        if (!donorName && !donorEmail) return;
+    for (const worksheet of workbook.worksheets) {
+        if (!worksheet || worksheet.rowCount < 1) continue;
 
-        const previewRow = { rowNumber, donorName, donorEmail, lastDonationAt, subscribedCampaigns, status: "READY", reason: null };
-        if (!donorName) {
-            previewRow.status = "INVALID";
-            previewRow.reason = "Donor name is required.";
-        } else if (!EMAIL_PATTERN.test(donorEmail)) {
-            previewRow.status = "INVALID";
-            previewRow.reason = "A valid donor email is required.";
-        } else if (emailsInFile.has(donorEmail)) {
-            previewRow.status = "DUPLICATE_IN_FILE";
-            previewRow.reason = "This email is repeated in the uploaded file.";
-        } else if (lastDonationColumn && cellText(row.getCell(lastDonationColumn)) && !lastDonationAt) {
-            previewRow.status = "INVALID";
-            previewRow.reason = "Last donation must be a valid date.";
-        } else {
-            emailsInFile.add(donorEmail);
+        let columns;
+        try {
+            columns = getColumnIndexes(worksheet);
+        } catch (error) {
+            throw new ApiError(400, `Worksheet "${worksheet.name}" must contain donorName and donorEmail columns.`);
         }
-        rows.push(previewRow);
-    });
+
+        const { donorNameColumn, donorEmailColumn, lastDonationColumn, subscribedCampaignsColumn } = columns;
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return;
+
+            const donorName = cellText(row.getCell(donorNameColumn));
+            const donorEmail = cellText(row.getCell(donorEmailColumn)).toLowerCase();
+            const lastDonationAt = lastDonationColumn ? parseDate(row.getCell(lastDonationColumn).value) : null;
+            const subscribedCampaigns = subscribedCampaignsColumn ? splitCampaigns(cellText(row.getCell(subscribedCampaignsColumn))) : [];
+            if (!donorName && !donorEmail) return;
+
+            const previewRow = {
+                sheetName: worksheet.name,
+                rowNumber,
+                donorName,
+                donorEmail,
+                lastDonationAt,
+                subscribedCampaigns,
+                status: "READY",
+                reason: null,
+            };
+            if (!donorName) {
+                previewRow.status = "INVALID";
+                previewRow.reason = "Donor name is required.";
+            } else if (!EMAIL_PATTERN.test(donorEmail)) {
+                previewRow.status = "INVALID";
+                previewRow.reason = "A valid donor email is required.";
+            } else if (emailsInFile.has(donorEmail)) {
+                previewRow.status = "DUPLICATE_IN_FILE";
+                previewRow.reason = "This email is repeated in the uploaded workbook.";
+            } else if (lastDonationColumn && cellText(row.getCell(lastDonationColumn)) && !lastDonationAt) {
+                previewRow.status = "INVALID";
+                previewRow.reason = "Last donation must be a valid date.";
+            } else {
+                emailsInFile.add(donorEmail);
+            }
+            rows.push(previewRow);
+        });
+    }
 
     if (!rows.length) throw new ApiError(400, "The Excel file has no subscriber records.");
     if (rows.length > MAX_IMPORT_ROWS) {
