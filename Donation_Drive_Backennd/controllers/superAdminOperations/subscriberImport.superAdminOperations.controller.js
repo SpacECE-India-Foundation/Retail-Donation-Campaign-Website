@@ -15,14 +15,54 @@ const normaliseHeader = (value) => String(value || "")
 const cellText = (cell) => String(cell?.text ?? cell?.value ?? "").trim();
 
 const parseDate = (value) => {
+    // ExcelJS normally returns a Date for cells formatted as dates.
     if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-    if (typeof value === "number") {
-        const date = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
-        return Number.isNaN(date.getTime()) ? null : date;
+
+    // Formula cells can expose their calculated value through `result`.
+    if (value && typeof value === "object" && "result" in value) {
+        return parseDate(value.result);
     }
+
+    // Excel serial date (1900 date system; ExcelJS-compatible epoch).
+    if (typeof value === "number" || (typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim()))) {
+        const serial = Number(value);
+        if (serial > 0 && serial < 300000) {
+            const date = new Date(Date.UTC(1899, 11, 30) + serial * 86400000);
+            if (!Number.isNaN(date.getTime())) return date;
+        }
+    }
+
     if (!value) return null;
-    const date = new Date(String(value).trim());
-    return Number.isNaN(date.getTime()) ? null : date;
+    const text = String(value).trim();
+
+    // Support ISO and naturally parseable values (for example, "January 5, 2025").
+    const nativeDate = new Date(text);
+    if (!Number.isNaN(nativeDate.getTime()) && !/^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(text)) {
+        return nativeDate;
+    }
+
+    // Support dd/mm/yyyy, dd-mm-yyyy, mm/dd/yyyy, and two-digit years.
+    const parts = text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2}|\d{4})$/);
+    if (!parts) return null;
+
+    let first = Number(parts[1]);
+    let second = Number(parts[2]);
+    let year = Number(parts[3]);
+    if (year < 100) year += year >= 70 ? 1900 : 2000;
+
+    // If one side is greater than 12, its position is unambiguous. Otherwise
+    // use day-first, which matches the project's expected Excel input format.
+    let day = first;
+    let month = second;
+    if (first <= 12 && second > 12) {
+        month = first;
+        day = second;
+    }
+
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year &&
+        date.getUTCMonth() === month - 1 &&
+        date.getUTCDate() === day ? date : null;
 };
 
 const splitCampaigns = (value) => String(value || "")
