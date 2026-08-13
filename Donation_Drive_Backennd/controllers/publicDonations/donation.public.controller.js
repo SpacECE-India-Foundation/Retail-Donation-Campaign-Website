@@ -11,6 +11,8 @@ import paymentScreenshotOcrService from "../../services/paymentScreenshotOcr.ser
 import autoVerificationService from "../../services/autoVerification.service.js";
 import Subscriber from "../../models/subscribers.modals.js";
 import {addUserToSubscribers}  from "../../services/subscribtion.service.js";
+import Certificate from "../../models/certificate.modals.js";
+import certificateService from "../../services/certificate.services.js";
 
 const normalizePaymentMode = (value) => {
     const normalized = String(value || "").trim().toUpperCase();
@@ -439,6 +441,9 @@ export const fetchDonorDetails = async (req,res) =>{
                 paymentDate
                 verificationRemarks
                 screenshot.url
+                certificateGenerated
+                certificateUrl
+                donorPAN
                 `
                 )
                 .sort({
@@ -462,16 +467,102 @@ export const fetchDonorDetails = async (req,res) =>{
                 },
                 "Donation Fetched Successfully"
                 )
-        );        
+        );
     } catch (error) {
         console.error(error);
-        
+
             return res.status(error.statusCode || 500).json(
                 new ApiError(
                     error.statusCode || 500,
                     error.message
                 )
             );
+    }
+}
+
+
+//--------------------------------------------------THIS FUNCTION IS FOR DONOR-REQUESTED 80G CERTIFICATE GENERATION (Track Donations page)---------------------------------------------
+export const generateEightyGCertificate = async (req, res) => {
+    // Only Verified donations are eligible. A certificate is already generated
+    // automatically the moment an admin verifies a donation (see verifyDonation
+    // in donation.adminOperations.controller.js) — this endpoint's job is to
+    // (a) record the donor's PAN against that donation for 80G compliance, and
+    // (b) hand back the certificate URL. It only calls certificateService
+    // itself in the rare case verification-time generation never completed —
+    // it never generates a second/duplicate certificate for a donation that
+    // already has one.
+    try {
+        const { donationId } = req.params
+        let { donorPAN } = req.body
+
+        ApiError.assert(donationId, "Donation ID is required.")
+        ApiError.assert(donorPAN, "PAN number is required.")
+
+        donorPAN = String(donorPAN).trim().toUpperCase()
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+        ApiError.assert(panRegex.test(donorPAN), "Invalid PAN format. Expected format: ABCDE1234F.")
+
+        const donation = await Donation.findOne({
+            _id: donationId,
+            status: "Verified",
+        }).populate("campaign", "campaignName")
+
+        ApiError.assert(donation, "Verified donation not found for this ID.")
+
+        donation.donorPAN = donorPAN
+
+        let certificateData = null
+        if (!donation.certificateGenerated || !donation.certificateUrl) {
+            certificateData = await certificateService.generateAndUploadCertificate({
+                donorName: donation.donorName,
+                campaignName: donation.campaign?.campaignName,
+                amount: donation.amount,
+                donationDate: donation.paymentDate,
+            })
+            donation.certificateGenerated = true
+            donation.certificateUrl = certificateData.certificateUrl
+        }
+
+        await donation.save()
+
+        if (certificateData) {
+            await Certificate.create({
+                certificateId: certificateData.certificateId,
+                donation: donation._id,
+                displayCertificateNo: certificateData.displayCertificateNo,
+                donorName: donation.donorName,
+                campaignName: donation.campaign?.campaignName,
+                amount: donation.amount,
+                donationDate: donation.paymentDate,
+                certificateUrl: certificateData.certificateUrl,
+                publicId: certificateData.publicId,
+                verificationUrl: certificateData.verificationUrl,
+                verified: true,
+                verifiedAt: new Date(),
+            })
+        }
+
+        //just for debugging, remove later
+        console.log("generateEightyGCertificate donationId:", donation._id, "panProvided:", Boolean(donorPAN))
+
+        res.status(200).json(
+            new ApiResponse(
+                200,
+                {
+                    donationId: donation._id,
+                    certificateUrl: donation.certificateUrl,
+                },
+                "80G certificate is ready."
+            )
+        )
+    } catch (error) {
+        console.error(error)
+        return res.status(error.statusCode || 500).json(
+            new ApiError(
+                error.statusCode || 500,
+                error.message
+            )
+        )
     }
 }
 

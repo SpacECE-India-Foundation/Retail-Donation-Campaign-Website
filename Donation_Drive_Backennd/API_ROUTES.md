@@ -541,6 +541,10 @@ When OCR runs for a UPI screenshot, the backend stores the extracted values in t
 }
 ```
 
+#### Response fields (each donation)
+
+`donorName`, `amount`, `status`, `campaign`, `transactionId`, `paymentDate`, `verificationRemarks`, `screenshot.url`, `certificateGenerated`, `certificateUrl`, `donorPAN` — the last three added for the 80G certificate flow below (`certificateGenerated`/`certificateUrl` are set automatically at verification time; `donorPAN` is empty until the donor requests a certificate).
+
 ---
 
 ### `PATCH /api/public/donation/re-donation/:donationId`
@@ -558,6 +562,43 @@ When OCR runs for a UPI screenshot, the backend stores the extracted values in t
 - `paymentscreenshotEdited` (file, required)
 - `amount` (number, optional)
 - `transactionId` (string, optional)
+
+---
+
+### `POST /api/public/donation/:donationId/generate-80g-certificate`
+
+- Purpose: donor-requested 80G certificate for a Verified donation, from the Track Donations page. Records the donor's PAN against the donation and returns the certificate URL. A certificate is already generated automatically the moment an admin verifies a donation (see section 6, "verify a pending donation"); this endpoint reuses that same `certificateService.generateAndUploadCertificate` call and only generates a certificate itself if verification-time generation never completed for this donation — it never creates a second certificate for a donation that already has one.
+- No authentication required.
+- Request type: `application/json`.
+
+#### Path parameter
+
+- `donationId` (string, required): must belong to a donation with `status: "Verified"`.
+
+#### Request body
+
+```json
+{
+  "donorPAN": "ABCDE1234F"
+}
+```
+
+- `donorPAN` (string, required): standard 10-character PAN format (`^[A-Z]{5}[0-9]{4}[A-Z]$`).
+
+#### Response
+
+```json
+{
+  "status": 200,
+  "data": {
+    "donationId": "...",
+    "certificateUrl": "https://..."
+  },
+  "message": "80G certificate is ready."
+}
+```
+
+- `400`/`404` (via `ApiError`) if the PAN is missing/invalid, or no Verified donation exists with that ID.
 
 ---
 

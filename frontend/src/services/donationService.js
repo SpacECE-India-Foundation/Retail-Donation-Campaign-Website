@@ -149,15 +149,22 @@ export const updateDonation = async (donationId, { transactionId, screenshotFile
   return response.data.data;
 };
 
-// POST /api/public/donation/:donationId/generate-80g-certificate
+// POST /api/public/certificate/request-80g/:donationId
 // Donor-requested 80G certificate for a Verified donation, from the Track
 // Donations page. Real endpoint, confirmed against the current backend:
-// routes/publicOperationRoutes/donations.routes.js — records donorPAN
-// against the donation and returns { donationId, certificateUrl }.
+// routes/publicOperationRoutes/certificate.routes.js:33 (mounted at
+// /api/public/certificate in server.js:107) — handled by
+// request80GCertificate in
+// controllers/publicDonations/eightyGCertificate.publicDonations.controller.js.
+// That controller reads the PAN from req.body.panNumber (not donorPAN), so
+// the outgoing payload key is renamed here while the exported function's
+// own name/signature stay the same for existing callers. Returns
+// { certificateId, certificateNumber, certificateUrl } on success.
+const PUBLIC_CERTIFICATE_BASE = "/public/certificate";
 export const generateEightyGCertificate = async (donationId, donorPAN) => {
   const response = await api.post(
-    `${PUBLIC_DONATION_BASE}/${donationId}/generate-80g-certificate`,
-    { donorPAN },
+    `${PUBLIC_CERTIFICATE_BASE}/request-80g/${donationId}`,
+    { panNumber: donorPAN },
   );
   return response.data.data;
 };

@@ -23,6 +23,9 @@ export const request80GCertificate = async (req,res) =>{
         const {panNumber} = req.body
         const {donationId} = req.params
 
+        // Diagnostic logging only — never logs the PAN value itself.
+        console.log("request80GCertificate donationId:", donationId, "panProvided:", Boolean(panNumber))
+
         //firstly we will check if the Pan number is available or not or is it valid or not
         ApiError.assert(
             panNumber,
@@ -176,6 +179,12 @@ await donation.save({
 
             //now we will send the certificate email in the background
             //we are not waiting for the email response because the certificate is already generated successfully
+            // Diagnostic logging only — never logs the donor's actual email address here, just whether one exists.
+            console.log(
+                "request80GCertificate donationId:", donation._id,
+                "donorEmailPresent:", Boolean(donation.donorEmail),
+                "emailSendAttempted:", true
+            )
             emailService.send80GCertificateEmail({
                 donorName: donation.donorName,
                 donorEmail: donation.donorEmail,
