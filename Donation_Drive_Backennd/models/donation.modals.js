@@ -27,6 +27,18 @@ const donationSchema = new mongoose.Schema(
       match: [/^[6-9]\d{9}$/, "Invalid phone number"],
     },
 
+    // Collected only when a donor requests an 80G certificate for a
+    // Verified donation (see generateEightyGCertificate in
+    // donation.public.controller.js) — not collected at donation
+    // submission time, so this stays optional/empty for older donations.
+    donorPAN: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      match: [/^[A-Z]{5}[0-9]{4}[A-Z]$/, "Invalid PAN format"],
+      default: "",
+    },
+
     address: {
       type: String,
       trim: true,
