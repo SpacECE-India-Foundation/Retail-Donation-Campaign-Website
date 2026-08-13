@@ -149,6 +149,19 @@ export const updateDonation = async (donationId, { transactionId, screenshotFile
   return response.data.data;
 };
 
+// POST /api/public/donation/:donationId/generate-80g-certificate
+// Donor-requested 80G certificate for a Verified donation, from the Track
+// Donations page. Real endpoint, confirmed against the current backend:
+// routes/publicOperationRoutes/donations.routes.js — records donorPAN
+// against the donation and returns { donationId, certificateUrl }.
+export const generateEightyGCertificate = async (donationId, donorPAN) => {
+  const response = await api.post(
+    `${PUBLIC_DONATION_BASE}/${donationId}/generate-80g-certificate`,
+    { donorPAN },
+  );
+  return response.data.data;
+};
+
 // merged timeline of recent donation verifications/rejections + milestone completions,
 // used by the admin dashboard's "Recent Activity" card
 export const fetchRecentActivity = (limit = 8, extraParams = {}) =>
