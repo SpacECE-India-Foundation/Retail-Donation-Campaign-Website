@@ -169,7 +169,119 @@ Login: ${loginUrl}
         `
     });
 }
+async send80GCertificateEmail({
+    donorName,
+    donorEmail,
+    donationAmount,
+    donationDate,
+    certificateNumber,
+    certificateUrl
+}) {
 
+    const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 700px; margin: auto; line-height: 1.7; color: #333;">
+
+            <h2 style="color: #b45309;">
+                80G Donation Certificate
+            </h2>
+
+            <p>
+                Dear <strong>${donorName}</strong>,
+            </p>
+
+            <p>
+                Thank you for your valuable contribution to
+                <strong>SpacECE India Foundation</strong>.
+            </p>
+
+            <p>
+                Your 80G donation certificate has been successfully generated.
+                Please find the certificate attached to this email.
+            </p>
+
+            <div style="
+                background:#fffbeb;
+                border:1px solid #fde68a;
+                border-radius:8px;
+                padding:15px;
+                margin:20px 0;
+            ">
+
+                <p style="margin:5px 0;">
+                    <strong>Certificate Number:</strong>
+                    ${certificateNumber}
+                </p>
+
+                <p style="margin:5px 0;">
+                    <strong>Donation Amount:</strong>
+                    ₹${Number(donationAmount).toLocaleString("en-IN")}
+                </p>
+
+                <p style="margin:5px 0;">
+                    <strong>Donation Date:</strong>
+                    ${donationDate}
+                </p>
+
+            </div>
+
+            <p>
+                Please retain this certificate for your records and
+                applicable income-tax documentation.
+            </p>
+
+            <p>
+                If you have any questions regarding this certificate,
+                please contact us at
+                <a href="mailto:${process.env.ORG_CONTACT_EMAIL}">
+                    ${process.env.ORG_CONTACT_EMAIL}
+                </a>.
+            </p>
+
+            <br>
+
+            <p>
+                Regards,<br>
+                <strong>SpacECE India Foundation</strong><br>
+                ${process.env.ORG_CONTACT_EMAIL}<br>
+                ${process.env.ORG_CONTACT_PHONE}
+            </p>
+
+        </div>
+    `;
+
+    const attachments = certificateUrl
+        ? [
+            {
+                filename: `80G-Certificate-${certificateNumber}.pdf`,
+                path: certificateUrl,
+                contentType: "application/pdf"
+            }
+        ]
+        : [];
+
+    return await this.sendEmail({
+        to: donorEmail,
+        subject: `80G Donation Certificate - ${certificateNumber}`,
+        html,
+        text: `
+Dear ${donorName},
+
+Thank you for your donation to SpacECE India Foundation.
+
+Your 80G donation certificate has been generated successfully and is attached to this email.
+
+Certificate Number: ${certificateNumber}
+Donation Amount: ₹${Number(donationAmount).toLocaleString("en-IN")}
+Donation Date: ${donationDate}
+
+Please retain this certificate for your records.
+
+Regards,
+SpacECE India Foundation
+        `,
+        attachments
+    });
+}
     async sendDonationVerifiedEmail({
     donorName,
     donorEmail,

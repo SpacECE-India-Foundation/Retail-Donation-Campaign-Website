@@ -158,6 +158,18 @@ automaticVerificationAttempted: {
     type: Boolean,
     default: false
 },
+//this PAN nUmber field is added for the functionality of 80g certificate generation user have to provide the pan info when they ask for the 80g certificate
+panNumber: {
+    type: String,
+    trim: true,
+    uppercase: true,
+    default: null,
+},
+is80GCertificateGenerated: {
+    type: Boolean,
+    default: false,
+    required: true,
+},
   },
   {
     timestamps: true,

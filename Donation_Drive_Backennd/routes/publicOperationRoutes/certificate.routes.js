@@ -5,6 +5,7 @@ import {
   verifyMultipleCertificates,
 } from "../../controllers/publicCampaigns/certificate.public.controller.js";
 import { adminAuth } from "../../middelwares/adminAuth.middelware.js";
+import { request80GCertificate } from "../../controllers/publicDonations/eightyGCertificate.publicDonations.controller.js";
 
 const certificatePublicRoutes = express.Router();
 
@@ -28,5 +29,7 @@ certificatePublicRoutes.get(
   adminAuth,
   getCertificateAnalytics
 );
+
+certificatePublicRoutes.post('/request-80g/:donationId',request80GCertificate)
 
 export default certificatePublicRoutes;
