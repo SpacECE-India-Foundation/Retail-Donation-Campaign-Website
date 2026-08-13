@@ -29,7 +29,7 @@
     "nanoid": "^5.1.16",
     "nodemailer": "^9.0.3",
     "nodemon": "^3.1.14",
-    "puppeteer": "^24.15.0",
+    "puppeteer": "24.15.0",
     "qrcode": "^1.5.4",
     "tesseract.js": "^6.0.1",
     "uuid": "^14.0.1"
