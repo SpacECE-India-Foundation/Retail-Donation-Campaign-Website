@@ -153,6 +153,7 @@ class ReconciliationService {
         const donations = await Donation.find({
             status: "Pending",
             verified: false,
+            automaticVerificationAttempted: false,
         }).sort({ createdAt: 1 });
         //just for debugging, remove later
         // console.log( "Reconciliation candidates", {

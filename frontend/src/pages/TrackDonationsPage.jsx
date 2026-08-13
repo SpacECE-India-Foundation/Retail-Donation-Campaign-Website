@@ -25,8 +25,13 @@ import {
   BookOpen,
   Gift,
   Users,
+  FileCheck2,
 } from "lucide-react";
-import { findDonationsByEmail, updateDonation } from "../services/donationService";
+import {
+  findDonationsByEmail,
+  updateDonation,
+  generateEightyGCertificate,
+} from "../services/donationService";
 import { Button } from "../components/common/Button";
 import { cn } from "../utils/cn";
 
@@ -84,7 +89,7 @@ function StatusBadge({ status }) {
   const Icon = cfg.icon;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide ${cfg.badge}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide ${cfg.badge}`}
     >
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       {cfg.label}
@@ -240,7 +245,124 @@ function ScreenshotPreview({ url, onOpen }) {
   );
 }
 
-function ExpandedDetails({ donation, donorEmail, onUpdate, isUpdating }) {
+/**
+ * 80G certificate request — PAN input + "Generate 80G Certificate" button.
+ * Only ever rendered for donations whose status is "Verified" (gated by the
+ * caller, ExpandedDetails). Calls the real backend endpoint confirmed at
+ * routes/publicOperationRoutes/donations.routes.js:
+ * POST /api/public/donation/:donationId/generate-80g-certificate.
+ */
+function EightyGCertificateSection({ donation, onCertificateGenerated }) {
+  const [pan, setPan] = useState(donation.donorPAN || "");
+  const [requestState, setRequestState] = useState("idle"); // idle | loading | error
+  const [errorMessage, setErrorMessage] = useState("");
+  const [certificateUrl, setCertificateUrl] = useState(donation.certificateUrl || "");
+
+  const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+  const trimmedPan = pan.trim().toUpperCase();
+  const isValidPan = PAN_REGEX.test(trimmedPan);
+  const showFormatHint = trimmedPan.length > 0 && !isValidPan;
+
+  const handlePanChange = (e) => {
+    setPan(e.target.value.toUpperCase());
+    if (requestState === "error") {
+      setRequestState("idle");
+      setErrorMessage("");
+    }
+  };
+
+  const handleGenerate = async () => {
+    // Belt-and-suspenders duplicate-request guard — the button itself is
+    // already disabled while a request is in flight or PAN is invalid.
+    if (!isValidPan || requestState === "loading") return;
+
+    setRequestState("loading");
+    setErrorMessage("");
+    try {
+      const result = await generateEightyGCertificate(donation._id, trimmedPan);
+      setCertificateUrl(result.certificateUrl);
+      setRequestState("idle");
+      onCertificateGenerated(donation._id, {
+        certificateUrl: result.certificateUrl,
+        donorPAN: trimmedPan,
+      });
+    } catch (error) {
+      setRequestState("error");
+      setErrorMessage(
+        error?.response?.data?.message ||
+          "Couldn't generate the certificate. Please try again."
+      );
+    }
+  };
+
+  return (
+    <div className="mt-5 rounded-2xl border border-brand-border/60 bg-white/70 p-6 sm:p-7">
+      <div className="mb-4 flex items-center gap-2">
+        <FileCheck2 size={16} className="shrink-0 text-brand-orange" aria-hidden="true" />
+        <h4 className="text-xs font-bold uppercase tracking-wide text-brand-orange">
+          80G Tax Certificate
+        </h4>
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor={`pan-${donation._id}`}
+            className="text-xs font-medium uppercase tracking-wide text-brand-muted"
+          >
+            PAN Number
+          </label>
+          <input
+            id={`pan-${donation._id}`}
+            type="text"
+            value={pan}
+            onChange={handlePanChange}
+            maxLength={10}
+            placeholder="ABCDE1234F"
+            autoComplete="off"
+            className="mt-1 w-full rounded-xl border border-brand-border bg-white px-3 py-2.5 text-sm uppercase tracking-wide text-brand-dark outline-none transition focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20"
+          />
+          {showFormatHint && (
+            <p className="mt-1.5 text-xs font-semibold text-brand-danger">
+              Enter a valid PAN (format: ABCDE1234F).
+            </p>
+          )}
+        </div>
+
+        <Button
+          type="button"
+          disabled={!isValidPan || requestState === "loading"}
+          isLoading={requestState === "loading"}
+          onClick={handleGenerate}
+          className="sm:w-auto"
+        >
+          Generate 80G Certificate
+        </Button>
+      </div>
+
+      {certificateUrl && requestState !== "loading" && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 ring-1 ring-green-200">
+          <CheckCircle2 size={16} className="shrink-0" aria-hidden="true" />
+          <span>Certificate ready.</span>
+          <a
+            href={certificateUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="ml-auto inline-flex items-center gap-1 text-green-800 underline decoration-green-400 underline-offset-2"
+          >
+            View / Download
+          </a>
+        </div>
+      )}
+
+      {requestState === "error" && (
+        <p className="mt-3 text-xs font-semibold text-brand-danger">{errorMessage}</p>
+      )}
+    </div>
+  );
+}
+
+function ExpandedDetails({ donation, donorEmail, onUpdate, isUpdating, onCertificateGenerated }) {
   const isEditable = donation.status === "Rejected";
   const [transactionId, setTransactionId] = useState(donation.transactionId);
   const [screenshotFile, setScreenshotFile] = useState(null);
@@ -438,6 +560,13 @@ function ExpandedDetails({ donation, donorEmail, onUpdate, isUpdating }) {
         </div>
       </div>
 
+      {donation.status === "Verified" && (
+        <EightyGCertificateSection
+          donation={donation}
+          onCertificateGenerated={onCertificateGenerated}
+        />
+      )}
+
       {canAddScreenshot && (
         <div className="mt-6 flex flex-col-reverse justify-end gap-3 border-t border-brand-border/60 pt-5 sm:flex-row">
           <button
@@ -493,29 +622,37 @@ function ExpandedDetails({ donation, donorEmail, onUpdate, isUpdating }) {
   );
 }
 
-function DonationCard({ donation, donorEmail, isExpanded, onToggle, onUpdate, updatingId }) {
+function DonationCard({
+  donation,
+  donorEmail,
+  isExpanded,
+  onToggle,
+  onUpdate,
+  updatingId,
+  onCertificateGenerated,
+}) {
   const cfg = STATUS_CONFIG[donation.status] || STATUS_CONFIG.Pending;
   const visual = getCategoryVisual(donation);
   const CategoryIcon = visual.icon;
 
   return (
     <div
-      className={`overflow-hidden rounded-[20px] border-y border-r border-brand-border/60 border-l-4 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${cfg.accent}`}
+      className={`overflow-hidden rounded-2xl border-y border-r border-brand-border/60 border-l-4 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg ${cfg.accent}`}
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isExpanded}
-        className="flex w-full flex-col gap-4 px-6 py-6 text-left sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-8"
+        className="flex w-full flex-col gap-3 px-5 py-4 text-left sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-6"
       >
-        <div className="flex min-w-0 flex-1 items-center gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <span
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${visual.chip}`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${visual.chip}`}
           >
-            <CategoryIcon size={20} aria-hidden="true" />
+            <CategoryIcon size={18} aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-base font-bold text-brand-dark">
+            <p className="truncate text-sm font-bold text-brand-dark">
               {donation.campaign?.campaignName}
             </p>
             <p className="mt-0.5 truncate text-xs text-brand-muted">
@@ -524,8 +661,8 @@ function DonationCard({ donation, donorEmail, isExpanded, onToggle, onUpdate, up
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-          <span className="text-xl font-extrabold tracking-tight text-brand-dark">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <span className="text-lg font-extrabold tracking-tight text-brand-dark">
             {formatAmount(donation.amount)}
           </span>
           <StatusBadge status={donation.status} />
@@ -549,6 +686,7 @@ function DonationCard({ donation, donorEmail, isExpanded, onToggle, onUpdate, up
           donation={donation}
           donorEmail={donorEmail}
           onUpdate={onUpdate}
+          onCertificateGenerated={onCertificateGenerated}
           isUpdating={updatingId === donation._id}
         />
       )}
@@ -558,10 +696,10 @@ function DonationCard({ donation, donorEmail, isExpanded, onToggle, onUpdate, up
 
 function CardSkeleton() {
   return (
-    <div className="animate-pulse rounded-[20px] border border-brand-border/60 bg-white p-6 shadow-sm sm:p-7">
+    <div className="animate-pulse rounded-2xl border border-brand-border/60 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-11 w-11 rounded-2xl bg-brand-border/50" />
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-brand-border/50" />
           <div className="space-y-2">
             <div className="h-4 w-40 rounded-full bg-brand-border/60" />
             <div className="h-3 w-24 rounded-full bg-brand-border/40" />
@@ -660,12 +798,21 @@ export default function TrackDonationsPage() {
     }
   };
 
+  // Called by EightyGCertificateSection once generateEightyGCertificate
+  // succeeds, so the certificate URL/PAN persist in this page's donations
+  // list (survives collapsing/re-expanding the card) without an extra fetch.
+  const handleCertificateGenerated = (id, { certificateUrl, donorPAN }) => {
+    setDonations((prev) =>
+      prev.map((d) => (d._id === id ? { ...d, certificateUrl, donorPAN } : d))
+    );
+  };
+
   return (
     <div
       className="min-h-screen bg-gradient-to-b from-brand-orange/[0.07] via-brand-cream to-brand-cream px-4 py-10 sm:px-6 lg:px-8 lg:py-12"
     >
       <div className="mx-auto max-w-4xl">
-        <div className="relative text-center">
+        <div className="relative isolate text-center">
           {/* Decorative background accents — purely visual, no layout impact */}
           <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
             {/* Layer 2: large blurred orange glow behind the hero illustration */}
@@ -784,11 +931,11 @@ export default function TrackDonationsPage() {
 
         <form
           onSubmit={handleSearch}
-          className="mt-8 rounded-[20px] border border-brand-border/60 bg-white p-6 shadow-[0_20px_60px_-20px_rgba(26,26,26,0.15)]"
+          className="mt-6 rounded-2xl border border-brand-border/60 bg-white p-5 shadow-[0_20px_60px_-20px_rgba(26,26,26,0.15)]"
         >
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-orange/10">
-              <Mail className="h-6 w-6 text-brand-orange" aria-hidden="true" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-orange/10">
+              <Mail className="h-5 w-5 text-brand-orange" aria-hidden="true" />
             </span>
 
             <div className="min-w-0 flex-1">
@@ -805,11 +952,11 @@ export default function TrackDonationsPage() {
                     if (emailError) setEmailError("");
                   }}
                   placeholder="john@gmail.com"
-                  className="flex-1 rounded-2xl border border-brand-border bg-white px-4 py-3.5 text-sm text-brand-dark outline-none transition focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20"
+                  className="flex-1 rounded-xl border border-brand-border bg-white px-4 py-2.5 text-sm text-brand-dark outline-none transition focus:border-brand-orange focus:ring-2 focus:ring-brand-orange/20"
                 />
                 <Button
                   type="submit"
-                  size="lg"
+                  size="md"
                   isLoading={status === "loading"}
                   disabled={status === "loading"}
                   className="gap-2 shadow-md shadow-brand-orange/20 hover:shadow-lg hover:shadow-brand-orange/30 sm:w-auto"
@@ -826,15 +973,15 @@ export default function TrackDonationsPage() {
             </div>
           </div>
 
-          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-brand-muted">
+          <p className="mt-4 flex items-center justify-center gap-1.5 text-xs text-brand-muted">
             <Lock size={12} aria-hidden="true" />
             We respect your privacy. Your data is safe with us.
           </p>
         </form>
 
         {status !== "idle" && (
-          <div className="mt-12">
-            <h2 className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-muted">
+          <div className="mt-8">
+            <h2 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-muted">
               <ClipboardList size={14} className="text-brand-orange" aria-hidden="true" />
               Donation History
             </h2>
@@ -862,6 +1009,7 @@ export default function TrackDonationsPage() {
                       )
                     }
                     onUpdate={handleUpdate}
+                    onCertificateGenerated={handleCertificateGenerated}
                     updatingId={updatingId}
                   />
                 ))}
