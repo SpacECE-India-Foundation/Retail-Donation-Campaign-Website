@@ -167,23 +167,26 @@ function UploadSection({ onPreview, showToast }) {
 
 function PreviewModal({ preview, onClose, onConfirmed, showToast }) {
   const [isSaving, setIsSaving] = useState(false);
-  // Removed rows are tracked by rowNumber so the admin can drop rows
-  // (typically READY ones they don't want) before committing.
-  const [removedRowNumbers, setRemovedRowNumbers] = useState(() => new Set());
+  // Removed rows are tracked by their position in the preview array, NOT by
+  // the backend's `rowNumber`. rowNumber resets per worksheet (row 2, row 3,
+  // ...), so a file with multiple sheets can have several rows sharing the
+  // same rowNumber — keying removal off rowNumber would strike out every row
+  // that shares that number at once. Array index is always unique per row.
+  const [removedIndexes, setRemovedIndexes] = useState(() => new Set());
 
   const allRows = preview?.rows ?? [];
   const summary = preview?.summary;
 
-  const handleRemove = (rowNumber) => {
-    setRemovedRowNumbers((prev) => {
+  const handleRemove = (index) => {
+    setRemovedIndexes((prev) => {
       const next = new Set(prev);
-      next.add(rowNumber);
+      next.add(index);
       return next;
     });
   };
 
   const remainingReadyRows = allRows.filter(
-    (row) => row.status === "READY" && !removedRowNumbers.has(row.rowNumber)
+    (row, index) => row.status === "READY" && !removedIndexes.has(index)
   );
 
   const handleConfirm = async () => {
@@ -235,7 +238,7 @@ function PreviewModal({ preview, onClose, onConfirmed, showToast }) {
 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {allRows.length > 0 ? (
-            <PreviewTable rows={allRows} removedRowNumbers={removedRowNumbers} onRemove={handleRemove} />
+            <PreviewTable rows={allRows} removedIndexes={removedIndexes} onRemove={handleRemove} />
           ) : (
             <p className="py-8 text-center text-sm text-gray-400">No rows found in the uploaded sheet.</p>
           )}
@@ -266,7 +269,10 @@ function PreviewModal({ preview, onClose, onConfirmed, showToast }) {
 
 // Non-editable preview table: name, email, status/reason, and a Remove
 // button per row (removed rows are struck through and excluded from commit).
-function PreviewTable({ rows, removedRowNumbers, onRemove }) {
+// Keyed and tracked by array index — the backend's rowNumber resets per
+// worksheet, so it isn't safe to use as a unique identity across the whole
+// uploaded workbook.
+function PreviewTable({ rows, removedIndexes, onRemove }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-100">
       <table className="w-full text-left text-sm">
@@ -279,12 +285,12 @@ function PreviewTable({ rows, removedRowNumbers, onRemove }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
-            const isRemoved = removedRowNumbers.has(row.rowNumber);
+          {rows.map((row, index) => {
+            const isRemoved = removedIndexes.has(index);
             const meta = STATUS_META[row.status] ?? { label: row.status, badgeClass: "bg-gray-100 text-gray-500" };
             return (
               <tr
-                key={row.rowNumber}
+                key={`${row.sheetName ?? ""}-${row.rowNumber}-${index}`}
                 className={`border-b border-gray-50 last:border-0 ${isRemoved ? "opacity-40" : ""}`}
               >
                 <td className={`px-4 py-2.5 text-brand-dark ${isRemoved ? "line-through" : ""}`}>
@@ -302,7 +308,7 @@ function PreviewTable({ rows, removedRowNumbers, onRemove }) {
                 <td className="px-4 py-2.5 text-right">
                   <button
                     type="button"
-                    onClick={() => onRemove(row.rowNumber)}
+                    onClick={() => onRemove(index)}
                     disabled={isRemoved}
                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
                     aria-label={`Remove row ${row.rowNumber}`}
