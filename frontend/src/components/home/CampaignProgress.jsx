@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Loader2, IndianRupee, Target, ArrowRight } from "lucide-react";
 import { calculateCampaignStats, fetchCampaigns } from "../../services/campaignService";
 
-const RADIUS = 70;
+const RADIUS = 85;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export const CampaignProgress = () => {
@@ -60,16 +60,16 @@ export const CampaignProgress = () => {
           aria-hidden="true"
         />
 
-        <div className="relative mx-auto flex max-w-[880px] flex-col items-center gap-10 lg:flex-row lg:justify-between lg:gap-14">
+        <div className="relative mx-auto flex max-w-[960px] flex-col items-center gap-12 lg:flex-row lg:justify-between lg:gap-16">
           <div className="text-center lg:text-left">
             <p
-              className="mb-2 text-sm font-bold uppercase tracking-wide"
+              className="mb-3 text-base font-bold uppercase tracking-wide"
               style={{ color: "var(--color-brand-orange)" }}
             >
               Campaign progress
             </p>
             <h2
-              className="mb-4 text-2xl font-bold text-white lg:text-4xl"
+              className="mb-6 text-3xl font-bold text-white lg:text-5xl"
               style={{ fontFamily: "'Playfair Display', serif" }}
             >
               Help us reach our goal
@@ -88,50 +88,50 @@ export const CampaignProgress = () => {
               </p>
             ) : (
               <>
-                <div className="mb-8 flex justify-center gap-3 lg:justify-start">
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-md">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
-                      <IndianRupee size={16} aria-hidden="true" />
+                <div className="mb-10 flex justify-center gap-4 lg:justify-start">
+                  <div className="flex items-center gap-4 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-md">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
+                      <IndianRupee size={20} aria-hidden="true" />
                     </span>
                     <div className="text-left">
-                      <p className="text-[11px] text-white/60">Raised</p>
-                      <p className="text-sm font-semibold text-white">₹{stats.raised.toLocaleString("en-IN")}</p>
+                      <p className="text-xs text-white/60">Raised</p>
+                      <p className="text-lg font-bold text-white lg:text-xl">₹{stats.raised.toLocaleString("en-IN")}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-md">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
-                      <Target size={16} aria-hidden="true" />
+                  <div className="flex items-center gap-4 rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-md">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white">
+                      <Target size={20} aria-hidden="true" />
                     </span>
                     <div className="text-left">
-                      <p className="text-[11px] text-white/60">Goal</p>
-                      <p className="text-sm font-semibold text-white">₹{stats.goal.toLocaleString("en-IN")}</p>
+                      <p className="text-xs text-white/60">Goal</p>
+                      <p className="text-lg font-bold text-white lg:text-xl">₹{stats.goal.toLocaleString("en-IN")}</p>
                     </div>
                   </div>
                 </div>
 
                 <Link
                   to="/campaign"
-                  className="group inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 font-semibold shadow-lg transition-transform hover:-translate-y-0.5"
+                  className="group inline-flex items-center gap-2 rounded-full bg-white px-9 py-4 text-lg font-semibold shadow-lg transition-transform hover:-translate-y-0.5"
                   style={{ color: "var(--color-brand-dark)" }}
                 >
                   View all campaigns
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                  <ArrowRight size={19} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />
                 </Link>
               </>
             )}
           </div>
 
           {hasCampaigns && (
-            <div className="relative flex h-48 w-48 shrink-0 items-center justify-center">
-              <svg width="176" height="176" viewBox="0 0 176 176" className="-rotate-90">
-                <circle cx="88" cy="88" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="14" />
+            <div className="relative flex h-52 w-52 shrink-0 items-center justify-center lg:h-60 lg:w-60">
+              <svg width="100%" height="100%" viewBox="0 0 208 208" className="-rotate-90">
+                <circle cx="104" cy="104" r={RADIUS} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="16" />
                 <circle
-                  cx="88"
-                  cy="88"
+                  cx="104"
+                  cy="104"
                   r={RADIUS}
                   fill="none"
                   stroke="var(--color-brand-orange)"
-                  strokeWidth="14"
+                  strokeWidth="16"
                   strokeLinecap="round"
                   strokeDasharray={CIRCUMFERENCE}
                   strokeDashoffset={dashOffset}
@@ -140,12 +140,12 @@ export const CampaignProgress = () => {
               </svg>
               <div className="absolute flex flex-col items-center">
                 <span
-                  className="text-4xl font-bold text-white"
+                  className="text-5xl font-bold text-white lg:text-6xl"
                   style={{ fontFamily: "'Playfair Display', serif" }}
                 >
                   {percentage}%
                 </span>
-                <span className="mt-1 text-xs text-white/60">funded</span>
+                <span className="mt-1.5 text-sm text-white/60">funded</span>
               </div>
             </div>
           )}

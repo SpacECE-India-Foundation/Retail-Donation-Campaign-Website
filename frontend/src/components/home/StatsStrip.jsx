@@ -2,9 +2,27 @@ import { HandHeart, Users, Building2, CalendarDays, ArrowUpRight } from "lucide-
 
 export const StatsStrip = () => {
   const secondaryStats = [
-    { number: "400+", label: "Families engaged", icon: Users, accent: "var(--color-brand-teal)" },
-    { number: "30+", label: "Anganwadis partnered", icon: Building2, accent: "var(--color-brand-orange)" },
-    { number: "8+", label: "Years of field presence", icon: CalendarDays, accent: "var(--color-brand-teal)" },
+    {
+      number: "400+",
+      label: "Families engaged",
+      icon: Users,
+      accent: "#0f766e",
+      accentBg: "rgba(15, 118, 110, 0.1)",
+    },
+    {
+      number: "30+",
+      label: "Anganwadis partnered",
+      icon: Building2,
+      accent: "#e8741a",
+      accentBg: "rgba(232, 116, 26, 0.1)",
+    },
+    {
+      number: "8+",
+      label: "Years of field presence",
+      icon: CalendarDays,
+      accent: "#0f766e",
+      accentBg: "rgba(15, 118, 110, 0.1)",
+    },
   ];
 
   return (
@@ -50,21 +68,32 @@ export const StatsStrip = () => {
           return (
             <div
               key={stat.label}
-              className="group rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
+              className="group relative flex min-h-[260px] flex-col justify-between overflow-hidden rounded-3xl border border-gray-100 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
+              <Icon
+                className="pointer-events-none absolute -bottom-6 -right-6 transition-transform duration-300 group-hover:scale-110"
+                size={130}
+                strokeWidth={1.2}
+                style={{ color: stat.accent, opacity: 0.08 }}
+                aria-hidden="true"
+              />
+
               <span
-                className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-110"
-                style={{ background: `${stat.accent}1f`, color: stat.accent }}
+                className="relative flex h-11 w-11 items-center justify-center rounded-2xl transition-transform duration-300 group-hover:scale-110"
+                style={{ background: stat.accentBg, color: stat.accent }}
               >
                 <Icon size={20} aria-hidden="true" />
               </span>
-              <p
-                className="text-3xl font-bold"
-                style={{ color: "var(--color-brand-dark)", fontFamily: "'Playfair Display', serif" }}
-              >
-                {stat.number}
-              </p>
-              <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
+
+              <div className="relative">
+                <p
+                  className="text-4xl font-bold"
+                  style={{ color: "var(--color-brand-dark)", fontFamily: "'Playfair Display', serif" }}
+                >
+                  {stat.number}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">{stat.label}</p>
+              </div>
             </div>
           );
         })}
