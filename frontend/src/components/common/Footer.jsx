@@ -21,7 +21,7 @@ const linkColumns = [
       { label: "Donate Now", to: "/donate" },
       { label: "Track a Donation", to: "/track-donations" },
       { label: "Founders", to: "/founders" },
-      { label: "Documents", to: "/documents" },
+      { label: "Newsletter", to: "/newsletter" },
     ],
   },
 ];
@@ -55,43 +55,13 @@ function FooterLink({ to, children }) {
 export const Footer = () => {
   return (
     <footer className="relative w-full overflow-hidden">
-      {/* No hard divider line here — the page above (e.g. ImpactPage's wave)
-          already ends in this exact color (#FFF8F2), so the two blend with
-          no visible seam instead of a stray line marking the boundary. */}
-
-      {/* Warm cream gradient background — exact editorial palette */}
-      <div
-        className="relative"
-        style={{ background: "linear-gradient(180deg, #FFF8F2 0%, #FFF3E8 100%)" }}
-      >
-        {/* Ambient lighting — orange glow top-right, accent glow bottom-left,
-            both large and blurred, kept subtle and minimal */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div
-            className="absolute -right-24 -top-20 h-[420px] w-[420px] rounded-full blur-[110px]"
-            style={{ background: "rgba(232,116,26,0.14)" }}
-          />
-          <div
-            className="absolute -left-32 bottom-0 h-[360px] w-[360px] rounded-full blur-[100px]"
-            style={{ background: "#FFD8B5", opacity: 0.35 }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.35]"
-            style={{
-              background:
-                "radial-gradient(600px 400px at 95% 8%, rgba(232,116,26,0.08), transparent 60%)",
-            }}
-          />
-          {/* Very subtle grain/noise texture */}
-          <div
-            className="absolute inset-0 opacity-[0.025]"
-            style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-            }}
-          />
-        </div>
-
+      {/* Clean white background — the CTA card below carries all the warm
+          orange shading on its own, so it stands out clearly against a plain
+          backdrop instead of blending into a tinted page. Note: this is now
+          white, not the #FFF8F2 cream it used to be — if the page just above
+          the footer (e.g. ImpactPage's wave) still ends in #FFF8F2, there may
+          be a visible seam at the boundary now where there wasn't one before. */}
+      <div className="relative bg-white">
         <div className="relative mx-auto max-w-6xl px-6 py-7 sm:px-8 sm:py-9 lg:py-10">
           {/* CTA banner — NOT a white glass card. This is a warm
               orange-tinted frosted glass panel: a layered cream-to-peach
