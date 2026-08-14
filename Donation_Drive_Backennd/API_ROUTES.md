@@ -615,7 +615,35 @@ When OCR runs for a UPI screenshot, the backend stores the extracted values in t
 
 ---
 
-## 13. Public campaign routes
+## 13. Public subscriber route
+
+### `POST /api/public/subscribers/subscribe`
+
+- Purpose: subscribe a public user to future campaign updates.
+- No authentication required.
+- Request type: `application/json`.
+
+#### Request body
+
+```json
+{
+  "name": "Priya Sharma",
+  "email": "priya@example.com"
+}
+```
+
+- `name` (string, required): `donorName` is also accepted.
+- `email` (string, required): `donorEmail` is also accepted.
+
+#### Behavior
+
+- Creates a subscriber with `subscribed: true` when the email is new.
+- An existing subscriber is reactivated rather than duplicated.
+- Public subscriptions have no campaign-specific milestone subscriptions.
+
+---
+
+## 14. Public campaign routes
 
 ### `GET /api/campaigns`
 
@@ -692,7 +720,7 @@ When OCR runs for a UPI screenshot, the backend stores the extracted values in t
 
 ---
 
-## 14. Certificate routes
+## 15. Certificate routes
 
 ### `GET /api/public/certificate/verify/:certificateId`
 
@@ -732,7 +760,7 @@ When OCR runs for a UPI screenshot, the backend stores the extracted values in t
 
 ---
 
-## 15. Super Admin bank-statement routes
+## 16. Super Admin bank-statement routes
 
 All bank-statement routes require the `accessToken` authentication cookie and the `SUPER_ADMIN` role.
 
@@ -786,6 +814,79 @@ All bank-statement routes require the `accessToken` authentication cookie and th
 
 - Status: `200`
 - `data.reconciliationSummary` contains the number of transactions matched, unmatched, failed, and email retry results.
+
+---
+
+## 17. Super Admin subscriber routes
+
+All routes in this section require the `accessToken` authentication cookie and the `SUPER_ADMIN` role.
+
+### `GET /api/super-admin/subscribers/search-subscribers`
+
+- Purpose: search and paginate subscribers.
+
+#### Query parameters
+
+- `page` (number, optional; default `1`)
+- `limit` (number, optional; default `10`)
+- `search` (string, optional): searches donor name and email.
+
+---
+
+### `POST /api/super-admin/subscribers/import/preview`
+
+- Purpose: validate an Excel subscriber import and return a preview without saving subscribers.
+- Request type: `multipart/form-data`.
+
+#### Request fields
+
+- `file` (file, required): `.xlsx` workbook, maximum 5 MB.
+
+#### Workbook format
+
+Every non-empty worksheet must include the following first-row headers:
+
+- `donorName` (required; aliases: `name`, `fullName`)
+- `donorEmail` (required; aliases: `email`, `emailAddress`)
+- `lastDonation` (optional; aliases: `lastDonationAt`, `donationDate`, `lastDonationDate`)
+- `subscribedCampaigns` (optional; aliases: `subscribedCampaign`, `campaign`, `campaigns`)
+
+The importer reads every worksheet. Campaigns can be supplied as campaign names or IDs; multiple campaigns in one cell are separated by commas, semicolons, or `|`.
+
+#### Response
+
+- Status: `200`.
+- `data.rows` contains the combined rows with `sheetName`, `rowNumber`, parsed donation/campaign values, `status`, and `reason`.
+- A row may be `READY`, `INVALID`, `DUPLICATE_IN_FILE`, or `ALREADY_SUBSCRIBED`.
+
+---
+
+### `POST /api/super-admin/subscribers/import/commit`
+
+- Purpose: save the valid subscriber rows selected from the import preview.
+- Request type: `application/json`.
+
+#### Request body
+
+```json
+{
+  "subscribers": [
+    {
+      "sheetName": "Donors",
+      "rowNumber": 2,
+      "donorName": "Priya Sharma",
+      "donorEmail": "priya@example.com",
+      "lastDonationAt": "2026-08-10T00:00:00.000Z",
+      "subscribedCampaigns": ["campaign-id-or-name"]
+    }
+  ]
+}
+```
+
+- Submit only `READY` rows remaining in the frontend preview table.
+- The backend validates all records and campaigns again before saving.
+- Existing emails are skipped; no duplicate subscriber is created.
+- The response has `importedCount`, `duplicateCount`, `invalidCount`, `failedCount`, and `importFailures`.
 
 ---
 
