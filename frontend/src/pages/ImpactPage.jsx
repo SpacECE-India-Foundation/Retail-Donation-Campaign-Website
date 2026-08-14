@@ -182,10 +182,11 @@ function ImpactPage() {
 
         {/* Impact tiers */}
         <div
-          className="relative -mx-4 rounded-[28px] px-4 py-14 sm:-mx-6 sm:px-6 sm:py-16"
+          className="relative -mx-4 rounded-[28px] border px-4 py-14 sm:-mx-6 sm:px-6 sm:py-16"
           style={{
             background:
               "linear-gradient(160deg, rgba(255,252,247,0.9) 0%, rgba(255,244,234,0.6) 100%)",
+            borderColor: "rgba(232,116,26,0.15)",
           }}
         >
           <div className="mb-10 text-center">
@@ -280,15 +281,13 @@ function ImpactPage() {
         </div>
       </div>
 
-      {/* Editorial wave — soft transition into footer. Every stop here
-          (overlay gradient, wave fill) matches the footer's own starting
-          color (#FFF8F2) exactly, so there's no visible seam or banding
-          where the two components meet. */}
+      {/* Editorial wave — soft transition into footer. Matches the footer's
+          current white background so there's no visible seam. */}
       <div className="relative -mb-px" aria-hidden="true">
         <div
           className="h-16 w-full sm:h-20"
           style={{
-            background: "linear-gradient(180deg, transparent 0%, #FFF8F2 100%)",
+            background: "linear-gradient(180deg, transparent 0%, #FFFFFF 100%)",
           }}
         />
         <svg
@@ -300,7 +299,7 @@ function ImpactPage() {
         >
           <path
             d="M0,40 C360,80 720,0 1080,40 C1260,60 1380,50 1440,40 L1440,80 L0,80 Z"
-            fill="#FFF8F2"
+            fill="#FFFFFF"
           />
         </svg>
       </div>
