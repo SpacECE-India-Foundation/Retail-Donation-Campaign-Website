@@ -17,6 +17,7 @@ import donationPublicRoutes from "./routes/publicOperationRoutes/donations.route
 import publicCampaignRoutes from "./routes/publicOperationRoutes/campaigns.routes.js"
 import certificatePublicRoutes from "./routes/publicOperationRoutes/certificate.routes.js"
 import donationWallRoute from "./routes/publicOperationRoutes/donationWall.outes.js"
+import subscriberPublicRoutes from "./routes/publicOperationRoutes/subscribers.routes.js"
 import superAdminOperations from "./routes/superAdminOperations.routes.js/accounts.superAdmin.js"
 import bankStatementRoutes from "./routes/superAdminOperations.routes.js/bankStatements.routes.js"
 import subscribersSuperAdminOperations from "./routes/superAdminOperations.routes.js/subscribers.superAdminOperations.routes.js"
@@ -104,6 +105,7 @@ app.use('/api/donations', donationAdminOperationsRoutes)
 app.use('/api/public/donation',donationPublicRoutes)
 app.use('/api/campaigns', publicCampaignRoutes)
 app.use('/api/public/donation',donationWallRoute)
+app.use('/api/public/subscribers', subscriberPublicRoutes)
 app.use('/api/public/certificate',certificatePublicRoutes)
 app.use('/api/super-admin',superAdminOperations)
 app.use("/api/super-admin/bank-statement", bankStatementRoutes);
