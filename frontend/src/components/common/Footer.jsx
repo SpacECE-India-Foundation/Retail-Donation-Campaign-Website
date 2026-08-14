@@ -63,19 +63,17 @@ export const Footer = () => {
           be a visible seam at the boundary now where there wasn't one before. */}
       <div className="relative bg-white">
         <div className="relative mx-auto max-w-6xl px-6 py-7 sm:px-8 sm:py-9 lg:py-10">
-          {/* CTA banner — NOT a white glass card. This is a warm
-              orange-tinted frosted glass panel: a layered cream-to-peach
-              fill plus internal radial glows (top-center, center, and
-              bottom-right), so the card itself reads as softly illuminated
-              rather than a plain white pane sitting on the background. */}
+          {/* CTA banner — warm orange-tinted card sitting on the now-white
+              footer background. Fully opaque gradient (not translucent —
+              there's nothing behind it to blend with anymore) plus a visible
+              thin orange border so it reads as a clear card, not a faint
+              wash. */}
           <div
             className="animate-fade-in-up relative mx-auto max-w-4xl overflow-hidden rounded-[34px] px-8 py-7 text-center sm:px-12 sm:py-9"
             style={{
               background:
-                "linear-gradient(135deg, rgba(255,250,245,0.95) 0%, rgba(255,242,230,0.92) 50%, rgba(255,232,212,0.9) 100%)",
-              border: "1px solid rgba(255,255,255,0.45)",
-              backdropFilter: "blur(18px)",
-              WebkitBackdropFilter: "blur(18px)",
+                "linear-gradient(135deg, #FFF9F4 0%, #FFEEDD 50%, #FFE4C7 100%)",
+              border: "1px solid rgba(232,116,26,0.2)",
               boxShadow:
                 "0 35px 80px rgba(232,116,26,0.1), 0 12px 40px rgba(255,180,110,0.08), inset 0 1px 0 rgba(255,255,255,0.65)",
             }}
