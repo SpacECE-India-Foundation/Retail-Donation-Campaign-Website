@@ -139,7 +139,7 @@ export default function FounderPage() {
             <Sparkles size={12} aria-hidden="true" />
             Our People
           </span>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-[#1A1A1A] sm:text-4xl">
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl lg:text-[52px]">
             Our Leadership &amp; Advisory Network
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#1A1A1A]/70">
