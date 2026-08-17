@@ -5,7 +5,7 @@ import { Heart, Trophy, ArrowRight, PlayCircle } from "lucide-react";
 
 export default function AchievementsPage() {
   return (
-    <div className="bg-[#FFF8F1] min-h-screen text-slate-800">
+    <div className="relative isolate -mt-24 min-h-screen bg-[#FFF8F1] pt-24 text-slate-800">
 
       {/* ================= HERO SECTION ================= */}
       <section className="relative w-full pt-6 pb-2 sm:pt-10 px-4 sm:px-6 lg:px-8 overflow-visible">
