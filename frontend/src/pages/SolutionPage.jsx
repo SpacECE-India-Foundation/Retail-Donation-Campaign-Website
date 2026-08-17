@@ -17,7 +17,12 @@ export default function SolutionPage() {
   });
 
   return (
-    <div className="bg-[#FFFDF8] pb-20">
+    <div className="relative isolate -mt-24 bg-[#FFFDF8] pb-20 pt-24">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-24"
+        style={{ background: "#F8F4EE" }}
+        aria-hidden="true"
+      />
 
       {/* ================= HERO (unchanged) ================= */}
 
@@ -29,88 +34,78 @@ export default function SolutionPage() {
         className="absolute inset-0 w-full h-full object-cover object-top"
        />
 
-        {/* ================= FLOATING GLASS CARD ================= */}
+        {/* Warm color-grade overlay — pulls the illustration's bright,
+            generic pastel palette toward the site's own cream/orange tones
+            so it reads as part of the same brand instead of a stock image
+            dropped on top. Soft-light blend keeps the artwork legible. */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: "rgba(232,116,26,0.18)",
+            mixBlendMode: "soft-light",
+          }}
+          aria-hidden="true"
+        />
+      </div>
 
-        <div className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 z-20 w-[84%] max-w-5xl">
+      {/* ================= STATS CARD ================= */}
+      {/* Solid card (no glass/translucency) sitting just below the hero image,
+          with a small overlap so it still reads as "floating" without
+          straddling the photo/page-background boundary. Icon accents use the
+          site's standard alternating teal/orange pair instead of a rainbow
+          of unrelated pastel colors. */}
 
-          <div
-            className="
-              relative
-              overflow-hidden
-              rounded-[26px]
-              border border-white/40
-              bg-white/20
-              backdrop-blur-[38px]
-              shadow-[0_25px_80px_rgba(0,0,0,0.18)]
-            "
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/35 via-white/10 to-transparent" />
+      <div className="relative z-20 mx-auto -mt-14 w-[84%] max-w-5xl px-2 sm:-mt-20">
+        <div className="overflow-hidden rounded-[26px] border border-gray-100 bg-white shadow-[0_25px_80px_rgba(0,0,0,0.12)]">
+          <div className="grid grid-cols-2 divide-x divide-y divide-gray-100 sm:grid-cols-4 sm:divide-y-0">
+            {[
+              {
+                icon: Users,
+                value: statistics.totalDonations.toLocaleString("en-IN"),
+                label: "Generous Donors",
+                accent: "#E8741A",
+                accentBg: "rgba(232, 116, 26, 0.1)",
+              },
+              {
+                icon: IndianRupee,
+                value: `₹${statistics.totalRaised.toLocaleString("en-IN")}`,
+                label: "Total Raised",
+                accent: "#E8741A",
+                accentBg: "rgba(232, 116, 26, 0.1)",
+              },
+              {
+                icon: GraduationCap,
+                value: "1,845",
+                label: "Children Impacted",
+                accent: "#E8741A",
+                accentBg: "rgba(232, 116, 26, 0.1)",
+              },
+              {
+                icon: Heart,
+                value: statistics.totalCampaigns.toLocaleString("en-IN"),
+                label: "Campaigns",
+                accent: "#E8741A",
+                accentBg: "rgba(232, 116, 26, 0.1)",
+              },
+            ].map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="flex flex-col items-center py-6">
+                  <div
+                    className="mb-2 flex h-14 w-14 items-center justify-center rounded-full"
+                    style={{ background: stat.accentBg }}
+                  >
+                    <Icon size={24} style={{ color: stat.accent }} aria-hidden="true" />
+                  </div>
 
-            <div className="relative grid grid-cols-4">
+                  <h2 className="text-[30px] font-black leading-none text-[#E8741A]">
+                    {stat.value}
+                  </h2>
 
-              <div className="relative flex flex-col items-center py-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-100 to-violet-200 shadow-md flex items-center justify-center mb-2">
-                  <Users size={24} className="text-violet-700" />
+                  <p className="mt-1 text-xs font-medium text-gray-600">{stat.label}</p>
                 </div>
-
-                <h2 className="text-[30px] leading-none font-black text-violet-700">
-                  {statistics.totalDonations.toLocaleString("en-IN")}
-                </h2>
-
-                <p className="mt-1 text-xs font-medium text-gray-600">
-                  Generous Donors
-                </p>
-
-                <div className="absolute right-0 top-5 bottom-5 w-px bg-gradient-to-b from-transparent via-white/70 to-transparent" />
-              </div>
-
-              <div className="relative flex flex-col items-center py-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-100 to-rose-200 shadow-md flex items-center justify-center mb-2">
-                  <IndianRupee size={24} className="text-pink-700" />
-                </div>
-
-                <h2 className="text-[30px] leading-none font-black text-pink-700">
-                   ₹{statistics.totalRaised.toLocaleString("en-IN")}
-                </h2>
-
-                <p className="mt-1 text-xs font-medium text-gray-600">
-                  Total Raised
-                </p>
-
-                <div className="absolute right-0 top-5 bottom-5 w-px bg-gradient-to-b from-transparent via-white/70 to-transparent" />
-              </div>
-
-              <div className="relative flex flex-col items-center py-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-100 to-emerald-200 shadow-md flex items-center justify-center mb-2">
-                  <GraduationCap size={24} className="text-green-700" />
-                </div>
-
-                <h2 className="text-[30px] leading-none font-black text-green-700">
-                  1,845
-                </h2>
-
-                <p className="mt-1 text-xs font-medium text-gray-600">
-                  Children Impacted
-                </p>
-
-                <div className="absolute right-0 top-5 bottom-5 w-px bg-gradient-to-b from-transparent via-white/70 to-transparent" />
-              </div>
-
-              <div className="flex flex-col items-center py-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-100 to-amber-200 shadow-md flex items-center justify-center mb-2">
-                  <Heart size={24} className="text-orange-600" />
-                </div>
-
-                <h2 className="text-[30px] leading-none font-black text-orange-600">
-                   {statistics.totalCampaigns.toLocaleString("en-IN")}
-                </h2>
-
-                <p className="mt-1 text-xs font-medium text-gray-600">
-                  Campaigns
-                </p>
-              </div>
-
-            </div>
+              );
+            })}
           </div>
         </div>
       </div>
