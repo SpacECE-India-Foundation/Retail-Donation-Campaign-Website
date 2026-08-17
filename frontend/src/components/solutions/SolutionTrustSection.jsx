@@ -1,5 +1,4 @@
-import { Link } from "react-router-dom";
-import { ArrowRight, ShieldCheck, Megaphone, FileText, Award } from "lucide-react";
+import { ShieldCheck, Megaphone, FileText, Award } from "lucide-react";
 import { cn } from "../../utils/cn";
 import AnimatedCounter from "./AnimatedCounter";
 
@@ -38,8 +37,15 @@ const TRUST_ITEMS = [
 
 export default function SolutionTrustSection({ statistics }) {
   return (
-    <section className="border-t border-[#ECE6DD] bg-[#F8F4EE] py-20 sm:py-28">
-      <div className="mx-auto max-w-6xl px-6 sm:px-8">
+    <section className="relative isolate overflow-hidden border-t border-[#ECE6DD] bg-[#F8F4EE] py-20 sm:py-28">
+      {/* Bottom fade — eases this section's beige tone into the white
+          footer below instead of cutting off with a hard edge. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-56"
+        style={{ background: "linear-gradient(180deg, transparent 0%, #FFFFFF 100%)" }}
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-6xl px-6 sm:px-8">
         <div className="mx-auto mb-16 max-w-2xl text-center sm:mb-20">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#E8741A]">
             Accountability
@@ -113,20 +119,6 @@ export default function SolutionTrustSection({ statistics }) {
               </div>
             );
           })}
-        </div>
-
-        <div className="mt-16 flex justify-center sm:mt-20">
-          <Link
-            to="/documents"
-            className="group inline-flex items-center gap-2 rounded-full border border-[#ECE6DD] bg-[#FFFDF8] px-6 py-3 text-sm font-semibold text-[#1F2937] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#E8741A]/30 hover:text-[#E8741A]"
-          >
-            View our certificates &amp; reports
-            <ArrowRight
-              size={15}
-              className="transition-transform duration-300 group-hover:translate-x-1"
-              aria-hidden="true"
-            />
-          </Link>
         </div>
       </div>
     </section>
