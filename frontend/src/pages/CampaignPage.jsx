@@ -114,8 +114,8 @@ export default function CampaignPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
-      <section className="relative overflow-hidden bg-white">
+    <div className="min-h-screen bg-brand-cream">
+      <section className="relative overflow-hidden border-b border-brand-border/60 bg-white">
         <div className="relative mx-auto max-w-[1440px] px-6 py-16 sm:py-20 lg:px-8 lg:py-24 xl:px-10">
           <div className="grid gap-12 lg:grid-cols-12 lg:items-center lg:gap-10">
             <div className="lg:col-span-7">
@@ -161,8 +161,10 @@ export default function CampaignPage() {
         </div>
       </section>
 
-      <section id="all-campaigns" className="scroll-mt-20 bg-white">
-        <div className="mx-auto max-w-[1440px] px-6 py-14 sm:py-16 lg:px-8 lg:py-20 xl:px-10">
+      <section
+        id="all-campaigns"
+        className="mx-auto max-w-[1440px] scroll-mt-20 px-6 py-14 sm:py-16 lg:px-8 lg:py-20 xl:px-10"
+      >
         <div className="mb-8 flex flex-col gap-5 sm:mb-10">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -239,10 +241,9 @@ export default function CampaignPage() {
             ))}
           </div>
         )}
-        </div>
       </section>
 
-      <section className="bg-white py-16 sm:py-20 lg:py-24">
+      <section className="border-t border-brand-border/60 bg-white py-16 sm:py-20 lg:py-24">
         <div className="mx-auto max-w-[1440px] px-6 lg:px-8 xl:px-10">
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="font-display text-2xl font-bold text-brand-dark sm:text-3xl">
