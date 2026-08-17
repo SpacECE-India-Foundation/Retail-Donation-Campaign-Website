@@ -26,7 +26,7 @@ export const StatsStrip = () => {
   ];
 
   return (
-    <section className="w-full px-6 py-16 lg:py-20" style={{ background: "var(--color-brand-bg)" }}>
+    <section className="w-full px-6 py-16 lg:py-20" style={{ background: "#FFF8F2" }}>
       <div className="mx-auto grid max-w-[1200px] gap-5 sm:grid-cols-2 lg:grid-cols-5 lg:gap-6">
         {/* Featured stat — bold gradient card, spans 2 of 5 columns so the row fills exactly.
             An oversized outline icon watermark gives it a graphic, editorial feel instead

@@ -452,7 +452,23 @@ export default function DonationWall({ setStatistics, variant = "default" }) {
 
   if (isGrid) {
     return (
-      <section className="relative overflow-hidden bg-[#FFF8F2] py-20 sm:py-28">
+      <section className="relative isolate overflow-hidden bg-[#FFF8F2] py-20 sm:py-28">
+        {/* Top fade — eases the section above's near-white background into
+            this section's peach tone instead of cutting off with a hard
+            line at the boundary. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-40"
+          style={{ background: "linear-gradient(180deg, #FFFDF8 0%, transparent 100%)" }}
+          aria-hidden="true"
+        />
+        {/* Bottom fade — eases this section's peach tone into the next
+            section's near-white background instead of cutting off with a
+            hard line at the boundary. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-40"
+          style={{ background: "linear-gradient(180deg, transparent 0%, #FFFDF8 100%)" }}
+          aria-hidden="true"
+        />
         {/* Soft peach side blooms */}
         <div
           className="pointer-events-none absolute -left-24 top-1/4 h-[420px] w-[420px] rounded-full opacity-70 blur-[90px]"

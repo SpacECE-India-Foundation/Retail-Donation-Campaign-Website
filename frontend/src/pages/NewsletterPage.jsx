@@ -38,7 +38,7 @@ export default function NewsletterPage() {
   };
 
   return (
-    <section className="bg-gradient-to-b from-[#FDF6EC] to-white px-6 py-20">
+    <section className="relative isolate -mt-24 bg-gradient-to-b from-[#FDF6EC] to-white px-6 pb-20 pt-44">
       <div className="mx-auto max-w-2xl text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-[#E8741A]/10 px-4 py-2 text-sm font-semibold text-[#E8741A]">
           <Sparkles size={15} aria-hidden="true" />

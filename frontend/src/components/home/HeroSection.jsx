@@ -12,7 +12,7 @@ export const HeroSection = () => {
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(900px 620px at 8% 0%, rgba(230,126,34,0.24), transparent 55%), var(--color-brand-bg)",
+            "radial-gradient(900px 620px at 8% 0%, rgba(230,126,34,0.24), transparent 55%), #FFF8F2",
         }}
         aria-hidden="true"
       />

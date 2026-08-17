@@ -105,7 +105,7 @@ function SectionDivider() {
 
 export default function FounderPage() {
   return (
-    <section className="relative overflow-hidden bg-[#FDF6EC] px-6 py-20 sm:py-24">
+    <section className="relative isolate -mt-24 overflow-hidden bg-[#FDF6EC] px-6 pb-20 pt-44 sm:pb-24 sm:pt-48">
       {/* Warm editorial background — same glow language as the Hero */}
       <div
         className="pointer-events-none absolute inset-0 -z-10"
@@ -121,6 +121,13 @@ export default function FounderPage() {
         style={{ backgroundImage: "radial-gradient(rgba(232,116,26,0.55) 1.5px, transparent 1.5px)", backgroundSize: "20px 20px" }}
         aria-hidden="true"
       />
+      {/* Bottom fade — eases the cream background into the white footer below
+          instead of cutting off with a hard edge. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-56"
+        style={{ background: "linear-gradient(180deg, transparent 0%, #FFFFFF 100%)" }}
+        aria-hidden="true"
+      />
 
       <div className="relative mx-auto max-w-6xl">
         {/* Heading */}
@@ -132,7 +139,7 @@ export default function FounderPage() {
             <Sparkles size={12} aria-hidden="true" />
             Our People
           </span>
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-[#1A1A1A] sm:text-4xl">
+          <h1 className="font-display text-4xl font-semibold tracking-tight text-[#1A1A1A] sm:text-5xl lg:text-[52px]">
             Our Leadership &amp; Advisory Network
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#1A1A1A]/70">

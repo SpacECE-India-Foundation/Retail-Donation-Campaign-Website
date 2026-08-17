@@ -33,9 +33,16 @@ export const AchievementsGrid = () => {
   };
 
   return (
-    <section className="relative w-full py-16 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden bg-[#FFF8F1]">
+    <section className="relative isolate w-full py-16 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden bg-[#FFF8F1]">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-amber-100/40 rounded-full blur-3xl pointer-events-none" />
+      {/* Bottom fade — eases this section's background into the white
+          footer below instead of cutting off with a hard edge. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-56"
+        style={{ background: "linear-gradient(180deg, transparent 0%, #FFFFFF 100%)" }}
+        aria-hidden="true"
+      />
 
       <div className="relative mx-auto max-w-7xl">
         <div className="text-center max-w-3xl mx-auto mb-12 space-y-5">

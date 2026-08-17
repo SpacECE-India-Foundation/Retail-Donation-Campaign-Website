@@ -10,8 +10,15 @@ export const VisionMission = () => {
   ];
 
   return (
-    <section className="w-full bg-white px-6 py-16 lg:py-24">
-      <div className="mx-auto max-w-[1100px]">
+    <section className="relative isolate w-full overflow-hidden px-6 py-16 lg:py-24" style={{ background: "#FFF8F2" }}>
+      {/* Bottom fade — eases this section's cream tone into the white
+          footer below instead of cutting off with a hard edge. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-56"
+        style={{ background: "linear-gradient(180deg, transparent 0%, #FFFFFF 100%)" }}
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-[1100px]">
         <div className="mb-14 text-center">
           <h2
             className="mb-4 text-3xl font-bold lg:text-4xl"
