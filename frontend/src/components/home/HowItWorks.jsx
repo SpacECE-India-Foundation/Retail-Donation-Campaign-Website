@@ -27,7 +27,7 @@ export const HowItWorks = () => {
   ];
 
   return (
-    <section className="w-full" style={{ background: "var(--color-brand-bg)" }}>
+    <section className="w-full" style={{ background: "#FFF8F2" }}>
       {/* How it Works block */}
       <div className="mx-auto max-w-[1100px] px-6 py-16 lg:py-24 lg:px-8">
         <div className="mb-14 text-center">

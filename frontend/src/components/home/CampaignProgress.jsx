@@ -44,7 +44,7 @@ export const CampaignProgress = () => {
   const dashOffset = CIRCUMFERENCE - (percentage / 100) * CIRCUMFERENCE;
 
   return (
-    <section className="w-full px-6 py-16 lg:py-24" style={{ background: "var(--color-brand-bg)" }}>
+    <section className="w-full px-6 py-16 lg:py-24" style={{ background: "#FFF8F2" }}>
       <div
         className="relative mx-auto flex min-h-[380px] items-center overflow-hidden rounded-[2.5rem] p-8 shadow-2xl lg:min-h-[460px] lg:p-16"
         style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand-dark), #1f3d3a)" }}
