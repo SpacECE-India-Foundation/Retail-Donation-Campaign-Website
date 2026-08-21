@@ -21,7 +21,7 @@ const linkColumns = [
       { label: "Donate Now", to: "/donate" },
       { label: "Track a Donation", to: "/track-donations" },
       { label: "Founders", to: "/founders" },
-      { label: "Documents", to: "/documents" },
+      { label: "Newsletter", to: "/newsletter" },
     ],
   },
 ];
@@ -55,57 +55,25 @@ function FooterLink({ to, children }) {
 export const Footer = () => {
   return (
     <footer className="relative w-full overflow-hidden">
-      {/* No hard divider line here — the page above (e.g. ImpactPage's wave)
-          already ends in this exact color (#FFF8F2), so the two blend with
-          no visible seam instead of a stray line marking the boundary. */}
-
-      {/* Warm cream gradient background — exact editorial palette */}
-      <div
-        className="relative"
-        style={{ background: "linear-gradient(180deg, #FFF8F2 0%, #FFF3E8 100%)" }}
-      >
-        {/* Ambient lighting — orange glow top-right, accent glow bottom-left,
-            both large and blurred, kept subtle and minimal */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
-          <div
-            className="absolute -right-24 -top-20 h-[420px] w-[420px] rounded-full blur-[110px]"
-            style={{ background: "rgba(232,116,26,0.14)" }}
-          />
-          <div
-            className="absolute -left-32 bottom-0 h-[360px] w-[360px] rounded-full blur-[100px]"
-            style={{ background: "#FFD8B5", opacity: 0.35 }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.35]"
-            style={{
-              background:
-                "radial-gradient(600px 400px at 95% 8%, rgba(232,116,26,0.08), transparent 60%)",
-            }}
-          />
-          {/* Very subtle grain/noise texture */}
-          <div
-            className="absolute inset-0 opacity-[0.025]"
-            style={{
-              backgroundImage:
-                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
-            }}
-          />
-        </div>
-
+      {/* Clean white background — the CTA card below carries all the warm
+          orange shading on its own, so it stands out clearly against a plain
+          backdrop instead of blending into a tinted page. Note: this is now
+          white, not the #FFF8F2 cream it used to be — if the page just above
+          the footer (e.g. ImpactPage's wave) still ends in #FFF8F2, there may
+          be a visible seam at the boundary now where there wasn't one before. */}
+      <div className="relative bg-white">
         <div className="relative mx-auto max-w-6xl px-6 py-7 sm:px-8 sm:py-9 lg:py-10">
-          {/* CTA banner — NOT a white glass card. This is a warm
-              orange-tinted frosted glass panel: a layered cream-to-peach
-              fill plus internal radial glows (top-center, center, and
-              bottom-right), so the card itself reads as softly illuminated
-              rather than a plain white pane sitting on the background. */}
+          {/* CTA banner — warm orange-tinted card sitting on the now-white
+              footer background. Fully opaque gradient (not translucent —
+              there's nothing behind it to blend with anymore) plus a visible
+              thin orange border so it reads as a clear card, not a faint
+              wash. */}
           <div
             className="animate-fade-in-up relative mx-auto max-w-4xl overflow-hidden rounded-[34px] px-8 py-7 text-center sm:px-12 sm:py-9"
             style={{
               background:
-                "linear-gradient(135deg, rgba(255,250,245,0.95) 0%, rgba(255,242,230,0.92) 50%, rgba(255,232,212,0.9) 100%)",
-              border: "1px solid rgba(255,255,255,0.45)",
-              backdropFilter: "blur(18px)",
-              WebkitBackdropFilter: "blur(18px)",
+                "linear-gradient(135deg, #FFF9F4 0%, #FFEEDD 50%, #FFE4C7 100%)",
+              border: "1px solid rgba(232,116,26,0.2)",
               boxShadow:
                 "0 35px 80px rgba(232,116,26,0.1), 0 12px 40px rgba(255,180,110,0.08), inset 0 1px 0 rgba(255,255,255,0.65)",
             }}

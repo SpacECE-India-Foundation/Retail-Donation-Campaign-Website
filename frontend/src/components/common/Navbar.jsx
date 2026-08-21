@@ -14,7 +14,7 @@ export const Navbar = () => {
     { name: "Campaign", path: "/campaign" },
     { name: "Achievements", path: "/achievements" },
     { name: "Founders", path: "/founders" },
-    { name: "Documents", path: "/documents" },
+    { name: "Newsletter", path: "/newsletter" },
   ];
 
   return (

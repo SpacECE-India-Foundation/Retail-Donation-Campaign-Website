@@ -96,7 +96,7 @@ export default function DonationTicker({ setStatistics }) {
 
   if (error) {
     return (
-      <div className="py-6 text-center text-sm text-red-500" style={{ background: "var(--color-brand-bg)" }}>
+      <div className="py-6 text-center text-sm text-red-500" style={{ background: "#FFF8F2" }}>
         Couldn&apos;t load recent donations: {error}
       </div>
     );
@@ -113,7 +113,7 @@ export default function DonationTicker({ setStatistics }) {
   const loopBottom = rowBottom.length ? [...rowBottom, ...rowBottom] : [];
 
   return (
-    <section className="w-full px-6 py-16 lg:py-20" style={{ background: "var(--color-brand-bg)" }}>
+    <section className="w-full px-6 py-16 lg:py-20" style={{ background: "#FFF8F2" }}>
       <div className="mx-auto max-w-[1200px]">
         {/* Eyebrow + heading, matching CampaignProgress.jsx / HowItWorks.jsx exactly
             (small bold uppercase orange label, then the big Playfair heading) —
@@ -136,12 +136,12 @@ export default function DonationTicker({ setStatistics }) {
         <div className="relative -mx-6 px-6">
           <div
             className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 sm:w-28"
-            style={{ backgroundImage: "linear-gradient(to right, var(--color-brand-bg), transparent)" }}
+            style={{ backgroundImage: "linear-gradient(to right, #FFF8F2, transparent)" }}
             aria-hidden="true"
           />
           <div
             className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 sm:w-28"
-            style={{ backgroundImage: "linear-gradient(to left, var(--color-brand-bg), transparent)" }}
+            style={{ backgroundImage: "linear-gradient(to left, #FFF8F2, transparent)" }}
             aria-hidden="true"
           />
 

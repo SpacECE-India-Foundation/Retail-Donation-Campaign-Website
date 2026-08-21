@@ -3,17 +3,12 @@ import { Sparkles, ArrowRight } from "lucide-react";
 
 export const AboutHero = () => {
   return (
-    <section className="relative w-full overflow-hidden px-6 py-20 text-center lg:py-28">
-      {/* Same soft mesh-gradient treatment as the home page hero, kept subtler here */}
+    <section className="relative isolate -mt-24 w-full overflow-hidden px-6 pb-20 pt-44 text-center lg:pb-28 lg:pt-52">
       <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(800px 500px at 10% 0%, rgba(230,126,34,0.18), transparent 55%), radial-gradient(800px 500px at 95% 100%, rgba(20,148,140,0.18), transparent 55%), var(--color-brand-bg)",
-        }}
+        className="absolute inset-0 -z-10"
+        style={{ background: "#FFF8F2" }}
         aria-hidden="true"
       />
-
       <div className="relative mx-auto max-w-[800px]">
         <div
           className="mb-6 inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-wide shadow-sm backdrop-blur-md"

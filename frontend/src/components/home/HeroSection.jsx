@@ -5,27 +5,21 @@ import heroImg from "../../assets/logo3.png";
 export const HeroSection = () => {
   return (
     <section className="relative -mt-24 w-full overflow-hidden px-6 pb-24 pt-40 lg:px-12 lg:pb-32 lg:pt-48">
-      {/* Vivid mesh-gradient backdrop — this is the whole point, no flat single color.
-          Orange and teal are kept apart (top-left vs bottom-right corners, both with a lot
-          of transparent falloff) so they never overlap and muddy into a brownish tone in
-          the middle — the cream base shows through as a neutral buffer between them. */}
+      {/* Warm mesh-gradient backdrop, orange only — kept simple to avoid the
+          hard seam that showed up where the teal corner glow met the next
+          section's flat background. */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(900px 620px at 8% 0%, rgba(230,126,34,0.24), transparent 55%), radial-gradient(900px 620px at 96% 100%, rgba(20,148,140,0.24), transparent 55%), var(--color-brand-bg)",
+            "radial-gradient(900px 620px at 8% 0%, rgba(230,126,34,0.24), transparent 55%), #FFF8F2",
         }}
         aria-hidden="true"
       />
-      {/* Floating orbs for depth */}
+      {/* Floating orb for depth */}
       <div
         className="pointer-events-none absolute left-[6%] top-[18%] h-24 w-24 rounded-full blur-2xl"
         style={{ background: "var(--color-brand-orange)", opacity: 0.35 }}
-        aria-hidden="true"
-      />
-      <div
-        className="pointer-events-none absolute bottom-[10%] right-[8%] h-32 w-32 rounded-full blur-2xl"
-        style={{ background: "var(--color-brand-teal)", opacity: 0.3 }}
         aria-hidden="true"
       />
 

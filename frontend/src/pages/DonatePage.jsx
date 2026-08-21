@@ -221,7 +221,14 @@ export default function DonatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream pb-16 sm:pb-20">
+    <div className="relative isolate -mt-24 min-h-screen bg-brand-cream pb-16 pt-24 sm:pb-20">
+      {/* Bottom fade — eases the cream background into the white footer
+          below instead of cutting off with a hard edge. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-56"
+        style={{ background: "linear-gradient(180deg, transparent 0%, #FFFFFF 100%)" }}
+        aria-hidden="true"
+      />
       <DonationHeroBanner
         campaign={selectedCampaign}
         stats={stats}

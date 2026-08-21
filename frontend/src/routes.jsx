@@ -11,6 +11,7 @@ import CampaignDetailPage from "./pages/CampaignDetailPage";
 import DonatePage from "./pages/DonatePage";
 import FounderPage from "./pages/FounderPage";
 import DocumentsPage from "./pages/DocumentsPage";
+import NewsletterPage from "./pages/NewsletterPage";
 import ThankYouPage from "./pages/ThankYouPage";
 import ComponentShowcase from "./pages/ComponentShowcase";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
@@ -50,6 +51,7 @@ const router = createBrowserRouter([
       { path: "/donate/:campaignId", element: <DonatePage /> },
       { path: "/founders", element: <FounderPage /> },
       { path: "/documents", element: <DocumentsPage /> },
+      { path: "/newsletter", element: <NewsletterPage /> },
       { path: "/thank-you", element: <ThankYouPage /> },
       { path: "/verify/:certificateId", element: <CertificateVerificationPage /> },
       { path: "*", element: <NotFoundPage /> },

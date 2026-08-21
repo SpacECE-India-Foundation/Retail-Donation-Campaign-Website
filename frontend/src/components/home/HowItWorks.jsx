@@ -27,7 +27,7 @@ export const HowItWorks = () => {
   ];
 
   return (
-    <section className="w-full" style={{ background: "var(--color-brand-bg)" }}>
+    <section className="w-full" style={{ background: "#FFF8F2" }}>
       {/* How it Works block */}
       <div className="mx-auto max-w-[1100px] px-6 py-16 lg:py-24 lg:px-8">
         <div className="mb-14 text-center">
@@ -88,22 +88,28 @@ export const HowItWorks = () => {
         </div>
       </div>
 
-      {/* CTA banner — bold gradient with organic blobs */}
+      {/* CTA banner — dark navy gradient with soft orange/teal glows, matching
+          the Documents page CTA and Campaign Progress banner elsewhere on the
+          site. (A direct orange-to-teal gradient was here before, but wherever
+          the two colors overlap directly they blend into a muddy olive tone —
+          this keeps them as separate glows on a neutral dark base instead.) */}
       <div
         className="relative w-full overflow-hidden px-6 py-16 lg:py-24"
-        style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand-orange), var(--color-brand-teal))" }}
+        style={{ backgroundImage: "linear-gradient(135deg, var(--color-brand-dark), #1f3d3a)" }}
       >
         <div
-          className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full bg-white/10 blur-2xl"
+          className="pointer-events-none absolute -left-16 -top-16 h-64 w-64 rounded-full blur-3xl"
+          style={{ background: "var(--color-brand-teal)", opacity: 0.3 }}
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute -bottom-20 -right-10 h-72 w-72 rounded-full bg-white/10 blur-2xl"
+          className="pointer-events-none absolute -bottom-20 -right-10 h-72 w-72 rounded-full blur-3xl"
+          style={{ background: "var(--color-brand-orange)", opacity: 0.25 }}
           aria-hidden="true"
         />
 
         <div className="relative mx-auto flex max-w-[800px] flex-col items-center gap-5 text-center">
-          <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 backdrop-blur-md">
+          <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md">
             <Heart size={28} className="text-white" aria-hidden="true" />
           </span>
           <h3
@@ -112,13 +118,13 @@ export const HowItWorks = () => {
           >
             ₹1,000 = 6 months of learning
           </h3>
-          <p className="max-w-[440px] text-sm text-white/90 lg:text-base">
+          <p className="max-w-[440px] text-sm text-white/80 lg:text-base">
             Your donation is measurable, traceable, and transformational.
           </p>
           <Link
             to="/donate"
             className="group mt-2 inline-flex items-center gap-2 rounded-full bg-white px-9 py-4 font-semibold shadow-xl transition-transform hover:-translate-y-1"
-            style={{ color: "var(--color-brand-orange)" }}
+            style={{ color: "var(--color-brand-dark)" }}
           >
             Start donating
             <ArrowRight size={17} className="transition-transform group-hover:translate-x-1" aria-hidden="true" />

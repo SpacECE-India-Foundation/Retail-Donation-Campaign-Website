@@ -9,7 +9,7 @@
   --color-brand-orange-hover: #D86712;
   --color-brand-dark: #1A1A1A;
   --color-brand-teal: #0D4A52;
-  --color-brand-bg: #FFF8F2;
+  --color-brand-bg: #FFFFFF;
   --color-brand-card: #FFFFFF;
   --color-brand-border: #ECECEC;
   --color-brand-success: #22C55E;
@@ -24,7 +24,7 @@
 body {
   margin: 0;
   font-family: "DM Sans", sans-serif;
-  background: var(--color-brand-bg);
+  background: #FFFFFF;
 }
 
 @keyframes solutionTimelinePulse {
